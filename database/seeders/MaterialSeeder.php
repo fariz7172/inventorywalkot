@@ -26,18 +26,18 @@ class MaterialSeeder extends Seeder
             ]);
 
             if ($cat['name'] === 'Semen') {
-                Material::create(['category_id' => $category->id, 'name' => 'Semen Padang 40kg', 'unit' => 'Sak', 'current_volume' => 500, 'current_pcs' => 500]);
-                Material::create(['category_id' => $category->id, 'name' => 'Semen Tiga Roda 50kg', 'unit' => 'Sak', 'current_volume' => 200, 'current_pcs' => 200]);
+                Material::create(['category_id' => $category->id, 'name' => 'Semen Padang 40kg', 'unit' => 'Sak', 'current_volume' => 500]);
+                Material::create(['category_id' => $category->id, 'name' => 'Semen Tiga Roda 50kg', 'unit' => 'Sak', 'current_volume' => 200]);
             }
 
             if ($cat['name'] === 'Pasir & Kerikil') {
-                Material::create(['category_id' => $category->id, 'name' => 'Pasir Beton', 'unit' => 'm3', 'current_volume' => 50, 'current_pcs' => 0]);
-                Material::create(['category_id' => $category->id, 'name' => 'Batu Split 2/3', 'unit' => 'm3', 'current_volume' => 30, 'current_pcs' => 0]);
+                Material::create(['category_id' => $category->id, 'name' => 'Pasir Beton', 'unit' => 'm3', 'current_volume' => 50]);
+                Material::create(['category_id' => $category->id, 'name' => 'Batu Split 2/3', 'unit' => 'm3', 'current_volume' => 30]);
             }
             
             if ($cat['name'] === 'Besi & Baja') {
-                Material::create(['category_id' => $category->id, 'name' => 'Besi Beton 10mm', 'unit' => 'Batang', 'current_volume' => 0, 'current_pcs' => 100]);
-                Material::create(['category_id' => $category->id, 'name' => 'Kawat Beton', 'unit' => 'Kg', 'current_volume' => 25, 'current_pcs' => 0]);
+                Material::create(['category_id' => $category->id, 'name' => 'Besi Beton 10mm', 'unit' => 'Batang', 'current_volume' => 100]);
+                Material::create(['category_id' => $category->id, 'name' => 'Kawat Beton', 'unit' => 'Kg', 'current_volume' => 25]);
             }
         }
     }
