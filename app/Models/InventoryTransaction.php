@@ -16,6 +16,7 @@ class InventoryTransaction extends Model
         'volume_masuk', 
         'volume_keluar', 
         'pcs',
+        'balance_after',
         'reference_number',
         'supplier',
         'note',
