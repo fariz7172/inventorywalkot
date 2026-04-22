@@ -23,7 +23,7 @@ $reportData = computed(function() {
         $query->whereYear('created_at', now()->year);
     }
 
-    return $query->oldest()->get(); // Pakai oldest agar urutan saldo sisa berurutan dari awal
+    return $query->latest()->get(); // Pakai latest agar transaksi terbaru muncul paling atas
 });
 
 $allMaterials = computed(fn() => Material::all());

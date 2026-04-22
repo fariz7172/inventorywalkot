@@ -23,6 +23,12 @@ state([
 $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::all());
 
+mount(function() {
+    if (!auth()->user()->hasRole('superadmin')) {
+        return $this->redirect('/dashboard/surat-jalan', navigate: true);
+    }
+});
+
 // Action: Tambah Baris Material
 $addMaterial = function () {
     $this->selected_materials[] = ['material_id' => '', 'requested_volume' => 0];

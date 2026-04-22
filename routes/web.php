@@ -35,7 +35,12 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Route::get('/pelanggan', fn() => view('admin.customers'))->name('customers');
     Volt::route('/laporan', 'laporan.index')->name('reports');
     Volt::route('/laporan/barang-masuk', 'laporan.barang-masuk')->name('laporan.barang-masuk');
-    Route::get('/pengaturan', fn() => view('admin.settings'))->name('settings');
+    Volt::route('/laporan/stock-opname', 'laporan.rekap-opname')->name('laporan.stock-opname');
+    
+    // Fitur Tambahan
+    Volt::route('/stock-opname', 'stock-opname.index')->name('stock-opname.index');
+    Volt::route('/settings', 'settings')->name('settings');
+    Route::get('/pengaturan', fn() => view('admin.settings'))->name('settings_alias');
 });
 
 // Auth

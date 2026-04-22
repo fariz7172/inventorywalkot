@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Dashboard') — Admin Panel</title>
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
+    <title><?php echo $__env->yieldContent('title', 'Dashboard'); ?> — Admin Panel</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -194,7 +194,7 @@
                 <p class="nav-label text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-3 mb-2">Main
                 </p>
 
-                @php
+                <?php
                     $navItems = [
                         [
                             'icon' => 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
@@ -226,10 +226,10 @@
                             'role' => 'superadmin'
                         ],
                     ];
-                @endphp
+                ?>
 
-                @foreach($navItems as $item)
-                    @php
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $navItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                    <?php
                         $hasChildren = isset($item['children']);
                         $isAuthorized = !isset($item['role']) || auth()->user()->hasRole($item['role']);
                         
@@ -239,23 +239,23 @@
                             });
                             $isAuthorized = !empty($authorizedChildren);
                         }
-                    @endphp
+                    ?>
 
-                    @if($isAuthorized)
-                        @if($hasChildren)
-                            @php
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isAuthorized): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($hasChildren): ?>
+                            <?php
                                 $childRoutes = array_column($item['children'], 'route');
                                 $isExpanded = false;
                                 foreach($childRoutes as $r) { if(request()->routeIs($r)) { $isExpanded = true; break; } }
-                            @endphp
-                            <div x-data="{ open: {{ $isExpanded ? 'true' : 'false' }} }" class="space-y-1">
+                            ?>
+                            <div x-data="{ open: <?php echo e($isExpanded ? 'true' : 'false'); ?> }" class="space-y-1">
                                 <button @click="open = !open" 
                                     class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 text-gray-600 hover:bg-white/50">
                                     <div class="flex items-center gap-3">
                                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="{{ $item['icon'] }}" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="<?php echo e($item['icon']); ?>" />
                                         </svg>
-                                        <span class="font-medium text-sm">{{ $item['label'] }}</span>
+                                        <span class="font-medium text-sm"><?php echo e($item['label']); ?></span>
                                     </div>
                                     <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -266,48 +266,49 @@
                                     x-transition:enter-start="opacity-0 transform -translate-y-2" 
                                     x-transition:enter-end="opacity-100 transform translate-y-0"
                                     class="pl-10 space-y-1">
-                                    @foreach($item['children'] as $child)
-                                        @if(!isset($child['role']) || auth()->user()->hasRole($child['role']))
-                                            <a href="{{ route($child['route']) }}" 
-                                                class="block px-3 py-2 rounded-lg text-sm transition-all {{ request()->routeIs($child['route']) ? 'text-accent font-bold bg-white/40' : 'text-gray-500 hover:text-gray-900' }}">
-                                                {{ $child['label'] }}
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $item['children']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $child): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!isset($child['role']) || auth()->user()->hasRole($child['role'])): ?>
+                                            <a href="<?php echo e(route($child['route'])); ?>" 
+                                                class="block px-3 py-2 rounded-lg text-sm transition-all <?php echo e(request()->routeIs($child['route']) ? 'text-accent font-bold bg-white/40' : 'text-gray-500 hover:text-gray-900'); ?>">
+                                                <?php echo e($child['label']); ?>
+
                                             </a>
-                                        @endif
-                                    @endforeach
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                                 </div>
                             </div>
-                        @else
-                            <a href="{{ route($item['route']) }}"
+                        <?php else: ?>
+                            <a href="<?php echo e(route($item['route'])); ?>"
                                 class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200
-                                {{ request()->routeIs($item['route']) ? 'active' : 'text-gray-600 hover:bg-white/50' }}">
+                                <?php echo e(request()->routeIs($item['route']) ? 'active' : 'text-gray-600 hover:bg-white/50'); ?>">
                                 <svg class="icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="{{ $item['icon'] }}" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="<?php echo e($item['icon']); ?>" />
                                 </svg>
-                                <span class="font-medium text-sm">{{ $item['label'] }}</span>
+                                <span class="font-medium text-sm"><?php echo e($item['label']); ?></span>
                             </a>
-                        @endif
-                    @endif
-                @endforeach
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
 
                 <p class="nav-label text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-3 mt-4 mb-2">
                     Sistem</p>
 
-                @php
+                <?php
                     $sysItems = [
                         ['icon' => 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', 'label' => 'Pengaturan', 'route' => 'settings'],
                         ['icon' => 'M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1', 'label' => 'Keluar', 'route' => 'login'],
                     ];
-                @endphp
-                @foreach($sysItems as $item)
-                    <a href="{{ route($item['route']) }}"
+                ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $sysItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                    <a href="<?php echo e(route($item['route'])); ?>"
                         class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 text-gray-600">
                         <svg class="icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
-                                d="{{ $item['icon'] }}" />
+                                d="<?php echo e($item['icon']); ?>" />
                         </svg>
-                        <span class="nav-label text-sm font-medium">{{ $item['label'] }}</span>
+                        <span class="nav-label text-sm font-medium"><?php echo e($item['label']); ?></span>
                     </a>
-                @endforeach
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
 
             </nav>
 
@@ -318,9 +319,10 @@
                         <span class="text-accent font-bold text-sm">A</span>
                     </div>
                     <div class="user-info flex-1 min-w-0">
-                        <p class="text-sm font-bold text-gray-900 truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-sm font-bold text-gray-900 truncate"><?php echo e(auth()->user()->name); ?></p>
                         <p class="text-[10px] font-black text-accent uppercase tracking-widest truncate">
-                            {{ auth()->user()->getRoleNames()->first() ?? 'User' }}
+                            <?php echo e(auth()->user()->getRoleNames()->first() ?? 'User'); ?>
+
                         </p>
                     </div>
                     <button
@@ -356,7 +358,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M9 5l7 7-7 7" />
                             </svg>
-                            <span class="font-semibold text-gray-700">@yield('title', 'Dashboard')</span>
+                            <span class="font-semibold text-gray-700"><?php echo $__env->yieldContent('title', 'Dashboard'); ?></span>
                         </div>
                     </div>
 
@@ -395,12 +397,13 @@
                         <div class="flex items-center gap-2 cursor-pointer group">
                             <div class="w-9 h-9 rounded-xl bg-accent flex items-center justify-center shadow-md">
                                 <span
-                                    class="text-white font-bold text-sm">{{ substr(auth()->user()->name, 0, 1) }}</span>
+                                    class="text-white font-bold text-sm"><?php echo e(substr(auth()->user()->name, 0, 1)); ?></span>
                             </div>
                             <div class="hidden lg:block">
-                                <p class="text-sm font-bold text-gray-800 leading-tight">{{ auth()->user()->name }}</p>
+                                <p class="text-sm font-bold text-gray-800 leading-tight"><?php echo e(auth()->user()->name); ?></p>
                                 <p class="text-[10px] font-black text-accent uppercase tracking-widest">
-                                    {{ auth()->user()->getRoleNames()->first() ?? 'User' }}
+                                    <?php echo e(auth()->user()->getRoleNames()->first() ?? 'User'); ?>
+
                                 </p>
                             </div>
                         </div>
@@ -411,10 +414,11 @@
             <!-- PAGE CONTENT -->
             <main class="flex-1 overflow-y-auto bg-base">
                 <div class="page-content p-4 lg:p-6">
-                    @if(isset($slot))
-                        {{ $slot }}
-                    @endif
-                    @yield('content')
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($slot)): ?>
+                        <?php echo e($slot); ?>
+
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php echo $__env->yieldContent('content'); ?>
                 </div>
             </main>
         </div>
@@ -447,7 +451,7 @@
         }
     </script>
 
-    @stack('scripts')
+    <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 
-</html>
+</html><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views/layouts/admin.blade.php ENDPATH**/ ?>
