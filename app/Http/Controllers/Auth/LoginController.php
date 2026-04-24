@@ -17,6 +17,7 @@ class LoginController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+            $request->session()->flash('show_opname_reminder', true);
 
             return redirect()->intended('dashboard');
         }

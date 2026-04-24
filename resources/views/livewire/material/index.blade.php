@@ -6,6 +6,10 @@ use App\Services\InventoryService;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Livewire\Volt\Component;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\On;
 
 new class extends Component {
     use WithPagination;
@@ -22,7 +26,7 @@ new class extends Component {
     public $volume = '';
     public $note = '';
     public $search = '';
-    public $perPage = 9;
+    public $perPage = 50;
     
     // Incoming Goods Details
     public $reference_number = '';
@@ -106,7 +110,22 @@ new class extends Component {
             'supplier' => 'nullable|string|max:255',
         ]);
 
-        $imagePath = $this->photo ? $this->photo->store('transactions', 'public') : null;
+        $imagePath = null;
+        if ($this->photo) {
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($this->photo->getRealPath());
+            
+            // Resize if too large (optional, but good for performance)
+            if ($image->width() > 1200) {
+                $image->scale(width: 1200);
+            }
+
+            $filename = pathinfo($this->photo->hashName(), PATHINFO_FILENAME) . '.webp';
+            $imagePath = 'transactions/' . $filename;
+            
+            $encoded = $image->toWebp(80);
+            Storage::disk('public')->put($imagePath, (string)$encoded);
+        }
 
         $service->processIncoming(
             $this->selected_material_id,
@@ -148,7 +167,7 @@ new class extends Component {
     </div>
 
     {{-- Filter & Per Page --}}
-    <div class="flex justify-end mb-6">
+    <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm ring-1 ring-accent/5">
             <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tampilkan:</label>
             <select wire:model.live="perPage" class="bg-transparent text-sm font-bold text-gray-700 outline-none border-none p-0 focus:ring-0 cursor-pointer">

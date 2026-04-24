@@ -3,7 +3,7 @@
 use App\Models\DeliveryOrder;
 use App\Models\Material;
 use App\Models\Category;
-use function Livewire\Volt\{state, rules, computed, layout};
+use function Livewire\Volt\{state, rules, computed, layout, mount};
 
 layout('layouts.admin');
 
@@ -46,8 +46,28 @@ $save = function () {
         'surat_jalan_no' => 'required|unique:delivery_orders,surat_jalan_no',
         'tanggal' => 'required|date',
         'lokasi' => 'required',
+        'pemohon' => 'required',
+        'petugas' => 'required',
         'selected_materials.*.material_id' => 'required|exists:materials,id',
+        'selected_materials.*.requested_volume' => 'required|numeric|min:0.01',
+    ], [
+        'required' => 'Kolom ini wajib diisi.',
+        'unique' => 'Nomor ini sudah terdaftar.',
+        'numeric' => 'Harus berupa angka.',
+        'min' => 'Jumlah minimal adalah 0.01.',
     ]);
+
+    // Validasi Stok
+    foreach ($this->selected_materials as $index => $item) {
+        if (!empty($item['material_id'])) {
+            $material = Material::find($item['material_id']);
+            if ($material && $item['requested_volume'] > $material->current_volume) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    "selected_materials.{$index}.requested_volume" => "Maaf, Stok Kosong (Tersisa: " . (float)$material->current_volume . " {$material->unit})"
+                ]);
+            }
+        }
+    }
 
     $order = DeliveryOrder::create([
         'surat_jalan_no' => $this->surat_jalan_no,
@@ -100,11 +120,13 @@ $save = function () {
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tanggal</label>
-                    <input type="date" wire:model="tanggal" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                    <input type="date" wire:model="tanggal" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('tanggal') border-red-500 @enderror">
+                    @error('tanggal') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lokasi Tujuan</label>
-                    <input type="text" wire:model="lokasi" placeholder="Contoh: Proyek A, Gedung B" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                    <input type="text" wire:model="lokasi" placeholder="Contoh: Proyek A, Gedung B" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror">
+                    @error('lokasi') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Kecamatan / Pelaksana</label>
@@ -112,11 +134,13 @@ $save = function () {
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Pemohon</label>
-                    <input type="text" wire:model="pemohon" placeholder="Nama Pemohon" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                    <input type="text" wire:model="pemohon" placeholder="Nama Pemohon" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('pemohon') border-red-500 @enderror">
+                    @error('pemohon') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Petugas (Admin)</label>
-                    <input type="text" wire:model="petugas" placeholder="Nama Petugas" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                    <input type="text" wire:model="petugas" placeholder="Nama Petugas" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('petugas') border-red-500 @enderror">
+                    @error('petugas') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">No. Polisi Kendaraan</label>
@@ -145,16 +169,20 @@ $save = function () {
                 <div class="flex flex-col sm:flex-row gap-3 bg-base/40 p-3 rounded-xl border border-warm/40 items-end">
                     <div class="flex-1">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Material</label>
-                        <select wire:model="selected_materials.{{ $index }}.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none">
+                        <select wire:model="selected_materials.{{ $index }}.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.material_id') border-red-500 @enderror">
                             <option value="">-- Pilih --</option>
                             @foreach($this->allMaterials as $m)
                                 <option value="{{ $m->id }}">{{ $m->name }} (Stok: {{ $m->current_volume }} {{ $m->unit }})</option>
                             @endforeach
                         </select>
+                        @error('selected_materials.'.$index.'.material_id') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
-                    <div class="w-full sm:w-24">
+                    <div class="w-full sm:w-32">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Jumlah Keluar</label>
-                        <input type="number" step="0.01" wire:model="selected_materials.{{ $index }}.requested_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none">
+                        <input type="number" step="0.01" wire:model="selected_materials.{{ $index }}.requested_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.requested_volume') border-red-500 @enderror">
+                        @error('selected_materials.'.$index.'.requested_volume')
+                            <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p>
+                        @enderror
                     </div>
                     @if(count($selected_materials) > 1)
                     <button type="button" wire:click="removeMaterial({{ $index }})" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all mb-0.5">

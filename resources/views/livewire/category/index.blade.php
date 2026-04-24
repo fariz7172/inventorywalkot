@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\Category;
-use function Livewire\Volt\{state, computed, layout};
+use function Livewire\Volt\{state, computed, layout, on};
 
 layout('layouts.admin');
 
@@ -10,9 +10,20 @@ state([
     'editingCategory' => null,
     'name' => '',
     'description' => '',
+    'search' => '',
 ]);
 
-$categories = computed(fn() => Category::withCount('materials')->get());
+on(['global-search' => function($search) {
+    $this->search = $search;
+}]);
+
+$categories = computed(function() {
+    $query = Category::withCount('materials');
+    if ($this->search) {
+        $query->where('name', 'like', '%' . $this->search . '%');
+    }
+    return $query->get();
+});
 
 $openCreate = function() {
     $this->reset(['editingCategory', 'name', 'description']);

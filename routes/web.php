@@ -34,6 +34,7 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Route::get('/order',   fn() => view('admin.orders'))->name('orders');
     Route::get('/pelanggan', fn() => view('admin.customers'))->name('customers');
     Volt::route('/laporan', 'laporan.index')->name('reports');
+    Volt::route('/laporan/saldo', 'laporan.saldo')->name('laporan.saldo');
     Volt::route('/laporan/barang-masuk', 'laporan.barang-masuk')->name('laporan.barang-masuk');
     Volt::route('/laporan/stock-opname', 'laporan.rekap-opname')->name('laporan.stock-opname');
     

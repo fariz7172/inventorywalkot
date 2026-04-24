@@ -38,6 +38,9 @@
         }
     </script>
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         body {
             background-color: #F7F8F0;
@@ -215,6 +218,7 @@
                             'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
                             'children' => [
                                 ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin'],
+                                ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo'],
                                 ['label' => 'Rekap Barang Masuk', 'route' => 'laporan.barang-masuk'],
                                 ['label' => 'Stock Opname', 'route' => 'stock-opname.index'],
                             ]
@@ -415,6 +419,9 @@
                         {{ $slot }}
                     @endif
                     @yield('content')
+                    <livewire:surat-jalan.detail-modal />
+                    <livewire:laporan.transaction-detail-modal />
+                    <livewire:laporan.riwayat-saldo-modal />
                 </div>
             </main>
         </div>
@@ -448,6 +455,22 @@
     </script>
 
     @stack('scripts')
+
+    @auth
+        @if(session('show_opname_reminder') && auth()->user()->hasRole('gudang') && in_array(date('w'), [5, 6]))
+            <script>
+                Swal.fire({
+                    title: 'Pengingat Penting!',
+                    html: 'Jadwal Stok Opname akan diadakan di hari <b style="color: #2F2FE4">Minggu</b>.<br><small style="color: #666">Mohon segera persiapkan data dan barang.</small>',
+                    icon: 'warning',
+                    confirmButtonText: 'Saya Mengerti',
+                    confirmButtonColor: '#2F2FE4',
+                    background: '#F7F8F0',
+                    allowOutsideClick: false
+                });
+            </script>
+        @endif
+    @endauth
 </body>
 
 </html>
