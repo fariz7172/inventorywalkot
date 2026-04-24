@@ -9,7 +9,7 @@ layout('layouts.admin');
 
 // State Form
 state([
-    'surat_jalan_no' => 'SJ-' . date('YmdHis'),
+    'surat_jalan_no' => '',
     'tanggal' => date('Y-m-d'),
     'lokasi' => '',
     'pemohon' => '',
@@ -116,7 +116,8 @@ $save = function () {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">No. Surat Jalan</label>
-                    <input type="text" wire:model="surat_jalan_no" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 font-mono font-bold border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all" readonly>
+                    <input type="text" wire:model="surat_jalan_no" placeholder="Masukkan No. Surat Jalan" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 font-mono font-bold border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('surat_jalan_no') border-red-500 @enderror">
+                    @error('surat_jalan_no') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tanggal</label>
