@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use App\Models\Material;
 use App\Models\Category;
@@ -22,11 +22,18 @@ new class extends Component {
 
     public $showModal = false;
     public $showMasterModal = false;
+    public $showEditModal = false;
     public $selected_material_id = '';
     public $volume = '';
     public $note = '';
     public $search = '';
     public $perPage = 50;
+
+    // Edit Material State
+    public $edit_id = '';
+    public $edit_name = '';
+    public $edit_category_id = '';
+    public $edit_unit = '';
     
     // Incoming Goods Details
     public $reference_number = '';
@@ -99,6 +106,35 @@ new class extends Component {
     {
         $this->selected_material_id = $id;
         $this->showModal = true;
+    }
+
+    public function openEdit($id)
+    {
+        $material = Material::findOrFail($id);
+        $this->edit_id          = $material->id;
+        $this->edit_name        = $material->name;
+        $this->edit_category_id = $material->category_id;
+        $this->edit_unit        = $material->unit;
+        $this->showEditModal    = true;
+    }
+
+    public function saveEdit()
+    {
+        $this->validate([
+            'edit_name'        => 'required|string|max:255',
+            'edit_category_id' => 'required|exists:categories,id',
+            'edit_unit'        => 'required|string|max:50',
+        ]);
+
+        Material::findOrFail($this->edit_id)->update([
+            'name'        => $this->edit_name,
+            'category_id' => $this->edit_category_id,
+            'unit'        => $this->edit_unit,
+        ]);
+
+        $this->showEditModal = false;
+        $this->reset(['edit_id', 'edit_name', 'edit_category_id', 'edit_unit']);
+        session()->flash('message', 'Data barang berhasil diperbarui!');
     }
 
     public function processIncoming(InventoryService $service)
@@ -217,6 +253,13 @@ new class extends Component {
                             </svg>
                             <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-bold uppercase tracking-widest ring-4 ring-white shadow-xl">Riwayat Rekap</span>
                         </a>
+
+                        <button wire:click="openEdit({{ $m->id }})" class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-sm group/btn relative">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                            </svg>
+                            <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-bold uppercase tracking-widest ring-4 ring-white shadow-xl">Edit Data</span>
+                        </button>
 
                         <button wire:click="openRestock({{ $m->id }})" class="w-10 h-10 bg-base rounded-xl flex items-center justify-center text-gray-400 hover:bg-accent hover:text-white transition-all shadow-sm group/btn relative">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -372,4 +415,52 @@ new class extends Component {
         </div>
     </div>
     @endif
+
+    {{-- Modal Edit Barang --}}
+    @if($showEditModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" wire:click="$set('showEditModal', false)"></div>
+        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-500 flex-shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900">Edit Data Barang</h2>
+                    <p class="text-xs text-gray-400">Perbarui informasi material</p>
+                </div>
+            </div>
+            <form wire:submit="saveEdit" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Kategori</label>
+                    <select wire:model="edit_category_id" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none outline-none">
+                        <option value="">-- Pilih Kategori --</option>
+                        @foreach($categories as $c)
+                            <option value="{{ $c->id }}">{{ $c->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('edit_category_id') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Nama Barang</label>
+                    <input type="text" wire:model="edit_name" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none outline-none">
+                    @error('edit_name') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Satuan</label>
+                    <select wire:model="edit_unit" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none outline-none">
+                        <option>PCS</option><option>Liter</option><option>Zak</option><option>Kg</option>
+                        <option>Lembar</option><option>M3</option><option>Batang</option><option>Buah</option>
+                        <option>Set</option><option>Rol</option><option>Meter</option>
+                    </select>
+                </div>
+                <div class="pt-4 flex gap-3">
+                    <button type="button" wire:click="$set('showEditModal', false)" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-2xl font-bold text-sm">Batal</button>
+                    <button type="submit" class="flex-1 bg-amber-500 text-white py-3 rounded-2xl font-bold text-sm shadow-lg">Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 </div>
+
