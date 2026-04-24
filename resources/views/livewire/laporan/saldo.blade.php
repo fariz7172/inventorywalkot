@@ -27,6 +27,18 @@ new class extends Component {
         $view->layout('layouts.admin');
     }
 
+    #[\Livewire\Attributes\On('global-search')]
+    public function handleGlobalSearch($search)
+    {
+        $this->search = $search;
+        $this->resetPage();
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
     public function exportExcel()
     {
         return \Maatwebsite\Excel\Facades\Excel::download(
