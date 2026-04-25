@@ -65,7 +65,7 @@ new class extends Component {
 
     public function with()
     {
-        $query = Material::with('category')->latest();
+        $query = Material::with('category')->orderBy('name', 'asc');
 
         if ($this->search) {
             $query->where(function($q) {
