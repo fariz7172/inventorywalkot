@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Models\Material;
 use App\Models\Category;
@@ -34,6 +34,7 @@ new class extends Component {
     public $edit_name = '';
     public $edit_category_id = '';
     public $edit_unit = '';
+    public $edit_volume = '';
     
     // Incoming Goods Details
     public $reference_number = '';
@@ -115,6 +116,7 @@ new class extends Component {
         $this->edit_name        = $material->name;
         $this->edit_category_id = $material->category_id;
         $this->edit_unit        = $material->unit;
+        $this->edit_volume      = (float)$material->current_volume;
         $this->showEditModal    = true;
     }
 
@@ -124,16 +126,18 @@ new class extends Component {
             'edit_name'        => 'required|string|max:255',
             'edit_category_id' => 'required|exists:categories,id',
             'edit_unit'        => 'required|string|max:50',
+            'edit_volume'      => 'required|numeric|min:0',
         ]);
 
         Material::findOrFail($this->edit_id)->update([
-            'name'        => $this->edit_name,
-            'category_id' => $this->edit_category_id,
-            'unit'        => $this->edit_unit,
+            'name'           => $this->edit_name,
+            'category_id'    => $this->edit_category_id,
+            'unit'           => $this->edit_unit,
+            'current_volume' => $this->edit_volume,
         ]);
 
         $this->showEditModal = false;
-        $this->reset(['edit_id', 'edit_name', 'edit_category_id', 'edit_unit']);
+        $this->reset(['edit_id', 'edit_name', 'edit_category_id', 'edit_unit', 'edit_volume']);
         session()->flash('message', 'Data barang berhasil diperbarui!');
     }
 
@@ -453,6 +457,11 @@ new class extends Component {
                         <option>Lembar</option><option>M3</option><option>Batang</option><option>Buah</option>
                         <option>Set</option><option>Rol</option><option>Meter</option>
                     </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Stok Saat Ini (Koreksi)</label>
+                    <input type="number" step="any" wire:model="edit_volume" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none outline-none font-bold text-accent">
+                    @error('edit_volume') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
                 </div>
                 <div class="pt-4 flex gap-3">
                     <button type="button" wire:click="$set('showEditModal', false)" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-2xl font-bold text-sm">Batal</button>
