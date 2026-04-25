@@ -13,7 +13,7 @@ state([
     'tanggal' => date('Y-m-d'),
     'lokasi' => '',
     'pemohon' => '',
-    'petugas' => '',
+    'petugas' => 'SANJAYA',
     'no_polisi' => '',
     'pelaksana_kecamatan' => '',
     'keterangan' => '',
