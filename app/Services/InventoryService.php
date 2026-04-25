@@ -28,6 +28,7 @@ class InventoryService
                 }
 
                 // Buat Transaksi
+                // Buat Transaksi
                 InventoryTransaction::create([
                     'delivery_order_id' => $deliveryOrder->id,
                     'material_id' => $material->id,
@@ -35,7 +36,8 @@ class InventoryService
                     'volume_keluar' => $item['volume_keluar'],
                     'reference_number' => $deliveryOrder->surat_jalan_no,
                     'user_id' => Auth::id(),
-                    'note' => 'Pengiriman Surat Jalan: ' . $deliveryOrder->surat_jalan_no
+                    'note' => 'Pengiriman Surat Jalan: ' . $deliveryOrder->surat_jalan_no,
+                    'created_at' => $deliveryOrder->tanggal, // Gunakan tanggal SJ agar masuk ke laporan bulan yang tepat
                 ]);
                 
                 // Update Stok Material (Handled by Observer or manually here)
@@ -52,9 +54,9 @@ class InventoryService
     /**
      * Menangani barang masuk (Restock)
      */
-    public function processIncoming(int $materialId, float $volume, string $note = null, string $referenceNumber = null, string $supplier = null, string $image = null)
+    public function processIncoming(int $materialId, float $volume, string $note = null, string $referenceNumber = null, string $supplier = null, string $image = null, $date = null)
     {
-        return DB::transaction(function () use ($materialId, $volume, $note, $referenceNumber, $supplier, $image) {
+        return DB::transaction(function () use ($materialId, $volume, $note, $referenceNumber, $supplier, $image, $date) {
             return InventoryTransaction::create([
                 'material_id' => $materialId,
                 'type' => 'in',
@@ -63,7 +65,8 @@ class InventoryService
                 'supplier' => $supplier,
                 'note' => $note ?: 'Restock Barang Masuk',
                 'image' => $image,
-                'user_id' => Auth::id()
+                'user_id' => Auth::id(),
+                'created_at' => $date ?: now(), // Bisa backdate
             ]);
         });
     }
