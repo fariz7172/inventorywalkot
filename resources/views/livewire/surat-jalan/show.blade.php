@@ -104,7 +104,7 @@ new class extends Component {
                             <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black">{{ $m->category->name }}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-lg font-black text-gray-900">{{ $m->pivot->requested_volume }} <span class="text-xs text-gray-400">{{ $m->unit }}</span></p>
+                            <p class="text-lg font-black text-gray-900">{{ (float)$m->pivot->requested_volume }} <span class="text-xs text-gray-400">{{ $m->unit }}</span></p>
                         </div>
                     </div>
                     @empty
