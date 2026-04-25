@@ -160,7 +160,7 @@ endif;
 unset($__errorArgs, $__bag); ?>">
                             <option value="">-- Pilih --</option>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allMaterials; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <option value="<?php echo e($m->id); ?>"><?php echo e($m->name); ?> (Stok: <?php echo e($m->current_volume); ?> <?php echo e($m->unit); ?>)</option>
+                                <option value="<?php echo e($m->id); ?>"><?php echo e($m->name); ?> (Stok: <?php echo e((float)$m->current_volume); ?> <?php echo e($m->unit); ?>)</option>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </select>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['selected_materials.'.$index.'.material_id'];
@@ -174,7 +174,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     </div>
                     <div class="w-full sm:w-32">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Jumlah Keluar</label>
-                        <input type="number" step="0.01" wire:model="selected_materials.<?php echo e($index); ?>.requested_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none <?php $__errorArgs = ['selected_materials.'.$index.'.requested_volume'];
+                        <input type="number" step="any" wire:model="selected_materials.<?php echo e($index); ?>.requested_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none <?php $__errorArgs = ['selected_materials.'.$index.'.requested_volume'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }

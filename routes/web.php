@@ -27,6 +27,7 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Volt::route('/surat-jalan', 'surat-jalan.index')->name('surat-jalan.index');
     Volt::route('/surat-jalan/create', 'surat-jalan.create')->name('surat-jalan.create');
     Volt::route('/surat-jalan/{order}', 'surat-jalan.show')->name('surat-jalan.show');
+    Volt::route('/surat-jalan/{order}/edit', 'surat-jalan.edit')->name('surat-jalan.edit');
     Volt::route('/stok', 'material.index')->name('material.index');
     Volt::route('/users', 'user.index')->name('user.index');
     Volt::route('/kategori', 'category.index')->name('category.index');

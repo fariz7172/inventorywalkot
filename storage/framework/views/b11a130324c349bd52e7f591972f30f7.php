@@ -68,7 +68,7 @@ use Livewire\Volt\Component;
                             <p class="text-[10px] text-gray-400 uppercase tracking-widest font-black"><?php echo e($m->category->name); ?></p>
                         </div>
                         <div class="text-right">
-                            <p class="text-lg font-black text-gray-900"><?php echo e($m->pivot->requested_volume); ?> <span class="text-xs text-gray-400"><?php echo e($m->unit); ?></span></p>
+                            <p class="text-lg font-black text-gray-900"><?php echo e((float)$m->pivot->requested_volume); ?> <span class="text-xs text-gray-400"><?php echo e($m->unit); ?></span></p>
                         </div>
                     </div>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
