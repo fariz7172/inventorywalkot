@@ -30,7 +30,7 @@ new class extends Component {
             $query->whereDate('created_at', '<=', $this->endDate);
         }
 
-        $this->transactions = $query->orderBy('created_at', 'asc')->get();
+        $this->transactions = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->get();
         $this->isOpen = true;
     }
 

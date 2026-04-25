@@ -25,7 +25,8 @@ new class extends Component {
     public function with()
     {
         $query = InventoryTransaction::with(['material', 'user', 'material.category'])
-            ->latest();
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
 
         if ($this->startDate) {
             $query->whereDate('created_at', '>=', $this->startDate);
