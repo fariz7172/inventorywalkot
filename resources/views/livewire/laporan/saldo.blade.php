@@ -73,7 +73,8 @@ new class extends Component {
 
         $materialsQuery = Material::with('category')
             ->when($this->category_id, fn($q) => $q->where('category_id', $this->category_id))
-            ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'));
+            ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'))
+            ->orderBy('name', 'asc');
 
         $paginatedMaterials = $materialsQuery->paginate(100); // Increased to 100
         $now = Carbon::now();
