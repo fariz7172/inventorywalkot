@@ -42,8 +42,26 @@ use Livewire\Attributes\Url;
         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1 bg-white p-1.5 rounded-2xl ring-1 ring-accent/5 shadow-sm">
+                <button wire:click="$set('filterType', 'all')" class="<?php echo \Illuminate\Support\Arr::toCssClasses([
+                    'px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                    'bg-accent text-white shadow-lg shadow-accent/20' => $filterType === 'all',
+                    'text-gray-400 hover:text-accent hover:bg-accent/5' => $filterType !== 'all'
+                ]); ?>">Semua</button>
+                <button wire:click="$set('filterType', 'in')" class="<?php echo \Illuminate\Support\Arr::toCssClasses([
+                    'px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                    'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' => $filterType === 'in',
+                    'text-gray-400 hover:text-emerald-500 hover:bg-emerald-500/5' => $filterType !== 'in'
+                ]); ?>">Masuk</button>
+                <button wire:click="$set('filterType', 'out')" class="<?php echo \Illuminate\Support\Arr::toCssClasses([
+                    'px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all',
+                    'bg-red-500 text-white shadow-lg shadow-red-500/20' => $filterType === 'out',
+                    'text-gray-400 hover:text-red-500 hover:bg-red-500/5' => $filterType !== 'out'
+                ]); ?>">Keluar</button>
+            </div>
+            
             <div class="flex items-center gap-2 bg-white rounded-2xl px-4 py-2 ring-1 ring-accent/5 shadow-sm">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Filter:</label>
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Periode:</label>
                 <input type="date" wire:model.live="startDate" class="text-xs text-gray-600 outline-none w-28 bg-transparent">
                 <span class="text-gray-300">/</span>
                 <input type="date" wire:model.live="endDate" class="text-xs text-gray-600 outline-none w-28 bg-transparent">

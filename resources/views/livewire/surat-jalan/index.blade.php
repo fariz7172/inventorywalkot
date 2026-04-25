@@ -19,6 +19,26 @@ new class extends Component {
     public $startDate = '';
     public $endDate = '';
 
+    use \Livewire\WithFileUploads;
+    public $showImportModal = false;
+    public $importFile;
+
+    public function importSuratJalan()
+    {
+        $this->validate([
+            'importFile' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\SuratJalanImport, $this->importFile->getRealPath());
+            $this->showImportModal = false;
+            $this->reset('importFile');
+            session()->flash('message', 'Data Surat Jalan berhasil di-import!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal import: ' . $e->getMessage());
+        }
+    }
+
     protected $listeners = ['global-search' => 'handleGlobalSearch'];
 
     public function handleGlobalSearch($search)
@@ -67,6 +87,12 @@ new class extends Component {
             <p class="text-sm text-gray-500 mt-0.5">Kelola permintaan pengiriman barang ke gudang.</p>
         </div>
         <div class="flex gap-2">
+            <button wire:click="$set('showImportModal', true)" class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-emerald-100 transition-all shadow-sm">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Import Excel
+            </button>
             <button wire:click="exportExcel" class="flex items-center gap-2 bg-white border border-warm text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-base transition-all shadow-sm">
                 <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -85,6 +111,18 @@ new class extends Component {
     </div>
 
     <div class="bg-white rounded-2xl shadow-card ring-1 ring-accent/10 p-4 mb-5 flex flex-col gap-4">
+        @if (session()->has('message'))
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-600 px-4 py-3 rounded-xl mb-4 text-sm font-bold">
+                {{ session('message') }}
+            </div>
+        @endif
+
+        @if (session()->has('error'))
+            <div class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-4 text-sm font-bold">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <div class="flex flex-col sm:flex-row gap-3">
             <select wire:model.live="status" class="bg-base rounded-xl px-3 py-2 text-sm text-gray-600 outline-none border border-warm/60 focus:ring-accent/30 transition-all">
                 <option value="">Semua Status</option>
@@ -180,4 +218,77 @@ new class extends Component {
             {{ $deliveryOrders->links() }}
         </div>
     </div>
+
+    {{-- Modal Import Excel --}}
+    @if($showImportModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" wire:click="$set('showImportModal', false)"></div>
+        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900 leading-tight">Import Surat Jalan</h2>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Gunakan file .xlsx atau .csv</p>
+                    <a href="/templates/template_surat_jalan.xlsx" download class="text-[10px] text-emerald-600 font-black uppercase tracking-widest hover:underline mt-2 inline-block">
+                        📥 Download Template Excel
+                    </a>
+                </div>
+            </div>
+
+            <form wire:submit="importSuratJalan" class="space-y-6">
+                <div class="bg-base rounded-[1.5rem] p-6 border-2 border-dashed border-warm/60 group hover:border-emerald-500/50 transition-all relative">
+                    <input type="file" wire:model="importFile" id="import-file-sj" class="hidden" accept=".xlsx,.xls,.csv">
+                    <label for="import-file-sj" class="flex flex-col items-center justify-center cursor-pointer">
+                        @if($importFile)
+                            <div class="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white mb-3 shadow-lg shadow-emerald-500/20">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <p class="text-sm font-bold text-gray-700 mb-1">{{ $importFile->getClientOriginalName() }}</p>
+                            <p class="text-[10px] text-gray-400 font-medium italic uppercase">Klik untuk ganti file</p>
+                        @else
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 mb-3 group-hover:scale-110 transition-transform">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                            </div>
+                            <p class="text-sm font-bold text-gray-700 mb-1">Pilih File Excel</p>
+                            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-tighter">Satu nomor SJ bisa banyak baris barang</p>
+                        @endif
+                    </label>
+                    <div wire:loading wire:target="importFile" class="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center rounded-[1.5rem]">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                            <div class="w-2 h-2 bg-emerald-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                @error('importFile') <p class="text-red-500 text-[10px] font-bold uppercase mt-2 ml-2">{{ $message }}</p> @enderror
+
+                <div class="flex flex-col gap-3">
+                    <button type="submit" wire:loading.attr="disabled" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2">
+                        <span wire:loading.remove wire:target="importSuratJalan">Mulai Import Sekarang</span>
+                        <span wire:loading wire:target="importSuratJalan" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Sedang Memproses...
+                        </span>
+                    </button>
+                    <button type="button" wire:click="$set('showImportModal', false)" class="w-full bg-base text-gray-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-warm/40 transition-all">
+                        Batalkan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
 </div>

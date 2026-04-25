@@ -11,15 +11,16 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class InventoryReportExport implements FromView, ShouldAutoSize, WithStyles
 {
-    protected $period, $material_id, $search, $startDate, $endDate;
+    protected $period, $material_id, $search, $startDate, $endDate, $type;
 
-    public function __construct($period, $material_id, $search, $startDate = null, $endDate = null)
+    public function __construct($period, $material_id, $search, $startDate = null, $endDate = null, $type = '')
     {
         $this->period = $period;
         $this->material_id = $material_id;
         $this->search = $search;
         $this->startDate = $startDate;
         $this->endDate = $endDate;
+        $this->type = $type;
     }
 
     public function view(): View
@@ -28,6 +29,10 @@ class InventoryReportExport implements FromView, ShouldAutoSize, WithStyles
 
         if ($this->material_id) {
             $query->where('material_id', $this->material_id);
+        }
+
+        if ($this->type) {
+            $query->where('type', $this->type);
         }
 
         if ($this->search) {

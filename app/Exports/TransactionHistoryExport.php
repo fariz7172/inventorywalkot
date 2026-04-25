@@ -12,18 +12,23 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class TransactionHistoryExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
-    protected $search, $startDate, $endDate;
-
-    public function __construct($search, $startDate, $endDate)
+    protected $search, $startDate, $endDate, $type;
+    
+    public function __construct($search, $startDate, $endDate, $type = 'all')
     {
         $this->search = $search;
         $this->startDate = $startDate;
         $this->endDate = $endDate;
+        $this->type = $type;
     }
 
     public function collection()
     {
         $query = InventoryTransaction::with(['material', 'user', 'deliveryOrder'])->latest();
+
+        if ($this->type && $this->type !== 'all') {
+            $query->where('type', $this->type);
+        }
 
         if ($this->startDate) {
             $query->whereDate('created_at', '>=', $this->startDate);
