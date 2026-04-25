@@ -70,7 +70,7 @@ new class extends Component {
 
         return [
             'reportData' => $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(50),
-            'allMaterials' => Material::all(),
+            'allMaterials' => Material::orderBy('name', 'asc')->get(),
         ];
     }
 
