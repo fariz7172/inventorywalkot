@@ -11,6 +11,10 @@ class Material extends Model
 
     protected $fillable = ['category_id', 'name', 'unit', 'current_volume', 'current_pcs'];
 
+    protected $casts = [
+        'current_volume' => 'float',
+    ];
+
     public function category()
     {
         return $this->belongsTo(Category::class);

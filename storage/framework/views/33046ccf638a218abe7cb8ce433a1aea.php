@@ -1,6 +1,10 @@
 <?php
 
 use App\Models\DeliveryOrder;
+use App\Exports\DeliveryOrderExport;
+use Maatwebsite\Excel\Facades\Excel;
+use Livewire\WithPagination;
+use Livewire\Volt\Component;
 
 ?>
 
@@ -11,30 +15,44 @@ use App\Models\DeliveryOrder;
             <h1 class="text-2xl font-bold text-gray-900">Daftar Surat Jalan</h1>
             <p class="text-sm text-gray-500 mt-0.5">Kelola permintaan pengiriman barang ke gudang.</p>
         </div>
-        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('superadmin')): ?>
-        <a href="/dashboard/surat-jalan/create" wire:navigate class="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-dark transition-all shadow-md shadow-accent/30">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-            </svg>
-            Buat Surat Jalan
-        </a>
-        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        <div class="flex gap-2">
+            <button wire:click="exportExcel" class="flex items-center gap-2 bg-white border border-warm text-gray-700 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-base transition-all shadow-sm">
+                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Export Excel
+            </button>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('superadmin')): ?>
+            <a href="/dashboard/surat-jalan/create" wire:navigate class="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-dark transition-all shadow-md shadow-accent/30">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Buat Surat Jalan
+            </a>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </div>
     </div>
 
-    
-    <div class="bg-white rounded-2xl shadow-card ring-1 ring-accent/10 p-4 mb-5 flex flex-col sm:flex-row gap-3">
-        <div class="flex items-center bg-base rounded-xl px-3 py-2 gap-2 flex-1 border border-warm/60">
-            <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <input type="text" wire:model.live="search" placeholder="Cari No. Surat Jalan atau Lokasi..." class="bg-transparent text-sm outline-none w-full text-gray-600 placeholder-gray-400 border-none focus:ring-0"/>
+    <div class="bg-white rounded-2xl shadow-card ring-1 ring-accent/10 p-4 mb-5 flex flex-col gap-4">
+        <div class="flex flex-col sm:flex-row gap-3">
+            <select wire:model.live="status" class="bg-base rounded-xl px-3 py-2 text-sm text-gray-600 outline-none border border-warm/60 focus:ring-accent/30 transition-all">
+                <option value="">Semua Status</option>
+                <option value="draft">Draft (Ordered)</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped (Sent)</option>
+            </select>
         </div>
-        <select wire:model.live="status" class="bg-base rounded-xl px-3 py-2 text-sm text-gray-600 outline-none border border-warm/60 focus:ring-accent/30 transition-all">
-            <option value="">Semua Status</option>
-            <option value="draft">Draft (Ordered)</option>
-            <option value="processing">Processing</option>
-            <option value="shipped">Shipped (Sent)</option>
-        </select>
+        <div class="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-gray-100">
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest whitespace-nowrap">Periode:</label>
+                <input type="date" wire:model.live="startDate" class="bg-base rounded-xl px-3 py-2 text-sm text-gray-600 border border-warm/60 focus:ring-accent/30 outline-none w-full sm:w-44">
+            </div>
+            <span class="text-gray-400 hidden sm:block font-bold text-xs">s/d</span>
+            <div class="w-full sm:w-auto">
+                <input type="date" wire:model.live="endDate" class="bg-base rounded-xl px-3 py-2 text-sm text-gray-600 border border-warm/60 focus:ring-accent/30 outline-none w-full sm:w-44">
+            </div>
+            <button wire:click="$set('startDate', ''); $set('endDate', '')" class="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase tracking-widest px-2 transition-colors ml-auto sm:ml-0">Reset Filter</button>
+        </div>
     </div>
 
     
@@ -52,7 +70,7 @@ use App\Models\DeliveryOrder;
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-warm/40">
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $this->deliveryOrders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $deliveryOrders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                     <tr class="hover:bg-base/60 transition-colors">
                         <td class="px-5 py-4">
                             <p class="font-bold text-accent font-mono text-xs"><?php echo e($order->surat_jalan_no); ?></p>
@@ -93,7 +111,7 @@ use App\Models\DeliveryOrder;
                             </div>
                         </td>
                     </tr>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
                         <td colspan="6" class="px-5 py-10 text-center text-gray-400 italic">Belum ada data surat jalan.</td>
                     </tr>
@@ -102,7 +120,7 @@ use App\Models\DeliveryOrder;
             </table>
         </div>
         <div class="px-5 py-4 border-t border-warm/60 bg-warm/20">
-            <?php echo e($this->deliveryOrders->links()); ?>
+            <?php echo e($deliveryOrders->links()); ?>
 
         </div>
     </div>

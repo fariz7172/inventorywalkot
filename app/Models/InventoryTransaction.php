@@ -23,6 +23,12 @@ class InventoryTransaction extends Model
         'user_id',
         'image'
     ];
+    
+    protected $casts = [
+        'volume_masuk' => 'float',
+        'volume_keluar' => 'float',
+        'balance_after' => 'float',
+    ];
 
     public function deliveryOrder()
     {

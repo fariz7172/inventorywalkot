@@ -1,13 +1,18 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
-$app = require_once __DIR__.'/../bootstrap/app.php';
+require 'vendor/autoload.php';
+$app = require_once 'bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\InventoryTransaction;
+use Illuminate\Support\Facades\DB;
 
-$data = InventoryTransaction::whereHas('material', fn($q) => $q->where('name', 'like', '%TENDA BIRU%'))
-    ->get(['id', 'image'])
-    ->toArray();
+$columns = DB::select('DESCRIBE materials');
+foreach ($columns as $column) {
+    echo $column->Field . ": " . $column->Type . "\n";
+}
 
-print_r($data);
+echo "\n--- delivery_order_materials ---\n";
+$columns = DB::select('DESCRIBE delivery_order_materials');
+foreach ($columns as $column) {
+    echo $column->Field . ": " . $column->Type . "\n";
+}

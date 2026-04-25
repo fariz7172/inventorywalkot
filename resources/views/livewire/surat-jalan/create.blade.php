@@ -21,7 +21,7 @@ state([
 ]);
 
 $categories = computed(fn() => Category::with('materials')->get());
-$allMaterials = computed(fn() => Material::all());
+$allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 
 mount(function() {
     if (!auth()->user()->hasRole('superadmin')) {
@@ -173,14 +173,14 @@ $save = function () {
                         <select wire:model="selected_materials.{{ $index }}.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.material_id') border-red-500 @enderror">
                             <option value="">-- Pilih --</option>
                             @foreach($this->allMaterials as $m)
-                                <option value="{{ $m->id }}">{{ $m->name }} (Stok: {{ $m->current_volume }} {{ $m->unit }})</option>
+                                <option value="{{ $m->id }}">{{ $m->name }} (Stok: {{ (float)$m->current_volume }} {{ $m->unit }})</option>
                             @endforeach
                         </select>
                         @error('selected_materials.'.$index.'.material_id') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
                     <div class="w-full sm:w-32">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Jumlah Keluar</label>
-                        <input type="number" step="0.01" wire:model="selected_materials.{{ $index }}.requested_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.requested_volume') border-red-500 @enderror">
+                        <input type="number" step="any" wire:model="selected_materials.{{ $index }}.requested_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.requested_volume') border-red-500 @enderror">
                         @error('selected_materials.'.$index.'.requested_volume')
                             <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p>
                         @enderror
