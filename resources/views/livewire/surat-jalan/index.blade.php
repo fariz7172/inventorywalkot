@@ -71,7 +71,8 @@ new class extends Component {
                 ->when($this->status, fn($q) => $q->where('status', $this->status))
                 ->when($this->startDate, fn($q) => $q->whereDate('tanggal', '>=', $this->startDate))
                 ->when($this->endDate, fn($q) => $q->whereDate('tanggal', '<=', $this->endDate))
-                ->latest()
+                ->orderBy('tanggal', 'desc')
+                ->orderBy('id', 'desc')
                 ->paginate(50)
         ];
     }
