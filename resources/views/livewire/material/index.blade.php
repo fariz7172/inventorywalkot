@@ -85,6 +85,8 @@ new class extends Component {
 
     public function saveMaster()
     {
+        abort_if(auth()->user()->hasRole('gudang'), 403);
+
         $this->validate([
             'new_name' => 'required|string|max:255',
             'new_category_id' => 'required|exists:categories,id',
@@ -111,6 +113,8 @@ new class extends Component {
 
     public function openEdit($id)
     {
+        abort_if(auth()->user()->hasRole('gudang'), 403);
+
         $material = Material::findOrFail($id);
         $this->edit_id          = $material->id;
         $this->edit_name        = $material->name;
@@ -122,6 +126,8 @@ new class extends Component {
 
     public function saveEdit()
     {
+        abort_if(auth()->user()->hasRole('gudang'), 403);
+
         $this->validate([
             'edit_name'        => 'required|string|max:255',
             'edit_category_id' => 'required|exists:categories,id',
@@ -191,12 +197,14 @@ new class extends Component {
             <p class="text-sm text-gray-500">Pantau sisa material dan lakukan penambahan stok (Barang Masuk).</p>
         </div>
         <div class="flex gap-2">
+            @unless(auth()->user()->hasRole('gudang'))
             <button wire:click="$set('showMasterModal', true)" class="bg-white text-gray-700 border border-warm px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:bg-base transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                 </svg>
                 Tambah Jenis Barang
             </button>
+            @endunless
             <button wire:click="$set('showModal', true)" class="bg-accent text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -258,12 +266,14 @@ new class extends Component {
                             <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-bold uppercase tracking-widest ring-4 ring-white shadow-xl">Riwayat Rekap</span>
                         </a>
 
+                        @unless(auth()->user()->hasRole('gudang'))
                         <button wire:click="openEdit({{ $m->id }})" class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-white transition-all shadow-sm group/btn relative">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                             <span class="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-bold uppercase tracking-widest ring-4 ring-white shadow-xl">Edit Data</span>
                         </button>
+                        @endunless
 
                         <button wire:click="openRestock({{ $m->id }})" class="w-10 h-10 bg-base rounded-xl flex items-center justify-center text-gray-400 hover:bg-accent hover:text-white transition-all shadow-sm group/btn relative">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
