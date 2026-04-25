@@ -21,7 +21,8 @@ class InventoryTransaction extends Model
         'supplier',
         'note',
         'user_id',
-        'image'
+        'image',
+        'created_at'
     ];
     
     protected $casts = [
