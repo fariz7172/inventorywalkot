@@ -383,7 +383,7 @@ new class extends Component {
             @endif
 
             <div class="pt-4 flex gap-3">
-                <button onclick="window.print()" class="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2">
+                <button onclick="printBeritaAcara()" class="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
@@ -394,10 +394,12 @@ new class extends Component {
         </div>
     </div>
 
-    {{-- Hidden Print Section --}}
-    <div id="print-area" class="hidden print:block bg-white p-10 text-black leading-relaxed" style="font-family: 'Times New Roman', serif;">
-        <div class="text-center mb-8">
-            <h1 class="text-xl font-bold underline uppercase">BERITA ACARA SERAH TERIMA BARANG PENGADAAN/PEROLEHAN</h1>
+    <div id="print-area" class="hidden print:block bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+        {{-- Kop Surat --}}
+        <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
+
+        <div class="text-center mb-6">
+            <h1 class="text-lg font-bold underline uppercase">BERITA ACARA SERAH TERIMA BARANG PENGADAAN/PEROLEHAN</h1>
             <p class="text-sm font-bold mt-1">Nomor: {{ $selectedGroup['reference'] ?: '……………………………' }}</p>
         </div>
 
@@ -409,19 +411,22 @@ new class extends Component {
             $dayName = $days[$carbonDate->dayOfWeek];
             $monthName = $months[$carbonDate->month];
             
-            $pihakKedua = $selectedGroup['type'] === 'in' ? 'Admin' : 'Gudang';
+            // Labels as requested
+            $labelPihakSatu = 'PPHP/PPK/PPTK/Penyediaan Barang/Pihak Ketiga/Setaranya';
+            $labelPihakDua = 'Pengguna Barang/Pengurus Barang Pembantu/Pengurus Barang UPB';
+            
             $sumberTujuan = $selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['lokasi'] ?: 'Internal');
         @endphp
 
-        <div class="text-justify mb-6 text-sm">
+        <div class="text-justify mb-4 text-[13px]">
             <p>Pada Hari ini <span class="font-bold">{{ $dayName }}</span> Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span> yang bertanda tangan dibawah ini:</p>
             
-            <div class="mt-4 ml-8 space-y-1">
+            <div class="mt-3 ml-8 space-y-0.5">
                 <p>Nama : <span class="font-bold">{{ $selectedGroup['user'] }}</span></p>
-                <p>Jabatan : <span class="font-bold">{{ $pihakKedua }}</span></p>
+                <p>Jabatan : <span class="font-bold text-[11px]">{{ $labelPihakDua }}</span></p>
             </div>
 
-            <p class="mt-4">
+            <p class="mt-3">
                 Telah menerima barang persedian yang diserahkan oleh <span class="font-bold">{{ $sumberTujuan }}</span> 
                 sesuai dengan Berita Acara Pemeriksaan Barang Nomor <span class="font-bold">{{ $selectedGroup['reference'] ?: '……' }}</span> 
                 Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span>. 
@@ -429,49 +434,49 @@ new class extends Component {
             </p>
         </div>
 
-        <table class="w-full border-collapse border border-black text-xs mb-8">
+        <table class="w-full border-collapse border border-black text-[12px] mb-6">
             <thead>
                 <tr>
-                    <th class="border border-black px-2 py-2 text-center w-10">No</th>
-                    <th class="border border-black px-3 py-2 text-left">Uraian Nama Barang</th>
-                    <th class="border border-black px-3 py-2 text-center w-20">Satuan</th>
-                    <th class="border border-black px-3 py-2 text-center w-20">Volume</th>
-                    <th class="border border-black px-3 py-2 text-left">Keterangan</th>
+                    <th class="border border-black px-2 py-1 text-center w-8">No</th>
+                    <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
+                    <th class="border border-black px-3 py-1 text-center w-20">Satuan</th>
+                    <th class="border border-black px-3 py-1 text-center w-20">Volume</th>
+                    <th class="border border-black px-3 py-1 text-left">Keterangan</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($selectedGroup['items'] as $index => $item)
                 <tr>
-                    <td class="border border-black px-2 py-2 text-center">{{ $index + 1 }}</td>
-                    <td class="border border-black px-3 py-2 font-bold">{{ $item->material->name }}</td>
-                    <td class="border border-black px-3 py-2 text-center uppercase">{{ $item->material->unit }}</td>
-                    <td class="border border-black px-3 py-2 text-center font-bold">
+                    <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
+                    <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $item->material->name }}</td>
+                    <td class="border border-black px-3 py-1.5 text-center uppercase">{{ $item->material->unit }}</td>
+                    <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
                         {{ (float)($selectedGroup['type'] === 'in' ? $item->volume_masuk : $item->volume_keluar) }}
                     </td>
-                    <td class="border border-black px-3 py-2 italic text-[10px]">{{ $item->note ?: '-' }}</td>
+                    <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $item->note ?: '-' }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
 
-        <p class="text-sm mb-12">Demikian Berita Acara Serah Terima Barang ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
+        <p class="text-[13px] mb-8">Demikian Berita Acara Serah Terima Barang ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
 
-        <div class="grid grid-cols-2 text-center text-sm">
+        <div class="grid grid-cols-2 text-center text-[13px]">
             <div>
                 <p>Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
-                <p class="mt-2">Yang menyerahkan Barang</p>
-                <p class="font-bold mt-1 uppercase">{{ $selectedGroup['type'] === 'in' ? 'Pihak Ketiga/Supplier' : 'Pengguna Barang' }}</p>
+                <p class="mt-1">Yang menyerahkan Barang,</p>
+                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1">{{ $labelPihakSatu }}</p>
                 
-                <div class="h-24"></div>
+                <div class="h-20"></div>
                 
                 <p class="font-bold underline uppercase">{{ $sumberTujuan }}</p>
             </div>
             <div>
                 <p class="invisible">Jakarta, ...</p>
-                <p class="mt-2">Yang menerima Barang</p>
-                <p class="font-bold mt-1 uppercase">{{ $pihakKedua }}</p>
+                <p class="mt-1">Yang menerima Barang,</p>
+                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1">{{ $labelPihakDua }}</p>
                 
-                <div class="h-24"></div>
+                <div class="h-20"></div>
                 
                 <p class="font-bold underline uppercase">{{ $selectedGroup['user'] }}</p>
             </div>
@@ -480,6 +485,7 @@ new class extends Component {
 
     <style>
         @media print {
+            @page { margin: 1cm; }
             body * {
                 visibility: hidden;
             }
@@ -492,8 +498,18 @@ new class extends Component {
                 top: 0;
                 width: 100%;
                 display: block !important;
+                padding: 0 !important;
             }
         }
     </style>
+
+    <script>
+        function printBeritaAcara() {
+            const originalTitle = document.title;
+            document.title = "Berita Acara - {{ $selectedGroup['reference'] ?: 'Draft' }}";
+            window.print();
+            document.title = originalTitle;
+        }
+    </script>
     @endif
 </div>
