@@ -398,15 +398,8 @@ new class extends Component {
         {{-- Kop Surat --}}
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
 
-        <div class="text-center mb-6">
-            <h1 class="text-lg font-bold underline uppercase leading-tight">
-                BERITA ACARA SERAH TERIMA BARANG<br>
-                PENGADAAN/PEROLEHAN
-            </h1>
-            <p class="text-sm font-bold mt-1">Nomor: {{ $selectedGroup['reference'] ?: '……………………………' }}</p>
-        </div>
-
         @php
+            $isOut = ($selectedGroup['type'] === 'out');
             $carbonDate = \Carbon\Carbon::parse($selectedGroup['date']);
             $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -414,12 +407,29 @@ new class extends Component {
             $dayName = $days[$carbonDate->dayOfWeek];
             $monthName = $months[$carbonDate->month];
             
-            // Labels as requested
-            $labelPihakSatu = 'PPHP/PPK/PPTK/Penyediaan Barang/Pihak Ketiga/Setaranya';
-            $labelPihakDua = 'Pengguna Barang/Pengurus Barang Pembantu/Pengurus Barang UPB';
-            
             $sumberTujuan = $selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['lokasi'] ?: 'Internal');
+            
+            // Labels
+            if ($isOut) {
+                $title1 = "BERITA ACARA SERAH TERIMA BARANG";
+                $title2 = "DISTRIBUSI/PENGELUARAN";
+                $labelPihakSatu = 'Pengurus Barang/Pengurus Barang Pembantu';
+                $labelPihakDua = 'Pemakai Persediaan';
+            } else {
+                $title1 = "BERITA ACARA SERAH TERIMA BARANG";
+                $title2 = "PENGADAAN/PEROLEHAN";
+                $labelPihakSatu = 'PPHP/PPK/PPTK/Penyediaan Barang/Pihak Ketiga/Setaranya';
+                $labelPihakDua = 'Pengguna Barang/Pengurus Barang Pembantu/Pengurus Barang UPB';
+            }
         @endphp
+
+        <div class="text-center mb-6">
+            <h1 class="text-lg font-bold underline uppercase leading-tight">
+                {{ $title1 }}<br>
+                {{ $title2 }}
+            </h1>
+            <p class="text-sm font-bold mt-1">Nomor: {{ $selectedGroup['reference'] ?: '……………………………' }}</p>
+        </div>
 
         <div class="text-justify mb-4 text-[13px]">
             <p>Pada Hari ini <span class="font-bold">{{ $dayName }}</span> Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span> </p>
@@ -427,41 +437,92 @@ new class extends Component {
             
             <div class="mt-3 ml-8 space-y-0.5">
                 <p>Nama : <span class="font-bold">{{ $selectedGroup['user'] }}</span></p>
-                <p>Jabatan : <span class="font-bold text-[11px]">{{ $labelPihakDua }}</span></p>
+                <p>Jabatan : <span class="font-bold text-[11px]">{{ $isOut ? $labelPihakSatu : $labelPihakDua }}</span></p>
             </div>
 
             <p class="mt-3">
-                Telah menerima barang persedian yang diserahkan oleh PPHP/PPK/PPTK/Penyedia Barang/Pihak Ketiga <span class="font-bold">{{ $sumberTujuan }}</span> 
+                @if($isOut)
+                    Telah menyerahkan barang persedian yang diterima oleh <span class="font-bold text-sm underline">{{ $sumberTujuan }}</span> 
+                @else
+                    Telah menerima barang persedian yang diserahkan oleh PPHP/PPK/PPTK/Penyedia Barang/Pihak Ketiga <span class="font-bold text-sm underline">{{ $sumberTujuan }}</span> 
+                @endif
                 sesuai dengan Berita Acara Pemeriksaan Barang Nomor <span class="font-bold">{{ $selectedGroup['reference'] ?: '……' }}</span> 
                 Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span>. 
-                Sebagaimana daftar terlampir. Daftar barang yang diterima sebagai berikut:
+                Sebagaimana daftar terlampir. Daftar barang yang {{ $isOut ? 'diserahkan' : 'diterima' }} sebagai berikut:
             </p>
         </div>
 
-        <table class="w-full border-collapse border border-black text-[12px] mb-6">
-            <thead>
-                <tr>
-                    <th class="border border-black px-2 py-1 text-center w-8">No</th>
-                    <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
-                    <th class="border border-black px-3 py-1 text-center w-20">Satuan</th>
-                    <th class="border border-black px-3 py-1 text-center w-20">Volume</th>
-                    <th class="border border-black px-3 py-1 text-left">Keterangan</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($selectedGroup['items'] as $index => $item)
-                <tr>
-                    <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
-                    <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $item->material->name }}</td>
-                    <td class="border border-black px-3 py-1.5 text-center uppercase">{{ $item->material->unit }}</td>
-                    <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
-                        {{ (float)($selectedGroup['type'] === 'in' ? $item->volume_masuk : $item->volume_keluar) }}
-                    </td>
-                    <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $item->note ?: '-' }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+        @if($isOut)
+            {{-- Table for Distribusi (More Columns) --}}
+            <table class="w-full border-collapse border border-black text-[10px] mb-6">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="border border-black px-1 py-1 text-center w-6" rowspan="2">No</th>
+                        <th class="border border-black px-2 py-1 text-left" rowspan="2">Uraian Nama Barang</th>
+                        <th class="border border-black px-1 py-1 text-center" rowspan="2">Harga Satuan</th>
+                        <th class="border border-black px-1 py-1 text-center" rowspan="2">Satuan</th>
+                        <th class="border border-black px-1 py-1 text-center" rowspan="2">Volume</th>
+                        <th class="border border-black px-1 py-1 text-center" colspan="3">Jumlah</th>
+                        <th class="border border-black px-2 py-1 text-left" rowspan="2">Keterangan</th>
+                    </tr>
+                    <tr class="bg-gray-50">
+                        <th class="border border-black px-1 py-1 text-center">Harga</th>
+                        <th class="border border-black px-1 py-1 text-center">PPN (11%)</th>
+                        <th class="border border-black px-1 py-1 text-center">Harga Setelah Pajak</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($selectedGroup['items'] as $index => $item)
+                    <tr>
+                        <td class="border border-black px-1 py-1 text-center">{{ $index + 1 }}</td>
+                        <td class="border border-black px-2 py-1 font-bold uppercase">{{ $item->material->name }}</td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black px-1 py-1 text-center uppercase">{{ $item->material->unit }}</td>
+                        <td class="border border-black px-1 py-1 text-center font-bold">
+                            {{ (float)$item->volume_keluar }}
+                        </td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black px-2 py-1 italic text-[9px]">{{ $item->note ?: '-' }}</td>
+                    </tr>
+                    @endforeach
+                    <tr class="font-bold bg-gray-50">
+                        <td colspan="5" class="border border-black px-2 py-1 text-right uppercase">Jumlah</td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black px-1 py-1 text-right">0</td>
+                        <td class="border border-black"></td>
+                    </tr>
+                </tbody>
+            </table>
+        @else
+            {{-- Table for Pengadaan (Original) --}}
+            <table class="w-full border-collapse border border-black text-[12px] mb-6">
+                <thead>
+                    <tr>
+                        <th class="border border-black px-2 py-1 text-center w-8">No</th>
+                        <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
+                        <th class="border border-black px-3 py-1 text-center w-20">Satuan</th>
+                        <th class="border border-black px-3 py-1 text-center w-20">Volume</th>
+                        <th class="border border-black px-3 py-1 text-left">Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($selectedGroup['items'] as $index => $item)
+                    <tr>
+                        <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
+                        <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $item->material->name }}</td>
+                        <td class="border border-black px-3 py-1.5 text-center uppercase">{{ $item->material->unit }}</td>
+                        <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
+                            {{ (float)$item->volume_masuk }}
+                        </td>
+                        <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $item->note ?: '-' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
 
         <p class="text-[13px] mb-8">Demikian Berita Acara Serah Terima Barang ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
 
@@ -473,7 +534,7 @@ new class extends Component {
                 
                 <div class="h-20"></div>
                 
-                <p class="font-bold underline uppercase">{{ $sumberTujuan }}</p>
+                <p class="font-bold underline uppercase">{{ $isOut ? $selectedGroup['user'] : $sumberTujuan }}</p>
             </div>
             <div>
                 <p class="invisible">Jakarta, ...</p>
@@ -482,7 +543,7 @@ new class extends Component {
                 
                 <div class="h-20"></div>
                 
-                <p class="font-bold underline uppercase">{{ $selectedGroup['user'] }}</p>
+                <p class="font-bold underline uppercase">{{ $isOut ? $sumberTujuan : $selectedGroup['user'] }}</p>
             </div>
         </div>
     </div>
