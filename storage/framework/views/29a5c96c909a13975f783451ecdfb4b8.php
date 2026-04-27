@@ -111,9 +111,8 @@ use Livewire\Attributes\Url;
                     <tr class="bg-base/50">
                         <th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Tanggal</th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Jenis / Ref</th>
-                        <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Material</th>
+                        <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Ringkasan</th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Sumber / Tujuan</th>
-                        <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Volume</th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Bukti</th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Petugas</th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">Aksi</th>
@@ -121,10 +120,10 @@ use Livewire\Attributes\Url;
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $transactions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                    <tr class="hover:bg-base/30 transition-colors group">
+                    <tr wire:click="openDetail('<?php echo e($t->reference_number); ?>', '<?php echo e($t->delivery_order_id); ?>', '<?php echo e($t->type); ?>', '<?php echo e($t->date); ?>', <?php echo e($t->user_id); ?>)" class="hover:bg-base/30 transition-colors group cursor-pointer">
                         <td class="px-8 py-5">
-                            <span class="text-xs font-bold text-gray-700 block"><?php echo e($t->created_at->format('d/m/Y')); ?></span>
-                            <span class="text-[10px] text-gray-400"><?php echo e($t->created_at->format('H:i')); ?> WIB</span>
+                            <span class="text-xs font-bold text-gray-700 block"><?php echo e(\Carbon\Carbon::parse($t->latest_created_at)->format('d/m/Y')); ?></span>
+                            <span class="text-[10px] text-gray-400"><?php echo e(\Carbon\Carbon::parse($t->latest_created_at)->format('H:i')); ?> WIB</span>
                         </td>
                         <td class="px-6 py-5">
                             <div class="flex flex-col">
@@ -136,79 +135,47 @@ use Livewire\Attributes\Url;
                                     <?php echo e($t->type === 'in' ? 'Masuk' : 'Keluar'); ?>
 
                                 </span>
-                                <span class="text-sm font-black text-gray-800"><?php echo e($t->reference_number ?: '-'); ?></span>
+                                <span class="text-sm font-black text-gray-800"><?php echo e($t->reference_number ?: ($t->deliveryOrder->surat_jalan_no ?? '-')); ?></span>
                             </div>
                         </td>
                         <td class="px-6 py-5">
                             <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-800"><?php echo e($t->material->name); ?></span>
-                                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter"><?php echo e($t->material->category->name ?? '-'); ?></span>
+                                <span class="text-sm font-bold text-gray-800"><?php echo e($t->total_items); ?> Item Barang</span>
+                                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter italic">Klik untuk detail</span>
                             </div>
                         </td>
                         <td class="px-6 py-5">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($t->type === 'in'): ?>
-                                <span class="text-xs text-gray-600 font-medium">Dari: <span class="font-bold"><?php echo e($t->supplier ?: 'Restock Internal'); ?></span></span>
+                                <span class="text-xs text-gray-600 font-medium">Dari: <span class="font-bold"><?php echo e($t->latest_supplier ?: 'Restock Internal'); ?></span></span>
                             <?php else: ?>
                                 <span class="text-xs text-gray-600 font-medium">Tujuan: <span class="font-bold text-red-500"><?php echo e($t->deliveryOrder->lokasi ?? 'Pengeluaran Barang'); ?></span></span>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </td>
-                        <td class="px-6 py-5 text-right">
-                            <div class="flex flex-col items-end">
-                                <span class="<?php echo \Illuminate\Support\Arr::toCssClasses([
-                                    'text-base font-black',
-                                    'text-emerald-600' => $t->type === 'in',
-                                    'text-red-500' => $t->type === 'out'
-                                ]); ?>">
-                                    <?php echo e($t->type === 'in' ? '+' : '-'); ?><?php echo e((float)($t->type === 'in' ? $t->volume_masuk : $t->volume_keluar)); ?>
-
-                                </span>
-                                <span class="text-[10px] font-bold text-gray-400 uppercase"><?php echo e($t->material->unit); ?></span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-5">
-                            <div class="flex justify-center">
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($t->image): ?>
-                                    <a href="<?php echo e(Storage::url($t->image)); ?>" target="_blank" class="group/img relative">
-                                        <img src="<?php echo e(Storage::url($t->image)); ?>" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm group-hover/img:scale-110 transition-transform">
-                                        <div class="absolute inset-0 bg-gray-900/40 rounded-lg opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                                            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                            </svg>
-                                        </div>
-                                    </a>
-                                <?php else: ?>
-                                    <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
-                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                            </div>
-                        </td>
-                        <td class="px-6 py-5">
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-gray-700"><?php echo e($t->user->name ?? 'System'); ?></span>
-                            </div>
-                        </td>
-                        <td class="px-6 py-5 text-right">
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($t->delivery_order_id): ?>
-                                <button wire:click="$dispatch('show-sj-detail', { id: <?php echo e($t->delivery_order_id); ?> })" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/5 hover:bg-accent text-accent hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    Detail SJ
-                                </button>
+                        <td class="px-6 py-5 text-center">
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($t->latest_image): ?>
+                                <div class="flex justify-center">
+                                    <img src="<?php echo e(Storage::url($t->latest_image)); ?>" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                </div>
                             <?php else: ?>
-                                <button wire:click="$dispatch('show-trx-detail', { id: <?php echo e($t->id); ?> })" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                                    </svg>
-                                    Detail Masuk
-                                </button>
+                                <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </td>
+                        <td class="px-6 py-5">
+                            <span class="text-xs font-bold text-gray-700"><?php echo e($t->user->name ?? 'System'); ?></span>
+                        </td>
+                        <td class="px-6 py-5 text-right">
+                            <button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/5 group-hover:bg-accent text-accent group-hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                Detail
+                            </button>
                         </td>
                     </tr>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
-                        <td colspan="8" class="px-8 py-12 text-center">
+                        <td colspan="7" class="px-8 py-12 text-center">
                             <div class="flex flex-col items-center">
                                 <svg class="w-12 h-12 text-gray-200 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
@@ -227,4 +194,82 @@ use Livewire\Attributes\Url;
 
         </div>
     </div>
+
+    
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showDetailModal && $selectedGroup): ?>
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showDetailModal', false)"></div>
+        <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up overflow-hidden">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Detail <?php echo e($selectedGroup['type'] === 'in' ? 'Surat Masuk' : 'Surat Keluar'); ?></h2>
+                    <p class="text-xs text-gray-500 mt-1 font-mono">Ref: <?php echo e($selectedGroup['reference'] ?: '-'); ?></p>
+                </div>
+                <button wire:click="$set('showDetailModal', false)" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 mb-8">
+                <div class="bg-base/50 p-4 rounded-2xl">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Sumber / Tujuan</p>
+                    <p class="text-sm font-bold text-gray-700"><?php echo e($selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['lokasi'] ?: 'Internal')); ?></p>
+                </div>
+                <div class="bg-base/50 p-4 rounded-2xl">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Petugas / Waktu</p>
+                    <p class="text-sm font-bold text-gray-700"><?php echo e($selectedGroup['user']); ?> - <?php echo e(\Carbon\Carbon::parse($selectedGroup['date'])->format('d M Y')); ?></p>
+                </div>
+            </div>
+
+            <div class="max-h-[40vh] overflow-y-auto mb-8 pr-2">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                            <th class="py-3 text-left">Nama Barang</th>
+                            <th class="py-3 text-right">Volume</th>
+                            <th class="py-3 text-left pl-4">Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $selectedGroup['items']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <tr>
+                            <td class="py-4">
+                                <p class="font-bold text-gray-800"><?php echo e($item->material->name); ?></p>
+                                <p class="text-[10px] text-gray-400 uppercase"><?php echo e($item->material->category->name ?? '-'); ?></p>
+                            </td>
+                            <td class="py-4 text-right">
+                                <span class="<?php echo \Illuminate\Support\Arr::toCssClasses([
+                                    'font-black',
+                                    'text-emerald-600' => $selectedGroup['type'] === 'in',
+                                    'text-red-500' => $selectedGroup['type'] === 'out'
+                                ]); ?>">
+                                    <?php echo e($selectedGroup['type'] === 'in' ? '+' : '-'); ?><?php echo e((float)($selectedGroup['type'] === 'in' ? $item->volume_masuk : $item->volume_keluar)); ?>
+
+                                </span>
+                                <span class="text-[10px] font-bold text-gray-400 uppercase ml-1"><?php echo e($item->material->unit); ?></span>
+                            </td>
+                            <td class="py-4 pl-4">
+                                <p class="text-xs text-gray-500 italic"><?php echo e($item->note ?: '-'); ?></p>
+                            </td>
+                        </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($selectedGroup['image']): ?>
+            <div class="mb-8">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Foto Bukti Fisik</p>
+                <img src="<?php echo e(Storage::url($selectedGroup['image'])); ?>" class="w-full h-48 object-cover rounded-3xl ring-4 ring-base shadow-inner">
+            </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+            <div class="pt-4">
+                <button wire:click="$set('showDetailModal', false)" class="w-full bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all">Tutup Detail</button>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/laporan/barang-masuk.blade.php ENDPATH**/ ?>

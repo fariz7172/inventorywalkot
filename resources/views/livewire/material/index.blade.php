@@ -500,11 +500,20 @@ new class extends Component {
                         <input type="file" wire:model="photo" id="photo-upload" class="hidden" accept="image/*">
                         <label for="photo-upload" class="w-full bg-base border-2 border-dashed border-warm rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-accent/50 transition-all @error('photo') border-red-500/50 bg-red-50 @enderror">
                             @if ($photo)
-                                @try
-                                    <img src="{{ $photo->temporaryUrl() }}" class="w-full h-32 object-cover rounded-xl mb-2">
-                                @catch(\Exception $e)
-                                    <div class="w-full h-32 bg-gray-100 flex items-center justify-center rounded-xl mb-2 text-[10px] text-gray-400">File Preview Not Available</div>
-                                @endtry
+                                @php
+                                    $previewUrl = null;
+                                    try {
+                                        $previewUrl = $photo->temporaryUrl();
+                                    } catch (\Exception $e) {
+                                        $previewUrl = null;
+                                    }
+                                @endphp
+
+                                @if($previewUrl)
+                                    <img src="{{ $previewUrl }}" class="w-full h-32 object-cover rounded-xl mb-2">
+                                @else
+                                    <div class="w-full h-32 bg-gray-100 flex items-center justify-center rounded-xl mb-2 text-[10px] text-gray-400 font-bold uppercase">Preview Tidak Tersedia</div>
+                                @endif
                                 <span class="text-[10px] font-bold text-accent uppercase">Ganti Foto</span>
                             @else
                                 <svg class="w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
