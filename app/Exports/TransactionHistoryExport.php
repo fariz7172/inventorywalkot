@@ -3,14 +3,14 @@
 namespace App\Exports;
 
 use App\Models\InventoryTransaction;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Contracts\View\View;
+use Maatwebsite\Excel\Concerns\FromView;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use DB;
 
-class TransactionHistoryExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class TransactionHistoryExport implements FromView, ShouldAutoSize, WithStyles
 {
     protected $search, $startDate, $endDate, $type;
     
@@ -22,7 +22,7 @@ class TransactionHistoryExport implements FromCollection, WithHeadings, WithMapp
         $this->type = $type;
     }
 
-    public function collection()
+    public function view(): View
     {
         $query = InventoryTransaction::with(['material', 'user', 'deliveryOrder']);
 
@@ -48,48 +48,24 @@ class TransactionHistoryExport implements FromCollection, WithHeadings, WithMapp
             });
         }
 
-        // Sort by date DESC, then by reference to keep items together
-        return $query->orderBy('created_at', 'desc')
-                    ->orderBy('reference_number', 'asc')
-                    ->get();
-    }
+        $transactions = $query->orderBy('created_at', 'desc')
+                            ->orderBy('reference_number', 'asc')
+                            ->get();
 
-    public function headings(): array
-    {
-        return [
-            'Tanggal',
-            'Jam',
-            'Jenis',
-            'No. Referensi',
-            'Material',
-            'Volume',
-            'Satuan',
-            'Sumber / Tujuan',
-            'Petugas',
-            'Catatan'
-        ];
-    }
+        // Grouping in PHP to keep logic simple
+        $grouped = $transactions->groupBy(function($item) {
+            return ($item->reference_number ?: 'SJ-' . $item->delivery_order_id) . '|' . $item->type . '|' . $item->created_at->format('Y-m-d H:i');
+        });
 
-    public function map($trx): array
-    {
-        return [
-            $trx->created_at->format('d/m/Y'),
-            $trx->created_at->format('H:i'),
-            $trx->type === 'in' ? 'MASUK' : 'KELUAR',
-            $trx->reference_number ?: '-',
-            $trx->material->name,
-            ($trx->type === 'in' ? $trx->volume_masuk : $trx->volume_keluar),
-            $trx->material->unit,
-            $trx->type === 'in' ? ($trx->supplier ?: 'Restock Internal') : ($trx->deliveryOrder->lokasi ?? 'Pengeluaran'),
-            $trx->user->name ?? 'System',
-            $trx->note ?: '-'
-        ];
+        return view('exports.transaction-history', [
+            'groups' => $grouped
+        ]);
     }
 
     public function styles(Worksheet $sheet)
     {
         return [
-            1 => ['font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4F46E5']]],
+            // Standard styles can be added here if needed, but we'll use Blade for most styling
         ];
     }
 }
