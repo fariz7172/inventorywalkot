@@ -37,7 +37,7 @@ new class extends Component {
 
     public function openDetail($ref, $doId, $type, $date, $userId)
     {
-        $query = InventoryTransaction::with(['material', 'user'])
+        $query = InventoryTransaction::with(['material', 'user', 'deliveryOrder'])
             ->where('type', $type)
             ->where('user_id', $userId)
             ->whereDate('created_at', $date);
@@ -58,6 +58,7 @@ new class extends Component {
             'user' => $items->first()->user->name ?? 'System',
             'supplier' => $items->first()->supplier,
             'lokasi' => $items->first()->deliveryOrder->lokasi ?? null,
+            'pemohon' => $items->first()->deliveryOrder->pemohon ?? null,
             'image' => $items->first()->image
         ];
 
@@ -407,7 +408,7 @@ new class extends Component {
             $dayName = $days[$carbonDate->dayOfWeek];
             $monthName = $months[$carbonDate->month];
             
-            $sumberTujuan = $selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['lokasi'] ?: 'Internal');
+            $sumberTujuan = $selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['pemohon'] ?: ($selectedGroup['lokasi'] ?: 'Internal'));
             
             // Labels
             if ($isOut) {
