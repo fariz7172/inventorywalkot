@@ -24,7 +24,7 @@ class TransactionHistoryExport implements FromCollection, WithHeadings, WithMapp
 
     public function collection()
     {
-        $query = InventoryTransaction::with(['material', 'user', 'deliveryOrder'])->latest();
+        $query = InventoryTransaction::with(['material', 'user', 'deliveryOrder']);
 
         if ($this->type && $this->type !== 'all') {
             $query->where('type', $this->type);
@@ -48,7 +48,10 @@ class TransactionHistoryExport implements FromCollection, WithHeadings, WithMapp
             });
         }
 
-        return $query->get();
+        // Sort by date DESC, then by reference to keep items together
+        return $query->orderBy('created_at', 'desc')
+                    ->orderBy('reference_number', 'asc')
+                    ->get();
     }
 
     public function headings(): array

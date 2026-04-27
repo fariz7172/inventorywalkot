@@ -219,7 +219,7 @@
                             'children' => [
                                 ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin'],
                                 ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo'],
-                                ['label' => 'Rekap Barang Masuk', 'route' => 'laporan.barang-masuk'],
+                                ['label' => 'Rekap Barang', 'route' => 'laporan.barang-masuk'],
                                 ['label' => 'Stock Opname', 'route' => 'stock-opname.index'],
                             ]
                         ],
@@ -236,9 +236,9 @@
                     @php
                         $hasChildren = isset($item['children']);
                         $isAuthorized = !isset($item['role']) || auth()->user()->hasRole($item['role']);
-                        
+
                         if ($hasChildren) {
-                            $authorizedChildren = array_filter($item['children'], function($child) {
+                            $authorizedChildren = array_filter($item['children'], function ($child) {
                                 return !isset($child['role']) || auth()->user()->hasRole($child['role']);
                             });
                             $isAuthorized = !empty($authorizedChildren);
@@ -250,29 +250,35 @@
                             @php
                                 $childRoutes = array_column($item['children'], 'route');
                                 $isExpanded = false;
-                                foreach($childRoutes as $r) { if(request()->routeIs($r)) { $isExpanded = true; break; } }
+                                foreach ($childRoutes as $r) {
+                                    if (request()->routeIs($r)) {
+                                        $isExpanded = true;
+                                        break;
+                                    }
+                                }
                             @endphp
                             <div x-data="{ open: {{ $isExpanded ? 'true' : 'false' }} }" class="space-y-1">
-                                <button @click="open = !open" 
+                                <button @click="open = !open"
                                     class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 text-gray-600 hover:bg-white/50">
                                     <div class="flex items-center gap-3">
                                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="{{ $item['icon'] }}" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                                d="{{ $item['icon'] }}" />
                                         </svg>
                                         <span class="font-medium text-sm">{{ $item['label'] }}</span>
                                     </div>
-                                    <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }"
+                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
-                                
-                                <div x-show="open" x-transition:enter="transition ease-out duration-100" 
-                                    x-transition:enter-start="opacity-0 transform -translate-y-2" 
-                                    x-transition:enter-end="opacity-100 transform translate-y-0"
-                                    class="pl-10 space-y-1">
+
+                                <div x-show="open" x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 transform -translate-y-2"
+                                    x-transition:enter-end="opacity-100 transform translate-y-0" class="pl-10 space-y-1">
                                     @foreach($item['children'] as $child)
                                         @if(!isset($child['role']) || auth()->user()->hasRole($child['role']))
-                                            <a href="{{ route($child['route']) }}" 
+                                            <a href="{{ route($child['route']) }}"
                                                 class="block px-3 py-2 rounded-lg text-sm transition-all {{ request()->routeIs($child['route']) ? 'text-accent font-bold bg-white/40' : 'text-gray-500 hover:text-gray-900' }}">
                                                 {{ $child['label'] }}
                                             </a>
@@ -283,9 +289,10 @@
                         @else
                             <a href="{{ route($item['route']) }}"
                                 class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200
-                                {{ request()->routeIs($item['route']) ? 'active' : 'text-gray-600 hover:bg-white/50' }}">
+                                            {{ request()->routeIs($item['route']) ? 'active' : 'text-gray-600 hover:bg-white/50' }}">
                                 <svg class="icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="{{ $item['icon'] }}" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
+                                        d="{{ $item['icon'] }}" />
                                 </svg>
                                 <span class="font-medium text-sm">{{ $item['label'] }}</span>
                             </a>

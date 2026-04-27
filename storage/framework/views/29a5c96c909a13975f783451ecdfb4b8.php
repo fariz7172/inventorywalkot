@@ -283,7 +283,10 @@ use Livewire\Attributes\Url;
         <img src="<?php echo e(asset('assets/kop.png')); ?>" class="w-full h-auto mb-8">
 
         <div class="text-center mb-6">
-            <h1 class="text-lg font-bold underline uppercase">BERITA ACARA SERAH TERIMA BARANG PENGADAAN/PEROLEHAN</h1>
+            <h1 class="text-lg font-bold underline uppercase leading-tight">
+                BERITA ACARA SERAH TERIMA BARANG<br>
+                PENGADAAN/PEROLEHAN
+            </h1>
             <p class="text-sm font-bold mt-1">Nomor: <?php echo e($selectedGroup['reference'] ?: '……………………………'); ?></p>
         </div>
 
@@ -312,7 +315,7 @@ use Livewire\Attributes\Url;
             </div>
 
             <p class="mt-3">
-                Telah menerima barang persedian yang diserahkan oleh PPHP/PPK/PPTK/Penyedia Barang/Pihak Ketiga<span class="font-bold"><?php echo e($sumberTujuan); ?></span> 
+                Telah menerima barang persedian yang diserahkan oleh PPHP/PPK/PPTK/Penyedia Barang/Pihak Ketiga <span class="font-bold"><?php echo e($sumberTujuan); ?></span> 
                 sesuai dengan Berita Acara Pemeriksaan Barang Nomor <span class="font-bold"><?php echo e($selectedGroup['reference'] ?: '……'); ?></span> 
                 Tanggal <span class="font-bold"><?php echo e($carbonDate->day); ?></span> Bulan <span class="font-bold"><?php echo e($monthName); ?></span> Tahun <span class="font-bold"><?php echo e($carbonDate->year); ?></span>. 
                 Sebagaimana daftar terlampir. Daftar barang yang diterima sebagai berikut:
