@@ -483,6 +483,8 @@ new class extends Component {
         </div>
     </div>
 
+    @endif
+
     <style>
         @media print {
             @page { margin: 1cm; }
@@ -506,10 +508,10 @@ new class extends Component {
     <script>
         function printBeritaAcara() {
             const originalTitle = document.title;
-            document.title = "Berita Acara - {{ $selectedGroup['reference'] ?: 'Draft' }}";
+            const ref = "{{ $selectedGroup['reference'] ?? 'Draft' }}";
+            document.title = "Berita Acara - " + ref;
             window.print();
             document.title = originalTitle;
         }
     </script>
-    @endif
 </div>
