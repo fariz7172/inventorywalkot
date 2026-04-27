@@ -303,7 +303,8 @@ use Livewire\Attributes\Url;
         ?>
 
         <div class="text-justify mb-4 text-[13px]">
-            <p>Pada Hari ini <span class="font-bold"><?php echo e($dayName); ?></span> Tanggal <span class="font-bold"><?php echo e($carbonDate->day); ?></span> Bulan <span class="font-bold"><?php echo e($monthName); ?></span> Tahun <span class="font-bold"><?php echo e($carbonDate->year); ?></span> yang bertanda tangan dibawah ini:</p>
+            <p>Pada Hari ini <span class="font-bold"><?php echo e($dayName); ?></span> Tanggal <span class="font-bold"><?php echo e($carbonDate->day); ?></span> Bulan <span class="font-bold"><?php echo e($monthName); ?></span> Tahun <span class="font-bold"><?php echo e($carbonDate->year); ?></span> </p>
+            <p>yang bertanda tangan dibawah ini:</p>
             
             <div class="mt-3 ml-8 space-y-0.5">
                 <p>Nama : <span class="font-bold"><?php echo e($selectedGroup['user']); ?></span></p>
@@ -311,7 +312,7 @@ use Livewire\Attributes\Url;
             </div>
 
             <p class="mt-3">
-                Telah menerima barang persedian yang diserahkan oleh <span class="font-bold"><?php echo e($sumberTujuan); ?></span> 
+                Telah menerima barang persedian yang diserahkan oleh PPHP/PPK/PPTK/Penyedia Barang/Pihak Ketiga<span class="font-bold"><?php echo e($sumberTujuan); ?></span> 
                 sesuai dengan Berita Acara Pemeriksaan Barang Nomor <span class="font-bold"><?php echo e($selectedGroup['reference'] ?: '……'); ?></span> 
                 Tanggal <span class="font-bold"><?php echo e($carbonDate->day); ?></span> Bulan <span class="font-bold"><?php echo e($monthName); ?></span> Tahun <span class="font-bold"><?php echo e($carbonDate->year); ?></span>. 
                 Sebagaimana daftar terlampir. Daftar barang yang diterima sebagai berikut:
@@ -368,6 +369,8 @@ use Livewire\Attributes\Url;
         </div>
     </div>
 
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
     <style>
         @media print {
             @page { margin: 1cm; }
@@ -391,10 +394,10 @@ use Livewire\Attributes\Url;
     <script>
         function printBeritaAcara() {
             const originalTitle = document.title;
-            document.title = "Berita Acara - <?php echo e($selectedGroup['reference'] ?: 'Draft'); ?>";
+            const ref = "<?php echo e($selectedGroup['reference'] ?? 'Draft'); ?>";
+            document.title = "Berita Acara - " + ref;
             window.print();
             document.title = originalTitle;
         }
     </script>
-    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/laporan/barang-masuk.blade.php ENDPATH**/ ?>

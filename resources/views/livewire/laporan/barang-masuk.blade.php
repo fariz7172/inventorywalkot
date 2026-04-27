@@ -399,7 +399,10 @@ new class extends Component {
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
 
         <div class="text-center mb-6">
-            <h1 class="text-lg font-bold underline uppercase">BERITA ACARA SERAH TERIMA BARANG PENGADAAN/PEROLEHAN</h1>
+            <h1 class="text-lg font-bold underline uppercase leading-tight">
+                BERITA ACARA SERAH TERIMA BARANG<br>
+                PENGADAAN/PEROLEHAN
+            </h1>
             <p class="text-sm font-bold mt-1">Nomor: {{ $selectedGroup['reference'] ?: '……………………………' }}</p>
         </div>
 
@@ -419,7 +422,8 @@ new class extends Component {
         @endphp
 
         <div class="text-justify mb-4 text-[13px]">
-            <p>Pada Hari ini <span class="font-bold">{{ $dayName }}</span> Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span> yang bertanda tangan dibawah ini:</p>
+            <p>Pada Hari ini <span class="font-bold">{{ $dayName }}</span> Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span> </p>
+            <p>yang bertanda tangan dibawah ini:</p>
             
             <div class="mt-3 ml-8 space-y-0.5">
                 <p>Nama : <span class="font-bold">{{ $selectedGroup['user'] }}</span></p>
@@ -427,7 +431,7 @@ new class extends Component {
             </div>
 
             <p class="mt-3">
-                Telah menerima barang persedian yang diserahkan oleh <span class="font-bold">{{ $sumberTujuan }}</span> 
+                Telah menerima barang persedian yang diserahkan oleh PPHP/PPK/PPTK/Penyedia Barang/Pihak Ketiga <span class="font-bold">{{ $sumberTujuan }}</span> 
                 sesuai dengan Berita Acara Pemeriksaan Barang Nomor <span class="font-bold">{{ $selectedGroup['reference'] ?: '……' }}</span> 
                 Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span>. 
                 Sebagaimana daftar terlampir. Daftar barang yang diterima sebagai berikut:
