@@ -390,22 +390,25 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     <style>
         @media print {
             @page { 
-                margin: 1.5cm;
+                margin: 1cm;
                 size: auto;
             }
-            html, body {
-                height: auto !important;
-                overflow: visible !important;
+            body {
+                visibility: hidden;
                 background: white !important;
             }
-            body * { visibility: hidden; }
-            #print-area-opname, #print-area-opname * { visibility: visible; }
             #print-area-opname {
-                position: static !important;
+                visibility: visible !important;
                 display: block !important;
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
                 width: 100% !important;
+                height: auto !important;
                 margin: 0 !important;
                 padding: 0 !important;
+            }
+            #print-area-opname * {
                 visibility: visible !important;
             }
             .no-print { display: none !important; }

@@ -601,28 +601,46 @@ $rejectOpname = function($id) {
     <style>
         @media print {
             @page { 
-                margin: 1cm;
+                margin: 1.5cm;
                 size: auto;
             }
-            body {
-                visibility: hidden;
-                background: white !important;
-            }
-            #print-area-opname {
+            /* Hide everything by default */
+            body * { visibility: hidden; }
+            
+            /* Reset all parents to ensure natural flow across pages */
+            html, body, 
+            div:has(> #print-area-opname), 
+            .fixed, .inset-0, .overflow-y-auto, .bg-white {
                 visibility: visible !important;
+                position: static !important;
+                overflow: visible !important;
                 display: block !important;
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100% !important;
                 height: auto !important;
+                width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
             }
-            #print-area-opname * {
+
+            /* Show ONLY the print area and its children */
+            #print-area-opname, #print-area-opname * {
                 visibility: visible !important;
             }
-            .no-print { display: none !important; }
+
+            #print-area-opname {
+                display: block !important;
+                position: relative !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                top: 0 !important;
+            }
+
+            .no-print, button, svg, .modal-backdrop { 
+                display: none !important; 
+            }
         }
     </style>
 
