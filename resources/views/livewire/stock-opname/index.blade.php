@@ -594,7 +594,9 @@ $rejectOpname = function($id) {
                     <p class="text-[11px]">NIP: ……………………………</p>
                 </div>
             </div>
-        @endif
+        </div>
+    </div>
+    @endif
 
     <script>
         function printStockOpname() {
@@ -614,7 +616,7 @@ $rejectOpname = function($id) {
             printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">');
             printWindow.document.write('<style>');
             printWindow.document.write('body { font-family: "Times New Roman", serif; padding: 20px; color: black; background: white; }');
-            printWindow.document.write('@page { margin: 1.5cm; }');
+            printWindow.document.write('@@page { margin: 1.5cm; }');
             printWindow.document.write('table { border-collapse: collapse; width: 100%; border: 1px solid black !important; }');
             printWindow.document.write('th, td { border: 1px solid black !important; padding: 8px; }');
             printWindow.document.write('img { max-width: 100%; height: auto; }');
@@ -626,10 +628,12 @@ $rejectOpname = function($id) {
             
             // Wait for styles/images to load
             setTimeout(() => {
-                printWindow.focus();
-                printWindow.print();
-                printWindow.close();
-            }, 600);
+                if (printWindow) {
+                    printWindow.focus();
+                    printWindow.print();
+                    printWindow.close();
+                }
+            }, 700);
         }
     </script>
 </div>
