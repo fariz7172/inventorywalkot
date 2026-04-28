@@ -604,42 +604,41 @@ $rejectOpname = function($id) {
                 margin: 1.5cm;
                 size: auto;
             }
-            /* Hide everything by default */
-            body * { visibility: hidden; }
             
-            /* Reset all parents to ensure natural flow across pages */
-            html, body, 
-            div:has(> #print-area-opname), 
-            .fixed, .inset-0, .overflow-y-auto, .bg-white {
-                visibility: visible !important;
+            /* Hide the entire dashboard and modal components */
+            nav, aside, .no-print, button, .modal-backdrop, .shadow-2xl,
+            .fixed.inset-0 > .bg-white { 
+                display: none !important; 
+            }
+            
+            /* Reset the fixed wrapper to allow natural scrolling/printing */
+            .fixed.inset-0 {
                 position: static !important;
-                overflow: visible !important;
                 display: block !important;
-                height: auto !important;
-                width: 100% !important;
-                margin: 0 !important;
+                background: none !important;
                 padding: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-                background: white !important;
             }
-
-            /* Show ONLY the print area and its children */
-            #print-area-opname, #print-area-opname * {
-                visibility: visible !important;
-            }
-
+            
+            /* Show ONLY the print area */
             #print-area-opname {
                 display: block !important;
-                position: relative !important;
+                visibility: visible !important;
+                position: static !important;
                 width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                top: 0 !important;
             }
 
-            .no-print, button, svg, .modal-backdrop { 
-                display: none !important; 
+            #print-area-opname * {
+                visibility: visible !important;
+            }
+            
+            /* Ensure the body is visible and background is white */
+            body {
+                visibility: visible !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
             }
         }
     </style>
