@@ -291,7 +291,7 @@ use Livewire\Attributes\Url;
             $dayName = $days[$carbonDate->dayOfWeek];
             $monthName = $months[$carbonDate->month];
             
-            $sumberTujuan = $selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['lokasi'] ?: 'Internal');
+            $sumberTujuan = $selectedGroup['type'] === 'in' ? ($selectedGroup['supplier'] ?: 'Restock Internal') : ($selectedGroup['pemohon'] ?: ($selectedGroup['lokasi'] ?: 'Internal'));
             
             // Labels
             if ($isOut) {
