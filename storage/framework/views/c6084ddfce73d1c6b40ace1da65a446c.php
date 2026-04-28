@@ -412,5 +412,4 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             document.title = originalTitle;
         }
     </script>
-    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 </div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/stock-opname/index.blade.php ENDPATH**/ ?>

@@ -600,17 +600,26 @@ $rejectOpname = function($id) {
 
     <style>
         @media print {
-            @page { margin: 1cm; }
+            @page { 
+                margin: 1.5cm;
+                size: auto;
+            }
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+                background: white !important;
+            }
             body * { visibility: hidden; }
             #print-area-opname, #print-area-opname * { visibility: visible; }
             #print-area-opname {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
+                position: static !important;
                 display: block !important;
+                width: 100% !important;
+                margin: 0 !important;
                 padding: 0 !important;
+                visibility: visible !important;
             }
+            .no-print { display: none !important; }
         }
     </style>
 
