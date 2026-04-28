@@ -498,102 +498,95 @@ $rejectOpname = function($id) {
         </div>
 
         {{-- Hidden Print Section --}}
-        <div id="print-area-opname" class="hidden print:block bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+        <div id="print-area-opname" class="hidden bg-white text-black" style="font-family: 'Times New Roman', serif; padding: 20px;">
             {{-- Kop Surat --}}
-            <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
+            <img src="{{ asset('assets/kop.png') }}" style="width:100%; height:auto; margin-bottom: 20px;">
 
-            <div class="text-center mb-6">
-                <h1 class="text-lg font-bold underline uppercase leading-tight">
+            <div style="text-align:center; margin-bottom: 16px;">
+                <h1 style="font-size: 14pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; line-height: 1.4; margin: 0;">
                     BERITA ACARA PEMERIKSAAN FISIK<br>
                     (BERITA ACARA STOCK OPNAME/BASO)
                 </h1>
-                <p class="text-sm font-bold mt-1">Nomor: {{ $selectedOpname->notes ?: '……………………………' }}</p>
+                @php
+                    $carbonDate = \Carbon\Carbon::parse($selectedOpname->opname_date);
+                    $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                    $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    $dayName = $days[$carbonDate->dayOfWeek];
+                    $monthName = $months[$carbonDate->month];
+                    $namaSuperAdmin = $selectedOpname->approver->name ?? '………………………………';
+                    $namaGudang = $selectedOpname->user->name ?? '………………………………';
+                @endphp
+                <p style="font-size: 11pt; font-weight: bold; margin-top: 4px;">Nomor: {{ $selectedOpname->notes ?: '……………………………' }}</p>
             </div>
 
-            @php
-                $carbonDate = \Carbon\Carbon::parse($selectedOpname->opname_date);
-                $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            <div style="font-size: 11pt; text-align: justify; margin-bottom: 12px; line-height: 1.8;">
+                <p>Pada Hari ini <b>{{ $dayName }}</b> Tanggal <b>{{ $carbonDate->day }}</b> Bulan <b>{{ $monthName }}</b> Tahun <b>{{ $carbonDate->year }}</b> yang bertanda tangan dibawah ini:</p>
                 
-                $dayName = $days[$carbonDate->dayOfWeek];
-                $monthName = $months[$carbonDate->month];
+                <table style="margin-left: 40px; border: none;">
+                    <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>{{ $namaSuperAdmin }}</u></b></td></tr>
+                    <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">……………………………</td></tr>
+                </table>
 
-                // Roles for signers
-                $namaSuperAdmin = $selectedOpname->approver->name ?? '………………………………';
-                $namaGudang = $selectedOpname->user->name ?? '………………………………';
-            @endphp
-
-            <div class="text-justify mb-4 text-[13px] leading-relaxed">
-                <p>Pada Hari ini <span class="font-bold">{{ $dayName }}</span> Tanggal <span class="font-bold">{{ $carbonDate->day }}</span> Bulan <span class="font-bold">{{ $monthName }}</span> Tahun <span class="font-bold">{{ $carbonDate->year }}</span> yang bertanda tangan dibawah ini:</p>
+                <p style="margin-top: 8px;">Sesuai Dengan Peraturan Dalam Negeri No 19 Tahun 2016 Tentang Pedoman Pengolahan Barang Milik Daerah, Kami Melakukan Pemeriksaan Setempat atas Sisa Barang Persediaan (stock Opname) Yang Dikelola Oleh :</p>
                 
-                <div class="mt-2 ml-8 mb-4">
-                    <p>Nama : <span class="font-bold underline">{{ $namaSuperAdmin }}</span></p>
-                    <p>Jabatan : <span class="font-bold">Super Admin</span></p>
-                </div>
+                <table style="margin-left: 40px; border: none;">
+                    <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>{{ $namaGudang }}</u></b></td></tr>
+                    <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">……………………………</td></tr>
+                </table>
 
-                <p>Sesuai Dengan Peraturan Dalam Negeri No 19 Tahun 2016 Tentang Pedoman Pengolahan Barang Milik Daerah, Kami Melakukan Pemeriksaan Setempat atas Sisa Barang Persediaan (stock Opname) Yang Dikelola Oleh :</p>
-                
-                <div class="mt-2 ml-8 mb-4">
-                    <p>Nama : <span class="font-bold underline">{{ $namaGudang }}</span></p>
-                    <p>Jabatan : <span class="font-bold">Pengurus Barang/Pengurus Barang Pembantu</span></p>
-                </div>
-
-                <p>Berdasarkan Keputusan Gurbernur ……… Nomor ……………… Tahun……….. Tanggal………. Ditugaskan Untuk Mengurus Barang, Berdasarkan Hasil Pemeriksaan Fisik Barang (Stok Opname), Kami Mendapatkan Hasil Sebagai Berikut:</p>
+                <p style="margin-top: 8px;">Berdasarkan Keputusan Gurbernur ……… Nomor ……………… Tahun……….. Tanggal………. Ditugaskan Untuk Mengurus Barang, Berdasarkan Hasil Pemeriksaan Fisik Barang (Stok Opname), Kami Mendapatkan Hasil Sebagai Berikut:</p>
             </div>
 
-            <table class="w-full border-collapse border border-black text-[12px] mb-6">
+            <table style="width:100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 16px;">
                 <thead>
                     <tr>
-                        <th class="border border-black px-2 py-1 text-center w-8">No</th>
-                        <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
-                        <th class="border border-black px-2 py-1 text-center">Satuan</th>
-                        <th class="border border-black px-2 py-1 text-center">Volume (Fisik)</th>
-                        <th class="border border-black px-2 py-1 text-center">Jumlah</th>
-                        <th class="border border-black px-3 py-1 text-left">Keterangan</th>
+                        <th style="border: 1px solid black; padding: 6px 4px; text-align: center; width: 30px;">No</th>
+                        <th style="border: 1px solid black; padding: 6px 8px; text-align: left;">Uraian Nama Barang</th>
+                        <th style="border: 1px solid black; padding: 6px 4px; text-align: center;">Satuan</th>
+                        <th style="border: 1px solid black; padding: 6px 4px; text-align: center;">Volume<br>(Fisik)</th>
+                        <th style="border: 1px solid black; padding: 6px 4px; text-align: center;">Jumlah</th>
+                        <th style="border: 1px solid black; padding: 6px 8px; text-align: left;">Keterangan</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($selectedOpname->items as $index => $item)
                     <tr>
-                        <td class="border border-black px-2 py-1 text-center">{{ $index + 1 }}</td>
-                        <td class="border border-black px-3 py-1 font-bold uppercase">{{ $item->material->name }}</td>
-                        <td class="border border-black px-2 py-1 text-center uppercase">{{ $item->material->unit }}</td>
-                        <td class="border border-black px-2 py-1 text-center font-bold">
-                            {{ (float)$item->physical_volume }}
-                        </td>
-                        <td class="border border-black px-2 py-1 text-center font-bold">
-                            {{ (float)$item->physical_volume }}
-                        </td>
-                        <td class="border border-black px-3 py-1 italic text-[10px]">{{ $item->notes ?: '-' }}</td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center;">{{ $index + 1 }}</td>
+                        <td style="border: 1px solid black; padding: 5px 8px; font-weight: bold; text-transform: uppercase;">{{ $item->material->name }}</td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; text-transform: uppercase;">{{ $item->material->unit }}</td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; font-weight: bold;">{{ (float)$item->physical_volume }}</td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; font-weight: bold;">{{ (float)$item->physical_volume }}</td>
+                        <td style="border: 1px solid black; padding: 5px 8px; font-style: italic;">{{ $item->notes ?: '-' }}</td>
                     </tr>
                     @endforeach
+                    <tr>
+                        <td colspan="6" style="border: 1px solid black; padding: 5px 8px; font-weight: bold;">Jumlah</td>
+                    </tr>
                 </tbody>
             </table>
 
-            <p class="text-[13px] mb-8 leading-relaxed text-justify">Demikian Berita Acara Stock Opname ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
+            <p style="font-size: 11pt; margin-bottom: 40px; text-align: justify;">Demikian Berita Acara Stock Opname ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
 
-            <div class="grid grid-cols-2 text-center text-[13px] mt-10">
-                <div>
-                    <p>Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
-                    <p class="mt-1 font-bold">Yang Memeriksa Barang,</p>
-                    <p class="font-bold text-[10px] uppercase">(Super Admin)</p>
-                    
-                    <div class="h-24"></div>
-                    
-                    <p class="font-bold underline uppercase">{{ $namaSuperAdmin }}</p>
-                    <p class="text-[11px]">NIP: ……………………………</p>
-                </div>
-                <div>
-                    <p class="invisible">Jakarta, ...</p>
-                    <p class="mt-1 font-bold">Pengurus Barang/Pengurus Barang Pembantu,</p>
-                    <p class="font-bold text-[10px] uppercase">(Gudang)</p>
-                    
-                    <div class="h-24"></div>
-                    
-                    <p class="font-bold underline uppercase">{{ $namaGudang }}</p>
-                    <p class="text-[11px]">NIP: ……………………………</p>
-                </div>
-            </div>
+            <table style="width: 100%; border: none; font-size: 11pt; text-align: center;">
+                <tr>
+                    <td style="border: none; width: 50%; vertical-align: top;">
+                        <p style="margin: 0;">Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
+                        <p style="margin: 4px 0; font-weight: bold;">Yang Memeriksa Barang,</p>
+                        <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">(Super Admin)</p>
+                        <div style="height: 80px;"></div>
+                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">{{ $namaSuperAdmin }}</p>
+                        <p style="margin: 0; font-size: 9pt;">NIP: ……………………………</p>
+                    </td>
+                    <td style="border: none; width: 50%; vertical-align: top;">
+                        <p style="margin: 0; visibility: hidden;">Jakarta, ...</p>
+                        <p style="margin: 4px 0; font-weight: bold;">Pengurus Barang/Pengurus Barang Pembantu,</p>
+                        <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">(Gudang)</p>
+                        <div style="height: 80px;"></div>
+                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">{{ $namaGudang }}</p>
+                        <p style="margin: 0; font-size: 9pt;">NIP: ……………………………</p>
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
     @endif
@@ -605,35 +598,47 @@ $rejectOpname = function($id) {
                 alert('Data cetak tidak ditemukan. Silakan buka detail terlebih dahulu.');
                 return;
             }
-            
+
             const printContents = printArea.innerHTML;
-            const ref = "{{ $selectedOpname?->notes ?? 'Draft' }}";
-            
-            // Create a new window for printing
-            const printWindow = window.open('', '_blank', 'height=600,width=800');
-            
-            printWindow.document.write('<html><head><title>Stock Opname - ' + ref + '</title>');
-            printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">');
-            printWindow.document.write('<style>');
-            printWindow.document.write('body { font-family: "Times New Roman", serif; padding: 20px; color: black; background: white; }');
-            printWindow.document.write('@@page { margin: 1.5cm; }');
-            printWindow.document.write('table { border-collapse: collapse; width: 100%; border: 1px solid black !important; }');
-            printWindow.document.write('th, td { border: 1px solid black !important; padding: 8px; }');
-            printWindow.document.write('img { max-width: 100%; height: auto; }');
-            printWindow.document.write('</style></head><body>');
-            printWindow.document.write(printContents);
-            printWindow.document.write('</body></html>');
-            
-            printWindow.document.close();
-            
-            // Wait for styles/images to load
-            setTimeout(() => {
-                if (printWindow) {
-                    printWindow.focus();
+            const ref = printArea.dataset.ref || 'Draft';
+
+            const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Stock Opname - ${ref}</title>
+    <style>
+        @page { margin: 1.5cm; }
+        body { font-family: "Times New Roman", serif; color: black; background: white; margin: 0; padding: 0; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid black; padding: 6px 8px; }
+        img { max-width: 100%; height: auto; }
+        b, strong { font-weight: bold; }
+        u { text-decoration: underline; }
+    </style>
+</head>
+<body>${printContents}</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const printWindow = window.open(url, '_blank');
+
+            if (!printWindow) {
+                alert('Popup diblokir browser. Mohon izinkan popup untuk halaman ini.');
+                URL.revokeObjectURL(url);
+                return;
+            }
+
+            printWindow.addEventListener('load', () => {
+                setTimeout(() => {
                     printWindow.print();
-                    printWindow.close();
-                }
-            }, 700);
+                    setTimeout(() => {
+                        printWindow.close();
+                        URL.revokeObjectURL(url);
+                    }, 500);
+                }, 300);
+            });
         }
     </script>
 </div>

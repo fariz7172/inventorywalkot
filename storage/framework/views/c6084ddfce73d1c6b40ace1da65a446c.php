@@ -383,7 +383,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     <p class="text-[11px]">NIP: ……………………………</p>
                 </div>
             </div>
-        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+        </div>
+    </div>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <script>
         function printStockOpname() {
@@ -415,10 +417,12 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             
             // Wait for styles/images to load
             setTimeout(() => {
-                printWindow.focus();
-                printWindow.print();
-                printWindow.close();
-            }, 600);
+                if (printWindow) {
+                    printWindow.focus();
+                    printWindow.print();
+                    printWindow.close();
+                }
+            }, 700);
         }
     </script>
 </div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/stock-opname/index.blade.php ENDPATH**/ ?>
