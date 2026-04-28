@@ -387,58 +387,34 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    <style>
-        @media print {
-            @page { 
-                margin: 1.5cm;
-                size: auto;
-            }
-            
-            /* Hide the entire dashboard and modal components */
-            nav, aside, .no-print, button, .modal-backdrop, .shadow-2xl,
-            .fixed.inset-0 > .bg-white { 
-                display: none !important; 
-            }
-            
-            /* Reset the fixed wrapper to allow natural scrolling/printing */
-            .fixed.inset-0 {
-                position: static !important;
-                display: block !important;
-                background: none !important;
-                padding: 0 !important;
-            }
-            
-            /* Show ONLY the print area */
-            #print-area-opname {
-                display: block !important;
-                visibility: visible !important;
-                position: static !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-
-            #print-area-opname * {
-                visibility: visible !important;
-            }
-            
-            /* Ensure the body is visible and background is white */
-            body {
-                visibility: visible !important;
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-        }
-    </style>
-
     <script>
         function printStockOpname() {
-            const originalTitle = document.title;
+            const printContents = document.getElementById('print-area-opname').innerHTML;
             const ref = "<?php echo e($selectedOpname->notes ?? 'Draft'); ?>";
-            document.title = "Stock Opname - " + ref;
-            window.print();
-            document.title = originalTitle;
+            
+            // Create a new window for printing
+            const printWindow = window.open('', '_blank', 'height=600,width=800');
+            
+            printWindow.document.write('<html><head><title>Stock Opname - ' + ref + '</title>');
+            printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">');
+            printWindow.document.write('<style>');
+            printWindow.document.write('body { font-family: "Times New Roman", serif; padding: 20px; color: black; background: white; }');
+            printWindow.document.write('@page { margin: 1.5cm; }');
+            printWindow.document.write('table { border-collapse: collapse; width: 100%; border: 1px solid black !important; }');
+            printWindow.document.write('th, td { border: 1px solid black !important; padding: 8px; }');
+            printWindow.document.write('img { max-width: 100%; height: auto; }');
+            printWindow.document.write('</style></head><body>');
+            printWindow.document.write(printContents);
+            printWindow.document.write('</body></html>');
+            
+            printWindow.document.close();
+            
+            // Wait for styles to load
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+                printWindow.close();
+            }, 500);
         }
     </script>
 </div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/stock-opname/index.blade.php ENDPATH**/ ?>
