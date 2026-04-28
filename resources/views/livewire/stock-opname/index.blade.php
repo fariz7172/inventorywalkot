@@ -623,5 +623,4 @@ $rejectOpname = function($id) {
             document.title = originalTitle;
         }
     </script>
-    @endif
 </div>
