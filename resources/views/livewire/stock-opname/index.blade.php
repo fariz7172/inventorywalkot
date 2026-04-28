@@ -591,54 +591,5 @@ $rejectOpname = function($id) {
     </div>
     @endif
 
-    <script>
-        function printStockOpname() {
-            const printArea = document.getElementById('print-area-opname');
-            if (!printArea) {
-                alert('Data cetak tidak ditemukan. Silakan buka detail terlebih dahulu.');
-                return;
-            }
-
-            const printContents = printArea.innerHTML;
-            const ref = printArea.dataset.ref || 'Draft';
-
-            const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Stock Opname - ${ref}</title>
-    <style>
-        @page { margin: 1.5cm; }
-        body { font-family: "Times New Roman", serif; color: black; background: white; margin: 0; padding: 0; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid black; padding: 6px 8px; }
-        img { max-width: 100%; height: auto; }
-        b, strong { font-weight: bold; }
-        u { text-decoration: underline; }
-    </style>
-</head>
-<body>${printContents}</body>
-</html>`;
-
-            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const printWindow = window.open(url, '_blank');
-
-            if (!printWindow) {
-                alert('Popup diblokir browser. Mohon izinkan popup untuk halaman ini.');
-                URL.revokeObjectURL(url);
-                return;
-            }
-
-            printWindow.addEventListener('load', () => {
-                setTimeout(() => {
-                    printWindow.print();
-                    setTimeout(() => {
-                        printWindow.close();
-                        URL.revokeObjectURL(url);
-                    }, 500);
-                }, 300);
-            });
-        }
-    </script>
+    <script src="{{ asset('js/print-stock-opname.js') }}"></script>
 </div>
