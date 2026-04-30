@@ -17,6 +17,7 @@ class BarangMasukImport implements ToCollection
     {
         // Skip header row
         $dataRows = $rows->slice(1);
+        $errors = [];
 
         foreach ($dataRows as $row) {
             // Indices:
@@ -27,28 +28,49 @@ class BarangMasukImport implements ToCollection
             // 4: supplier
             // 5: keterangan
 
-            if (empty($row[1]) || empty($row[2])) {
+            if (empty($row[1]) || !isset($row[2])) {
                 continue;
             }
 
-            $material = Material::where('name', trim($row[1]))->first();
+            $name = trim($row[1]);
+            $material = Material::where('name', $name)->first();
 
             if (!$material) {
-                throw new Exception("Material '{$row[1]}' tidak ditemukan di sistem. Pastikan nama barang sama persis.");
+                // Try case-insensitive search if exact match fails
+                $material = Material::whereRaw('LOWER(name) = ?', [strtolower($name)])->first();
+            }
+
+            if (!$material) {
+                $errors[] = "Material '$name' tidak ditemukan.";
+                continue;
             }
 
             $date = $this->parseIndonesianDate($row[0] ?? null);
 
+            // Clean volume string from commas (thousand separators)
+            $volume = $row[2];
+            if (is_string($volume)) {
+                $volume = str_replace(',', '', $volume);
+            }
+
             InventoryTransaction::create([
                 'material_id'      => $material->id,
                 'type'             => 'in',
-                'volume_masuk'     => (float) $row[2],
+                'volume_masuk'     => (float) $volume,
                 'reference_number' => $row[3] ?? null,
                 'supplier'         => $row[4] ?? null,
                 'note'             => $row[5] ?? 'Import Barang Masuk',
                 'user_id'          => Auth::id(),
                 'created_at'       => $date,
             ]);
+        }
+
+        if (!empty($errors)) {
+            $uniqueErrors = array_unique($errors);
+            $message = "Beberapa barang dilewati karena tidak terdaftar: " . implode(', ', array_slice($uniqueErrors, 0, 5));
+            if (count($uniqueErrors) > 5) $message .= "... dan " . (count($uniqueErrors) - 5) . " lainnya.";
+            
+            session()->flash('warning', $message);
         }
     }
 

@@ -52,6 +52,7 @@ class SuratJalanImport implements ToCollection
         // 7: no_surat_jalan
         // 8: kecamatan_pelaksana
         // 9: keterangan
+        // 10: penerima
 
         $lastSjNo = null;
         $lastDate = null;
@@ -61,6 +62,7 @@ class SuratJalanImport implements ToCollection
         $lastPolisi = null;
         $lastKecamatan = null;
         $lastKeterangan = null;
+        $lastPenerima = null;
 
         $processedRows = new Collection();
 
@@ -80,6 +82,7 @@ class SuratJalanImport implements ToCollection
                 $lastPetugas = $row[6] ?? 'SANJAYA';
                 $lastKecamatan = $row[8] ?? '-';
                 $lastKeterangan = $row[9] ?? null;
+                $lastPenerima = $row[10] ?? '-';
             }
 
             $processedRows->push([
@@ -93,6 +96,7 @@ class SuratJalanImport implements ToCollection
                 'petugas' => $lastPetugas,
                 'kecamatan_pelaksana' => $lastKecamatan,
                 'keterangan' => $lastKeterangan,
+                'penerima' => $lastPenerima,
             ]);
         }
 
@@ -108,8 +112,10 @@ class SuratJalanImport implements ToCollection
                     $date = $this->parseIndonesianDate($first['tanggal']);
 
                     $deliveryOrder = DeliveryOrder::where('surat_jalan_no', $sjNo)->first();
+                    $isNewOrder = false;
                     
                     if (!$deliveryOrder) {
+                        $isNewOrder = true;
                         $this->log("Creating NEW Delivery Order: $sjNo");
                         $deliveryOrder = DeliveryOrder::create([
                             'surat_jalan_no' => $sjNo,
@@ -120,8 +126,9 @@ class SuratJalanImport implements ToCollection
                             'no_polisi' => $first['no_polisi'],
                             'pelaksana_kecamatan' => $first['kecamatan_pelaksana'],
                             'keterangan' => $first['keterangan'],
-                            'status' => 'draft',
-                            'user_id' => Auth::id(),
+                            'penerima' => $first['penerima'],
+                            'status' => 'shipped', // Set as shipped automatically
+                            'user_id' => Auth::id() ?? 1,
                         ]);
                     }
 
@@ -144,6 +151,21 @@ class SuratJalanImport implements ToCollection
                         $deliveryOrder->materials()->syncWithoutDetaching([
                             $material->id => ['requested_volume' => $volume]
                         ]);
+
+                        // Only create transaction if this is a newly imported order
+                        // This prevents duplicating transactions if imported twice
+                        if ($isNewOrder) {
+                            InventoryTransaction::create([
+                                'delivery_order_id' => $deliveryOrder->id,
+                                'material_id' => $material->id,
+                                'type' => 'out',
+                                'volume_keluar' => $volume,
+                                'reference_number' => $deliveryOrder->surat_jalan_no,
+                                'user_id' => Auth::id() ?? 1,
+                                'note' => 'Import Excel: ' . $deliveryOrder->surat_jalan_no,
+                                'created_at' => $deliveryOrder->tanggal,
+                            ]);
+                        }
                     }
                 });
             } catch (\Exception $e) {

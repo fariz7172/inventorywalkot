@@ -93,6 +93,66 @@ new class extends Component {
     public $new_name = '';
     public $new_category_id = '';
     public $new_unit = 'PCS';
+    public $showImportMasterModal = false;
+    public $importMasterFile;
+
+    public function downloadTemplate()
+    {
+        $categories = Category::pluck('name')->toArray();
+        
+        return response()->streamDownload(function() use ($categories) {
+            $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $ss->getActiveSheet();
+            $sheet->setTitle('Form Import');
+            
+            $sheet->setCellValue('A1', 'Kategori');
+            $sheet->setCellValue('B1', 'Nama Barang');
+            $sheet->setCellValue('C1', 'Satuan');
+            
+            $sheet->getStyle('A1:C1')->getFont()->setBold(true);
+            $sheet->getColumnDimension('A')->setWidth(25);
+            $sheet->getColumnDimension('B')->setWidth(35);
+            $sheet->getColumnDimension('C')->setWidth(15);
+            
+            $catSheet = $ss->createSheet();
+            $catSheet->setTitle('DaftarKategori');
+            foreach ($categories as $index => $name) {
+                $catSheet->setCellValue('A' . ($index + 1), $name);
+            }
+            $catSheet->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_VERYHIDDEN);
+            
+            $categoryRange = 'DaftarKategori!$A$1:$A$' . count($categories);
+            $validation = $sheet->getDataValidation('A2:A1000');
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
+            $validation->setAllowBlank(false);
+            $validation->setShowInputMessage(true);
+            $validation->setShowErrorMessage(true);
+            $validation->setShowDropDown(true);
+            $validation->setFormula1($categoryRange);
+            
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+            $writer->save('php://output');
+        }, 'template_master_barang.xlsx');
+    }
+
+    public function importMaster()
+    {
+        abort_if(auth()->user()->hasRole('gudang'), 403);
+
+        $this->validate([
+            'importMasterFile' => 'required|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        try {
+            \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\MaterialImport, $this->importMasterFile);
+            $this->showImportMasterModal = false;
+            $this->reset('importMasterFile');
+            session()->flash('message', 'Master barang berhasil di-import!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal import master: ' . $e->getMessage());
+        }
+    }
 
     public function updatingSearch()
     {
@@ -302,6 +362,12 @@ new class extends Component {
         </div>
     @endif
 
+    @if (session()->has('warning'))
+        <div class="bg-amber-50 border border-amber-200 text-amber-600 px-4 py-3 rounded-xl mb-6 text-sm font-bold">
+            {{ session('warning') }}
+        </div>
+    @endif
+
     {{-- Grid Material --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         @foreach($materials as $m)
@@ -407,6 +473,14 @@ new class extends Component {
                     <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-2xl font-bold text-sm shadow-lg shadow-accent/20">Daftarkan Barang</button>
                 </div>
             </form>
+
+            <div class="mt-8 pt-6 border-t border-gray-100 text-center">
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Atau Import Banyak Sekaligus</p>
+                <button type="button" wire:click="$set('showImportMasterModal', true); $set('showMasterModal', false);" class="w-full bg-emerald-50 text-emerald-600 py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all hover:bg-emerald-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2a4 4 0 014-4h1m-1 4h2m-2 3h2m4-9a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Import Master Barang (Excel)
+                </button>
+            </div>
         </div>
     </div>
     @endif
@@ -663,6 +737,57 @@ new class extends Component {
                     </button>
                     <button type="button" wire:click="$set('showImportModal', false)" class="w-full bg-base text-gray-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-warm/40 transition-all">
                         Batalkan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal Import Master --}}
+    @if($showImportMasterModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" wire:click="$set('showImportMasterModal', false)"></div>
+        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up">
+            <h2 class="text-xl font-bold text-gray-900 mb-2">Import Master Barang</h2>
+            <p class="text-xs text-gray-500 mb-6">Upload file Excel untuk mendaftarkan banyak barang sekaligus.</p>
+            
+            <form wire:submit="importMaster" class="space-y-4">
+                <div class="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl mb-4">
+                    <p class="text-[10px] text-emerald-600 font-bold uppercase mb-2">Download Template</p>
+                    <button type="button" wire:click="downloadTemplate" class="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 hover:underline">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        template_master_barang.xlsx (Klik untuk Download Terbaru)
+                    </button>
+                </div>
+
+                <div class="relative group">
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Pilih File Excel</label>
+                    <div class="relative h-32 w-full border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all group-hover:border-accent/30 group-hover:bg-accent/[0.02]">
+                        <input type="file" wire:model="importMasterFile" class="absolute inset-0 opacity-0 cursor-pointer">
+                        <svg class="w-8 h-8 text-gray-300 group-hover:text-accent/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        <span class="text-xs font-medium text-gray-500">
+                            @if($importMasterFile)
+                                {{ $importMasterFile->getClientOriginalName() }}
+                            @else
+                                Klik atau seret file ke sini
+                            @endif
+                        </span>
+                    </div>
+                    @error('importMasterFile') <span class="text-[10px] text-red-500 font-bold mt-1 ml-2">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="pt-4 flex gap-3">
+                    <button type="button" wire:click="$set('showImportMasterModal', false)" class="flex-1 bg-gray-100 text-gray-500 py-4 rounded-2xl font-bold text-sm">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="flex-1 bg-accent text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-accent/20 flex items-center justify-center gap-2">
+                        <span wire:loading.remove wire:target="importMaster">Proses Import</span>
+                        <span wire:loading wire:target="importMaster" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Processing...
+                        </span>
                     </button>
                 </div>
             </form>

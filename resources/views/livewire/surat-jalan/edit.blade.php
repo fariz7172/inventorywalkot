@@ -15,6 +15,7 @@ state([
     'lokasi' => '',
     'pemohon' => '',
     'petugas' => '',
+    'penerima' => '',
     'no_polisi' => '',
     'pelaksana_kecamatan' => '',
     'keterangan' => '',
@@ -35,6 +36,7 @@ mount(function(DeliveryOrder $order) {
     $this->lokasi = $order->lokasi;
     $this->pemohon = $order->pemohon;
     $this->petugas = $order->petugas;
+    $this->penerima = $order->penerima;
     $this->no_polisi = $order->no_polisi;
     $this->pelaksana_kecamatan = $order->pelaksana_kecamatan;
     $this->keterangan = $order->keterangan;
@@ -68,6 +70,7 @@ $save = function () {
         'lokasi' => 'required',
         'pemohon' => 'required',
         'petugas' => 'required',
+        'penerima' => 'required',
     ];
 
     if ($this->order->status !== 'shipped') {
@@ -89,6 +92,7 @@ $save = function () {
         'lokasi' => $this->lokasi,
         'pemohon' => $this->pemohon,
         'petugas' => $this->petugas,
+        'penerima' => $this->penerima,
         'no_polisi' => $this->no_polisi,
         'pelaksana_kecamatan' => $this->pelaksana_kecamatan,
         'keterangan' => $this->keterangan,
@@ -173,6 +177,11 @@ $save = function () {
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Petugas (Admin)</label>
                     <input type="text" wire:model="petugas" placeholder="Nama Petugas" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('petugas') border-red-500 @enderror">
                     @error('petugas') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Penerima Barang</label>
+                    <input type="text" wire:model="penerima" placeholder="Nama Penerima" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('penerima') border-red-500 @enderror">
+                    @error('penerima') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">No. Polisi Kendaraan</label>

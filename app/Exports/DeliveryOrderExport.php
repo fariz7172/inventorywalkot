@@ -46,6 +46,7 @@ class DeliveryOrderExport implements FromCollection, WithHeadings, WithMapping, 
             'Tanggal',
             'Tujuan / Lokasi',
             'Pemohon',
+            'Penerima',
             'Status',
             'Daftar Material (Detail)',
         ];
@@ -62,6 +63,7 @@ class DeliveryOrderExport implements FromCollection, WithHeadings, WithMapping, 
             $order->tanggal->format('d/m/Y'),
             $order->lokasi,
             $order->pemohon,
+            $order->penerima,
             strtoupper($order->status),
             $materialList ?: '-',
         ];
@@ -72,8 +74,8 @@ class DeliveryOrderExport implements FromCollection, WithHeadings, WithMapping, 
         // Get number of rows to apply wrapping
         $lastRow = $sheet->getHighestRow();
         
-        $sheet->getStyle('F2:F' . $lastRow)->getAlignment()->setWrapText(true);
-        $sheet->getStyle('A1:F' . $lastRow)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+        $sheet->getStyle('G2:G' . $lastRow)->getAlignment()->setWrapText(true);
+        $sheet->getStyle('A1:G' . $lastRow)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
 
         return [
             1 => ['font' => ['bold' => true]],

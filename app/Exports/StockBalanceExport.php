@@ -17,15 +17,13 @@ class StockBalanceExport implements FromCollection, WithHeadings, WithMapping, W
 {
     protected $year;
     protected $month;
-    protected $week;
     protected $category_id;
     protected $search;
 
-    public function __construct($year = null, $month = null, $week = null, $category_id = null, $search = null)
+    public function __construct($year = null, $month = null, $category_id = null, $search = null)
     {
         $this->year = $year ?: date('Y');
         $this->month = $month ?: date('m');
-        $this->week = $week;
         $this->category_id = $category_id;
         $this->search = $search;
     }
@@ -35,13 +33,6 @@ class StockBalanceExport implements FromCollection, WithHeadings, WithMapping, W
         $date = Carbon::create((int)$this->year, (int)$this->month, 1);
         $startDate = $date->copy()->startOfMonth();
         $endDate = $date->copy()->endOfMonth();
-
-        if ($this->week) {
-            $startDate = $date->copy()->startOfMonth()->addWeeks((int)$this->week - 1)->startOfWeek();
-            $endDate = $startDate->copy()->endOfWeek();
-            if ($startDate->month != (int)$this->month) $startDate = $date->copy()->startOfMonth();
-            if ($endDate->month != (int)$this->month) $endDate = $date->copy()->endOfMonth();
-        }
 
         $materials = Material::with('category')
             ->when($this->category_id, fn($q) => $q->where('category_id', $this->category_id))
@@ -81,8 +72,8 @@ class StockBalanceExport implements FromCollection, WithHeadings, WithMapping, W
     public function headings(): array
     {
         return [
-            ['LAPORAN SALDO & MUTASI STOK'],
-            ['Periode: ' . $this->getPeriodLabel()],
+            ['LAPORAN SALDO & MUTASI STOK BULANAN'],
+            ['Periode: ' . Carbon::create($this->year, $this->month, 1)->translatedFormat('F Y')],
             [''],
             ['Material', 'Satuan', 'Saldo Awal', 'Masuk (+)', 'Keluar (-)', 'Saldo Akhir']
         ];
@@ -118,24 +109,6 @@ class StockBalanceExport implements FromCollection, WithHeadings, WithMapping, W
 
     public function title(): string
     {
-        return 'Laporan Saldo Stok';
-    }
-
-    protected function getPeriodLabel()
-    {
-        $date = Carbon::create((int)$this->year, (int)$this->month, 1);
-        $start = $date->copy()->startOfMonth();
-        $end = $date->copy()->endOfMonth();
-
-        if ($this->week) {
-            $start = $date->copy()->startOfMonth()->addWeeks((int)$this->week - 1)->startOfWeek();
-            $end = $start->copy()->endOfWeek();
-            if ($start->month != (int)$this->month) $start = $date->copy()->startOfMonth();
-            if ($end->month != (int)$this->month) $end = $date->copy()->endOfMonth();
-            
-            return "Minggu Ke-" . $this->week . " (" . $start->format('d M') . " - " . $end->format('d M Y') . ")";
-        }
-
-        return $start->translatedFormat('F Y');
+        return 'Laporan Bulanan';
     }
 }

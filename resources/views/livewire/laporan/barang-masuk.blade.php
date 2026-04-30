@@ -77,11 +77,13 @@ new class extends Component {
                 DB::raw('MAX(created_at) as latest_created_at'),
                 DB::raw('MAX(image) as latest_image'),
                 DB::raw('MAX(supplier) as latest_supplier'),
-                DB::raw('COUNT(*) as total_items')
+                DB::raw('COUNT(*) as total_items'),
+                DB::raw('MAX(id) as max_id')
             )
             ->with(['user', 'deliveryOrder'])
             ->groupBy('reference_number', 'delivery_order_id', 'type', 'user_id', 'date')
-            ->orderBy('latest_created_at', 'desc');
+            ->orderBy('latest_created_at', 'desc')
+            ->orderBy('max_id', 'desc');
 
         if ($this->filterType !== 'all') {
             $query->where('type', $this->filterType);
@@ -383,19 +385,25 @@ new class extends Component {
             </div>
             @endif
 
-            <div class="pt-4 flex gap-3">
-                <button onclick="printBeritaAcara()" class="flex-1 bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2">
+            <div class="pt-4 flex gap-3 flex-wrap">
+                <button onclick="printBeritaAcara()" class="flex-1 bg-emerald-500 text-white py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
-                    Cetak Berita Acara
+                    Cetak BA
                 </button>
-                <button wire:click="$set('showDetailModal', false)" class="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all">Tutup Detail</button>
+                <button onclick="printSPB()" class="flex-1 bg-blue-500 text-white py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-600 transition-all flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Cetak SPB
+                </button>
+                <button wire:click="$set('showDetailModal', false)" class="flex-1 bg-gray-900 text-white py-3.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all">Tutup</button>
             </div>
         </div>
     </div>
 
-    <div id="print-area" class="hidden print:block bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+    <div id="print-ba-area" class="hidden print-target bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
         {{-- Kop Surat --}}
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
 
@@ -453,77 +461,30 @@ new class extends Component {
             </p>
         </div>
 
-        @if($isOut)
-            {{-- Table for Distribusi (More Columns) --}}
-            <table class="w-full border-collapse border border-black text-[10px] mb-6">
-                <thead>
-                    <tr class="bg-gray-50">
-                        <th class="border border-black px-1 py-1 text-center w-6" rowspan="2">No</th>
-                        <th class="border border-black px-2 py-1 text-left" rowspan="2">Uraian Nama Barang</th>
-                        <th class="border border-black px-1 py-1 text-center" rowspan="2">Harga Satuan</th>
-                        <th class="border border-black px-1 py-1 text-center" rowspan="2">Satuan</th>
-                        <th class="border border-black px-1 py-1 text-center" rowspan="2">Volume</th>
-                        <th class="border border-black px-1 py-1 text-center" colspan="3">Jumlah</th>
-                        <th class="border border-black px-2 py-1 text-left" rowspan="2">Keterangan</th>
-                    </tr>
-                    <tr class="bg-gray-50">
-                        <th class="border border-black px-1 py-1 text-center">Harga</th>
-                        <th class="border border-black px-1 py-1 text-center">PPN (11%)</th>
-                        <th class="border border-black px-1 py-1 text-center">Harga Setelah Pajak</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($selectedGroup['items'] as $index => $item)
-                    <tr>
-                        <td class="border border-black px-1 py-1 text-center">{{ $index + 1 }}</td>
-                        <td class="border border-black px-2 py-1 font-bold uppercase">{{ $item->material->name }}</td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black px-1 py-1 text-center uppercase">{{ $item->material->unit }}</td>
-                        <td class="border border-black px-1 py-1 text-center font-bold">
-                            {{ (float)$item->volume_keluar }}
-                        </td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black px-2 py-1 italic text-[9px]">{{ $item->note ?: '-' }}</td>
-                    </tr>
-                    @endforeach
-                    <tr class="font-bold bg-gray-50">
-                        <td colspan="5" class="border border-black px-2 py-1 text-right uppercase">Jumlah</td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black px-1 py-1 text-right">0</td>
-                        <td class="border border-black"></td>
-                    </tr>
-                </tbody>
-            </table>
-        @else
-            {{-- Table for Pengadaan (Original) --}}
-            <table class="w-full border-collapse border border-black text-[12px] mb-6">
-                <thead>
-                    <tr>
-                        <th class="border border-black px-2 py-1 text-center w-8">No</th>
-                        <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
-                        <th class="border border-black px-3 py-1 text-center w-20">Satuan</th>
-                        <th class="border border-black px-3 py-1 text-center w-20">Volume</th>
-                        <th class="border border-black px-3 py-1 text-left">Keterangan</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($selectedGroup['items'] as $index => $item)
-                    <tr>
-                        <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
-                        <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $item->material->name }}</td>
-                        <td class="border border-black px-3 py-1.5 text-center uppercase">{{ $item->material->unit }}</td>
-                        <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
-                            {{ (float)$item->volume_masuk }}
-                        </td>
-                        <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $item->note ?: '-' }}</td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
+        <table class="w-full border-collapse border border-black text-[12px] mb-6">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="border border-black px-2 py-1 text-center w-8">No</th>
+                    <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
+                    <th class="border border-black px-3 py-1 text-center w-24">Satuan</th>
+                    <th class="border border-black px-3 py-1 text-center w-24">Volume</th>
+                    <th class="border border-black px-3 py-1 text-left">Keterangan</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($selectedGroup['items'] as $index => $item)
+                <tr>
+                    <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
+                    <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $item->material->name }}</td>
+                    <td class="border border-black px-3 py-1.5 text-center uppercase">{{ $item->material->unit }}</td>
+                    <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
+                        {{ (float)($isOut ? $item->volume_keluar : $item->volume_masuk) }}
+                    </td>
+                    <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $item->note ?: '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
 
         <p class="text-[13px] mb-8">Demikian Berita Acara Serah Terima Barang ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
 
@@ -549,18 +510,81 @@ new class extends Component {
         </div>
     </div>
 
+    <div id="print-spb-area" class="hidden print-target bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+        <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
+
+        <div class="text-center mb-6">
+            <h1 class="text-lg font-bold underline uppercase leading-tight">
+                SURAT PERMINTAAN BARANG (SPB)
+            </h1>
+            <p class="text-sm font-bold mt-1">Nomor: {{ $selectedGroup['reference'] ?: '……………………………' }}</p>
+        </div>
+
+        <table class="w-full border-collapse border border-black text-[12px] mb-8">
+            <thead>
+                <tr>
+                    <th class="border border-black px-2 py-2 text-center w-8">No</th>
+                    <th class="border border-black px-3 py-2 text-left">Uraian / Nama Barang</th>
+                    <th class="border border-black px-3 py-2 text-center w-24">Jumlah</th>
+                    <th class="border border-black px-3 py-2 text-left w-32">Keterangan</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($selectedGroup['items'] as $index => $item)
+                <tr>
+                    <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
+                    <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $item->material->name }}</td>
+                    <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
+                        {{ (float)($selectedGroup['type'] === 'out' ? $item->volume_keluar : $item->volume_masuk) }} {{ $item->material->unit }}
+                    </td>
+                    <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $item->note ?: '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div class="grid grid-cols-2 text-center text-[13px] mt-12">
+            <div>
+                <p class="invisible">Jakarta, ...</p>
+                <p class="mt-1">Mengetahui,</p>
+                <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">
+                    {{ $selectedGroup['type'] === 'out' ? 'Unit / Kabag / Kabid' : 'Pimpinan / PPK' }}
+                </p>
+                
+                <div class="h-24"></div>
+                
+                <p class="font-bold underline uppercase">______________________</p>
+                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+            </div>
+            <div>
+                <p>Jakarta, {{ $carbonDate->day ?? \Carbon\Carbon::now()->day }} {{ $monthName ?? \Carbon\Carbon::now()->translatedFormat('F') }} {{ $carbonDate->year ?? \Carbon\Carbon::now()->year }}</p>
+                <p class="mt-1">Yang Meminta Barang,</p>
+                <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">
+                    Petugas / Pemohon
+                </p>
+                
+                <div class="h-24"></div>
+                
+                <p class="font-bold underline uppercase">{{ $selectedGroup['type'] === 'out' ? ($selectedGroup['pemohon'] ?: '______________________') : ($selectedGroup['user'] ?? '______________________') }}</p>
+                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+            </div>
+        </div>
+    </div>
+
     @endif
 
     <style>
+        .print-target { display: none; }
+        
         @media print {
             @page { margin: 1cm; }
             body * {
                 visibility: hidden;
             }
-            #print-area, #print-area * {
+            .print-active, .print-active * {
                 visibility: visible;
             }
-            #print-area {
+            .print-active {
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -576,7 +600,27 @@ new class extends Component {
             const originalTitle = document.title;
             const ref = "{{ $selectedGroup['reference'] ?? 'Draft' }}";
             document.title = "Berita Acara - " + ref;
+            
+            document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
+            document.getElementById('print-ba-area').classList.add('print-active');
+            
             window.print();
+            
+            document.getElementById('print-ba-area').classList.remove('print-active');
+            document.title = originalTitle;
+        }
+
+        function printSPB() {
+            const originalTitle = document.title;
+            const ref = "{{ $selectedGroup['reference'] ?? 'Draft' }}";
+            document.title = "SPB - " + ref;
+            
+            document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
+            document.getElementById('print-spb-area').classList.add('print-active');
+            
+            window.print();
+            
+            document.getElementById('print-spb-area').classList.remove('print-active');
             document.title = originalTitle;
         }
     </script>

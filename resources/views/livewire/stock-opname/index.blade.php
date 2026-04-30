@@ -24,7 +24,9 @@ state([
     'selectedOpname' => null,
     'hasPendingOpname' => false,
     'needsDifferenceConfirmation' => false,
-    'filterPeriod' => 'all', // all, this_week, this_month, this_year
+    'filterPeriod' => 'all', // all, this_week, this_month, this_year, custom
+    'startDate' => '',
+    'endDate' => '',
 ]);
 
 mount(function() {
@@ -49,6 +51,8 @@ $loadData = function() {
               ->whereYear('opname_date', now()->year);
     } elseif ($this->filterPeriod === 'this_year') {
         $query->whereYear('opname_date', now()->year);
+    } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
+        $query->whereBetween('opname_date', [$this->startDate, $this->endDate]);
     }
     
     $this->opnames = $query->get();
@@ -264,22 +268,37 @@ $rejectOpname = function($id) {
         </div>
     @endif
 
-    <div class="flex justify-between items-end mb-4">
-        <div class="w-64">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Filter Periode</label>
-            <div class="relative">
-                <select wire:model.live="filterPeriod" wire:change="loadData" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium">
-                    <option value="all">Menampilkan Semua Data</option>
-                    <option value="this_week">Minggu Ini</option>
-                    <option value="this_month">Bulan Ini</option>
-                    <option value="this_year">Tahun Ini</option>
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <div class="flex flex-wrap items-end gap-4 mb-6">
+            <div class="w-64">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Filter Periode</label>
+                <div class="relative">
+                    <select wire:model.live="filterPeriod" wire:change="loadData" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium">
+                        <option value="all">Menampilkan Semua Data</option>
+                        <option value="this_week">Minggu Ini</option>
+                        <option value="this_month">Bulan Ini</option>
+                        <option value="this_year">Tahun Ini</option>
+                        <option value="custom">Rentang Tanggal Custom</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
                 </div>
             </div>
+
+            @if($filterPeriod === 'custom')
+                <div class="flex items-center gap-2 animate-fade-in">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Dari</label>
+                        <input type="date" wire:model.live="startDate" wire:change="loadData" class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm font-medium shadow-sm">
+                    </div>
+                    <div class="pt-6 text-gray-400 font-bold">sampai</div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Sampai</label>
+                        <input type="date" wire:model.live="endDate" wire:change="loadData" class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm font-medium shadow-sm">
+                    </div>
+                </div>
+            @endif
         </div>
-    </div>
 
     <!-- Table List Opname -->
     <div class="bg-white rounded-2xl shadow-card overflow-hidden ring-1 ring-accent/5">
