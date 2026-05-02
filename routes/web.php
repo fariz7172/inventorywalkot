@@ -42,6 +42,7 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     // Fitur Tambahan
     Volt::route('/stock-opname', 'stock-opname.index')->name('stock-opname.index');
     Volt::route('/settings', 'settings')->name('settings');
+    Route::get('/laporan/print-riwayat/{id}', [App\Http\Controllers\ReportController::class, 'printRiwayat'])->name('laporan.print-riwayat');
     Route::get('/pengaturan', fn() => view('admin.settings'))->name('settings_alias');
 });
 

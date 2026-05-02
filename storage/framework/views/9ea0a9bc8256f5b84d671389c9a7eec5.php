@@ -34,53 +34,69 @@ use Livewire\Volt\Component;
             x-transition:leave="ease-in duration-200"
             x-transition:leave-start="opacity-100 scale-100"
             x-transition:leave-end="opacity-0 scale-95"
-            class="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-3xl ring-1 ring-black/5 overflow-hidden"
+            class="relative bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl ring-1 ring-black/5 overflow-hidden"
             @click.stop
         >
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($material): ?>
             
-            <div class="bg-accent px-8 py-8 text-white flex justify-between items-start">
+            <div class="bg-accent px-8 py-6 text-white flex flex-col md:flex-row md:justify-between md:items-center gap-4">
                 <div>
-                    <span class="inline-block px-2 py-1 rounded bg-white/20 text-[10px] font-black uppercase tracking-widest mb-2">Riwayat Transaksi</span>
+                    <span class="inline-block px-2 py-1 rounded bg-white/20 text-[10px] font-black uppercase tracking-widest mb-1">Riwayat Transaksi</span>
                     <h3 class="text-2xl font-black"><?php echo e($material->name); ?></h3>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($startDate && $endDate): ?>
-                        <p class="text-white/70 text-xs mt-1 font-bold">
-                            Periode: <?php echo e(\Carbon\Carbon::parse($startDate)->format('d M Y')); ?> — <?php echo e(\Carbon\Carbon::parse($endDate)->format('d M Y')); ?>
-
-                        </p>
-                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </div>
-                <button wire:click="closeModal" class="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <div class="flex items-center gap-2 bg-white/10 p-1.5 rounded-xl border border-white/20">
+                        <div class="flex flex-col">
+                            <span class="text-[9px] text-white/70 font-bold uppercase tracking-wider px-2">Dari</span>
+                            <input type="date" wire:model="startDate" class="bg-transparent border-none text-white text-xs font-bold focus:ring-0 cursor-pointer py-1" style="color-scheme: dark;">
+                        </div>
+                        <span class="text-white/30 font-bold">-</span>
+                        <div class="flex flex-col">
+                            <span class="text-[9px] text-white/70 font-bold uppercase tracking-wider px-2">Sampai</span>
+                            <input type="date" wire:model="endDate" class="bg-transparent border-none text-white text-xs font-bold focus:ring-0 cursor-pointer py-1" style="color-scheme: dark;">
+                        </div>
+                        <button wire:click="applyFilter" class="bg-white text-accent px-4 py-2 rounded-lg text-xs font-black hover:bg-gray-100 transition-colors uppercase tracking-widest shadow-sm ml-1">
+                            Filter
+                        </button>
+                    </div>
+                    <button wire:click="closeModal" class="bg-white/10 hover:bg-white/20 p-2.5 rounded-xl transition-colors ml-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             
-            <div class="grid grid-cols-3 divide-x divide-warm/60 bg-base/60 border-b border-warm/60">
-                <div class="px-6 py-4 text-center">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Masuk</p>
-                    <p class="text-lg font-black text-emerald-600">
-                        +<?php echo e((float) $transactions->sum('volume_masuk')); ?>
+            <div class="grid grid-cols-4 divide-x divide-gray-200 bg-white border-b border-gray-100">
+                <div class="px-4 py-6 text-center">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Saldo Awal</p>
+                    <p class="text-xl font-black text-gray-900">
+                        <?php echo e(number_format($openingBalance, 0, ',', '.')); ?>
 
                         <span class="text-xs font-bold text-gray-400 ml-0.5"><?php echo e($material->unit); ?></span>
                     </p>
                 </div>
-                <div class="px-6 py-4 text-center">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Keluar</p>
-                    <p class="text-lg font-black text-red-500">
-                        -<?php echo e((float) $transactions->sum('volume_keluar')); ?>
+                <div class="px-4 py-6 text-center">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Masuk (+)</p>
+                    <p class="text-xl font-black text-green-600">
+                        +<?php echo e(number_format($totalIn, 0, ',', '.')); ?>
 
-                        <span class="text-xs font-bold text-gray-400 ml-0.5"><?php echo e($material->unit); ?></span>
                     </p>
                 </div>
-                <div class="px-6 py-4 text-center">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Saldo Akhir</p>
-                    <p class="text-lg font-black text-accent">
-                        <?php echo e((float) ($transactions->last()->balance_after ?? 0)); ?>
+                <div class="px-4 py-6 text-center">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Keluar (-)</p>
+                    <p class="text-xl font-black text-red-600">
+                        -<?php echo e(number_format($totalOut, 0, ',', '.')); ?>
 
-                        <span class="text-xs font-bold text-gray-400 ml-0.5"><?php echo e($material->unit); ?></span>
+                    </p>
+                </div>
+                <div class="px-4 py-6 text-center bg-blue-50/30">
+                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-1">Stock Sisa</p>
+                    <p class="text-xl font-black text-blue-700">
+                        <?php echo e(number_format($finalBalance, 0, ',', '.')); ?>
+
+                        <span class="text-xs font-bold text-blue-400 ml-0.5"><?php echo e($material->unit); ?></span>
                     </p>
                 </div>
             </div>
@@ -138,8 +154,20 @@ use Livewire\Volt\Component;
             </div>
 
             
-            <div class="px-8 py-5 bg-base/30 border-t border-gray-50 flex justify-end">
-                <button wire:click="closeModal" class="bg-base hover:bg-warm/60 text-gray-700 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
+            <div class="px-8 py-6 bg-gray-50 border-t border-gray-100 flex justify-end items-center gap-3">
+                <a href="<?php echo e(route('laporan.print-riwayat', ['id' => $material->id, 'start_date' => $startDate, 'end_date' => $endDate])); ?>" target="_blank" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-200 flex items-center gap-2 hover:bg-blue-700 transition-all uppercase tracking-widest">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Cetak Print
+                </a>
+                <button wire:click="exportExcel" class="bg-green-600 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-green-200 flex items-center gap-2 hover:bg-green-700 transition-all uppercase tracking-widest">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Excel
+                </button>
+                <button wire:click="closeModal" class="px-6 py-2.5 rounded-xl text-xs font-bold text-gray-500 hover:bg-gray-100 transition-all uppercase tracking-widest">
                     Tutup
                 </button>
             </div>

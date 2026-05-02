@@ -242,8 +242,8 @@ $rejectOpname = function($id) {
         </div>
         <div class="flex items-center gap-3">
             <a href="{{ route('laporan.stock-opname') }}" class="bg-white border border-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:bg-gray-50 flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Lihat Laporan Rekap
+                <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Lihat Analisa Selisih
             </a>
             
             @if(auth()->user()->hasRole('gudang'))
@@ -452,6 +452,7 @@ $rejectOpname = function($id) {
                                 <th class="px-4 py-3 text-center">Fisik</th>
                                 <th class="px-4 py-3 text-center">Selisih</th>
                                 <th class="px-4 py-3">Keterangan</th>
+                                <th class="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
@@ -464,6 +465,12 @@ $rejectOpname = function($id) {
                                     {{ $item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference) }}
                                 </td>
                                 <td class="px-4 py-3 text-gray-600 italic text-xs">{{ $item->notes ?? '-' }}</td>
+                                <td class="px-4 py-3 text-center">
+                                    <button wire:click="$dispatch('show-riwayat-saldo', [{{ $item->material->id }}, '{{ \Carbon\Carbon::parse($selectedOpname->opname_date)->startOfMonth()->format('Y-m-d') }}', '{{ \Carbon\Carbon::parse($selectedOpname->opname_date)->format('Y-m-d') }}'])" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        Lihat & Cetak Kartu
+                                    </button>
+                                </td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -611,4 +618,6 @@ $rejectOpname = function($id) {
     @endif
 
     <script src="{{ asset('js/print-stock-opname.js') }}"></script>
+    
+    @livewire('laporan.riwayat-saldo-modal')
 </div>

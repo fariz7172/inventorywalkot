@@ -41,7 +41,7 @@ class SuratJalanImport implements ToCollection
         $dataRows = $rows->slice(1);
         $this->log("Processing " . $dataRows->count() . " data rows with NEW COLUMN ORDER.");
 
-        // New Column Order:
+        // New Column Order (Updated):
         // 0: tanggal
         // 1: nama_barang
         // 2: volume_keluar
@@ -49,10 +49,10 @@ class SuratJalanImport implements ToCollection
         // 4: lokasi
         // 5: pemohon
         // 6: petugas
-        // 7: no_surat_jalan
-        // 8: kecamatan_pelaksana
-        // 9: keterangan
-        // 10: penerima
+        // 7: penerima
+        // 8: no_surat_jalan
+        // 9: kecamatan_pelaksana
+        // 10: keterangan
 
         $lastSjNo = null;
         $lastDate = null;
@@ -67,22 +67,39 @@ class SuratJalanImport implements ToCollection
         $processedRows = new Collection();
 
         foreach ($dataRows as $index => $row) {
-            // Skip rows where both material and SJ no are empty
-            if (empty($row[7]) && empty($row[1])) {
+            // Skip rows where both material and date are empty
+            if (empty($row[0]) && empty($row[1])) {
                 continue;
             }
 
-            // If No Surat Jalan (index 7) is filled, we consider it a new document or start of a document's items
-            if (!empty($row[7])) {
-                $lastSjNo = trim($row[7]);
+            // Handle No Surat Jalan (index 8)
+            if (!empty($row[8])) {
+                // New explicit SJ number found
+                $lastSjNo = trim($row[8]);
                 $lastDate = $row[0];
-                $lastPolisi = $row[3] ?? null;
-                $lastLokasi = $row[4] ?? '-';
-                $lastPemohon = $row[5] ?? '-';
-                $lastPetugas = $row[6] ?? 'SANJAYA';
-                $lastKecamatan = $row[8] ?? '-';
-                $lastKeterangan = $row[9] ?? null;
-                $lastPenerima = $row[10] ?? '-';
+                $lastPolisi = !empty($row[3]) ? trim($row[3]) : 'Data Belum Di Input';
+                $lastLokasi = !empty($row[4]) && trim($row[4]) !== '-' ? trim($row[4]) : 'Data Belum Di Input';
+                $lastPemohon = !empty($row[5]) && trim($row[5]) !== '-' ? trim($row[5]) : 'Data Belum Di Input';
+                $lastPetugas = !empty($row[6]) ? trim($row[6]) : 'Data Belum Di Input';
+                $lastPenerima = !empty($row[7]) && trim($row[7]) !== '-' ? trim($row[7]) : 'Data Belum Di Input';
+                $lastKecamatan = !empty($row[9]) && trim($row[9]) !== '-' ? trim($row[9]) : 'Data Belum Di Input';
+                $lastKeterangan = !empty($row[10]) ? trim($row[10]) : 'Data Belum Di Input';
+            } elseif (empty($lastSjNo) && !empty($row[1])) {
+                // If No SJ is empty AND we don't have a previous SJ (first row of a block is missing SJ)
+                // Generate automatic SJ number based on date
+                $tempDate = $this->parseIndonesianDate($row[0]);
+                $lastSjNo = "SJ-TANPA-NOMOR-" . $tempDate->format('Ymd') . "-" . strtoupper(substr(uniqid(), -4));
+                $lastDate = $row[0];
+                
+                $this->log("Generating auto SJ number: $lastSjNo for material " . $row[1]);
+
+                $lastPolisi = 'Data Belum Di Input';
+                $lastLokasi = 'Data Belum Di Input';
+                $lastPemohon = 'Data Belum Di Input';
+                $lastPetugas = 'Data Belum Di Input';
+                $lastPenerima = 'Data Belum Di Input';
+                $lastKecamatan = 'Data Belum Di Input';
+                $lastKeterangan = 'Data Belum Di Input';
             }
 
             $processedRows->push([
@@ -94,42 +111,49 @@ class SuratJalanImport implements ToCollection
                 'lokasi' => $lastLokasi,
                 'pemohon' => $lastPemohon,
                 'petugas' => $lastPetugas,
+                'penerima' => $lastPenerima,
                 'kecamatan_pelaksana' => $lastKecamatan,
                 'keterangan' => $lastKeterangan,
-                'penerima' => $lastPenerima,
             ]);
         }
 
         $groups = $processedRows->groupBy('no_surat_jalan');
         $this->log("Grouped into " . $groups->count() . " unique Surat Jalans.");
 
+        // Pre-fetch materials to avoid N+1 queries
+        $allMaterialNames = $processedRows->pluck('nama_barang')->unique()->filter()->map(fn($n) => trim($n))->toArray();
+        $materialsMap = Material::whereIn('name', $allMaterialNames)->get()->keyBy('name');
+
         foreach ($groups as $sjNo => $items) {
             if (empty($sjNo)) continue;
 
             try {
-                DB::transaction(function () use ($sjNo, $items) {
+                DB::transaction(function () use ($sjNo, $items, $materialsMap) {
                     $first = $items->first();
                     $date = $this->parseIndonesianDate($first['tanggal']);
 
                     $deliveryOrder = DeliveryOrder::where('surat_jalan_no', $sjNo)->first();
-                    $isNewOrder = false;
                     
-                    if (!$deliveryOrder) {
-                        $isNewOrder = true;
+                    $doData = [
+                        'surat_jalan_no' => $sjNo,
+                        'tanggal' => $date,
+                        'lokasi' => !empty($first['lokasi']) && $first['lokasi'] !== '-' ? $first['lokasi'] : 'Data Belum Di Input',
+                        'pemohon' => !empty($first['pemohon']) && $first['pemohon'] !== '-' ? $first['pemohon'] : 'Data Belum Di Input',
+                        'petugas' => !empty($first['petugas']) ? $first['petugas'] : 'Data Belum Di Input',
+                        'no_polisi' => !empty($first['no_polisi']) ? $first['no_polisi'] : 'Data Belum Di Input',
+                        'pelaksana_kecamatan' => !empty($first['kecamatan_pelaksana']) && $first['kecamatan_pelaksana'] !== '-' ? $first['kecamatan_pelaksana'] : 'Data Belum Di Input',
+                        'keterangan' => !empty($first['keterangan']) ? $first['keterangan'] : 'Data Belum Di Input',
+                        'penerima' => !empty($first['penerima']) && $first['penerima'] !== '-' ? $first['penerima'] : 'Data Belum Di Input',
+                        'status' => 'shipped',
+                        'user_id' => Auth::id() ?? 1,
+                    ];
+
+                    if ($deliveryOrder) {
+                        $this->log("UPDATING existing Delivery Order: $sjNo");
+                        $deliveryOrder->update($doData);
+                    } else {
                         $this->log("Creating NEW Delivery Order: $sjNo");
-                        $deliveryOrder = DeliveryOrder::create([
-                            'surat_jalan_no' => $sjNo,
-                            'tanggal' => $date,
-                            'lokasi' => $first['lokasi'],
-                            'pemohon' => $first['pemohon'],
-                            'petugas' => $first['petugas'],
-                            'no_polisi' => $first['no_polisi'],
-                            'pelaksana_kecamatan' => $first['kecamatan_pelaksana'],
-                            'keterangan' => $first['keterangan'],
-                            'penerima' => $first['penerima'],
-                            'status' => 'shipped', // Set as shipped automatically
-                            'user_id' => Auth::id() ?? 1,
-                        ]);
+                        $deliveryOrder = DeliveryOrder::create($doData);
                     }
 
                     foreach ($items as $item) {
@@ -138,7 +162,7 @@ class SuratJalanImport implements ToCollection
                         }
 
                         $materialName = trim($item['nama_barang']);
-                        $material = Material::where('name', $materialName)->first();
+                        $material = $materialsMap->get($materialName);
                         
                         if (!$material) {
                             $this->log("ERROR: Material '$materialName' not found for SJ $sjNo. Skipping item.");
@@ -147,25 +171,26 @@ class SuratJalanImport implements ToCollection
 
                         $volume = (float) $item['volume_keluar'];
 
-                        // Link to Delivery Order (Pivot)
+                        // 1. Update/Link to Delivery Order (Pivot)
                         $deliveryOrder->materials()->syncWithoutDetaching([
                             $material->id => ['requested_volume' => $volume]
                         ]);
 
-                        // Only create transaction if this is a newly imported order
-                        // This prevents duplicating transactions if imported twice
-                        if ($isNewOrder) {
-                            InventoryTransaction::create([
+                        // 2. Update/Create Inventory Transaction
+                        InventoryTransaction::updateOrCreate(
+                            [
                                 'delivery_order_id' => $deliveryOrder->id,
                                 'material_id' => $material->id,
                                 'type' => 'out',
+                            ],
+                            [
                                 'volume_keluar' => $volume,
                                 'reference_number' => $deliveryOrder->surat_jalan_no,
                                 'user_id' => Auth::id() ?? 1,
-                                'note' => 'Import Excel: ' . $deliveryOrder->surat_jalan_no,
+                                'note' => 'Import Excel (Update): ' . $deliveryOrder->surat_jalan_no,
                                 'created_at' => $deliveryOrder->tanggal,
-                            ]);
-                        }
+                            ]
+                        );
                     }
                 });
             } catch (\Exception $e) {

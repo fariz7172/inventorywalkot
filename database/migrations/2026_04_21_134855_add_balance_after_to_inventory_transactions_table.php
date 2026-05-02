@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('inventory_transactions', function (Blueprint $column) {
-            $column->decimal('balance_after', 15, 2)->after('pcs')->default(0)->comment('Saldo sisa volume setelah transaksi');
+            $column->integer('balance_after')->after('pcs')->default(0)->comment('Saldo sisa volume setelah transaksi');
             $column->integer('balance_pcs_after')->after('balance_after')->default(0)->comment('Saldo sisa pcs setelah transaksi');
         });
     }

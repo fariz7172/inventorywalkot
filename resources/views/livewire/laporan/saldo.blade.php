@@ -70,18 +70,33 @@ new class extends Component {
 
     public function with()
     {
-        // Define Start and End Date based on filters
         $date = Carbon::create((int) $this->year, (int) $this->month, 1);
-        $startDate = $date->copy()->startOfMonth();
-        $endDate = $date->copy()->endOfMonth();
+        $monthStart = $date->copy()->startOfMonth();
+        $monthEnd = $date->copy()->endOfMonth();
+
+        // Range untuk tampilan header kolom (selalu 7 hari)
+        $displayStartDate = $monthStart->copy();
+        $displayEndDate = $monthEnd->copy();
+
+        // Range untuk kalkulasi (clamped ke bulan berjalan agar balance dengan Excel)
+        $calcStartDate = $monthStart->copy();
+        $calcEndDate = $monthEnd->copy();
 
         if ($this->week) {
-            $startDate = $date->copy()->startOfMonth()->addWeeks((int) $this->week - 1)->startOfWeek();
-            $endDate = $startDate->copy()->endOfWeek();
-            if ($startDate->month != (int) $this->month)
-                $startDate = $date->copy()->startOfMonth();
-            if ($endDate->month != (int) $this->month)
-                $endDate = $date->copy()->endOfMonth();
+            // Tampilan 7 hari (Senin - Minggu)
+            $displayStartDate = $date->copy()->startOfMonth()->addWeeks((int) $this->week - 1)->startOfWeek();
+            $displayEndDate = $displayStartDate->copy()->endOfWeek();
+
+            // Batasi rentang kalkulasi hanya di dalam bulan terpilih
+            $calcStartDate = $displayStartDate->copy();
+            if ($calcStartDate->lt($monthStart)) {
+                $calcStartDate = $monthStart->copy();
+            }
+            
+            $calcEndDate = $displayEndDate->copy();
+            if ($calcEndDate->gt($monthEnd)) {
+                $calcEndDate = $monthEnd->copy();
+            }
         }
 
         $materialsQuery = Material::with('category')
@@ -89,52 +104,52 @@ new class extends Component {
             ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'))
             ->orderBy('name', 'asc');
 
-        $paginatedMaterials = $materialsQuery->paginate(100); // Increased to 100
+        $paginatedMaterials = $materialsQuery->paginate(100);
         $now = Carbon::now();
 
         $days = [];
         if ($this->week) {
             for ($i = 0; $i < 7; $i++) {
-                $days[] = $startDate->copy()->addDays($i);
+                $days[] = $displayStartDate->copy()->addDays($i);
             }
         }
 
-        $items = collect($paginatedMaterials->items())->map(function ($material) use ($startDate, $endDate, $now, $days) {
-            // Mutation after the end of period until NOW
-            $mutationAfter = InventoryTransaction::where('material_id', $material->id)
-                ->where('created_at', '>', $endDate)
-                ->selectRaw('SUM(volume_masuk) as in_sum, SUM(volume_keluar) as out_sum')
+        $items = collect($paginatedMaterials->items())->map(function ($material) use ($calcStartDate, $calcEndDate, $now, $days) {
+            // 1. Saldo Awal: Semua transaksi SEBELUM tanggal awal kalkulasi
+            $openingTrx = InventoryTransaction::where('material_id', $material->id)
+                ->where('created_at', '<', $calcStartDate->copy()->startOfDay())
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
                 ->first();
 
-            $netAfter = (float) ($mutationAfter->in_sum ?? 0) - (float) ($mutationAfter->out_sum ?? 0);
-            $finalBalance = (float) $material->current_volume - $netAfter;
+            $openingBalance = (float)($openingTrx->total_in ?? 0) - (float)($openingTrx->total_out ?? 0);
 
-            // Mutations DURING period
+            // 2. Mutasi Selama Periode: Transaksi ANTARA tanggal awal dan akhir kalkulasi
             $periodTransactions = InventoryTransaction::where('material_id', $material->id)
-                ->whereBetween('created_at', [$startDate, $endDate])
+                ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
                 ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
                 ->first();
 
             $totalIn = (float) ($periodTransactions->total_in ?? 0);
             $totalOut = (float) ($periodTransactions->total_out ?? 0);
-            $openingBalance = $finalBalance - ($totalIn - $totalOut);
 
-            // Daily Incoming if Week is filtered
+            // 3. Saldo Akhir
+            $finalBalance = $openingBalance + $totalIn - $totalOut;
+
+            // Data harian untuk kolom Senin-Minggu
             $dailyIn = [];
             $dailyOut = [];
             if ($this->week) {
-                // Incoming
+                // Query data harian hanya untuk range yang valid dalam bulan ini
                 $dailyInTrx = InventoryTransaction::where('material_id', $material->id)
-                    ->whereBetween('created_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
+                    ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
                     ->where('type', 'in')
                     ->selectRaw('DATE(created_at) as date, SUM(volume_masuk) as daily_total')
                     ->groupBy('date')
                     ->get()
                     ->pluck('daily_total', 'date');
 
-                // Outgoing
                 $dailyOutTrx = InventoryTransaction::where('material_id', $material->id)
-                    ->whereBetween('created_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
+                    ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
                     ->where('type', 'out')
                     ->selectRaw('DATE(created_at) as date, SUM(volume_keluar) as daily_total')
                     ->groupBy('date')
@@ -143,8 +158,15 @@ new class extends Component {
 
                 foreach ($days as $day) {
                     $dateStr = $day->format('Y-m-d');
-                    $dailyIn[] = round((float) ($dailyInTrx[$dateStr] ?? 0), 2);
-                    $dailyOut[] = round((float) ($dailyOutTrx[$dateStr] ?? 0), 2);
+                    
+                    // Jika hari di luar bulan, beri nilai null (block abu-abu)
+                    if ($day->month != (int) $this->month) {
+                        $dailyIn[] = null;
+                        $dailyOut[] = null;
+                    } else {
+                        $dailyIn[] = (float) ($dailyInTrx[$dateStr] ?? 0);
+                        $dailyOut[] = (float) ($dailyOutTrx[$dateStr] ?? 0);
+                    }
                 }
             }
 
@@ -155,6 +177,7 @@ new class extends Component {
                 'unit' => $material->unit,
                 'opening_balance' => round($openingBalance, 2),
                 'total_in' => round($totalIn, 2),
+                'jumlah_stok' => round($openingBalance + $totalIn, 2),
                 'total_out' => round($totalOut, 2),
                 'final_balance' => round($finalBalance, 2),
                 'daily_in' => $dailyIn,
@@ -166,9 +189,10 @@ new class extends Component {
             'items' => $items,
             'pagination' => $paginatedMaterials,
             'categories' => Category::all(),
-            'periodLabel' => $this->getPeriodLabel($startDate, $endDate),
-            'startDateParam' => $startDate->format('Y-m-d'),
-            'endDateParam' => $endDate->format('Y-m-d'),
+            'days' => $days,
+            'periodLabel' => $this->getPeriodLabel($calcStartDate, $calcEndDate),
+            'startDateParam' => $calcStartDate->format('Y-m-d'),
+            'endDateParam' => $calcEndDate->format('Y-m-d'),
         ];
     }
 
@@ -203,7 +227,8 @@ new class extends Component {
             <button onclick="printReport()"
                 class="bg-gray-800 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-gray-800/20 flex items-center gap-2 hover:bg-gray-900 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 Cetak (Print)
             </button>
@@ -273,20 +298,23 @@ new class extends Component {
             </div>
 
             @if($week)
-            <div class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5H11V7H13V5ZM13 9H11V11H13V9ZM13 13H11V15H13V13ZM13 17H11V19H13V17ZM17 5H15V7H17V5ZM17 9H15V11H17V9ZM17 13H15V15H17V13ZM17 17H15V19H17V17ZM21 5H19V7H21V5ZM21 9H19V11H21V9ZM21 13H19V15H21V13ZM21 17H19V19H21V17ZM9 5H7V7H9V5ZM9 9H7V11H9V9ZM9 13H7V15H9V13ZM9 17H7V19H9V17ZM5 5H3V7H5V5ZM5 9H3V11H5V9ZM5 13H3V15H5V13ZM5 17H3V19H5V17Z" />
-                </svg>
-                Geser tabel ke kanan untuk rincian harian
-            </div>
+                <div class="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 5H11V7H13V5ZM13 9H11V11H13V9ZM13 13H11V15H13V13ZM13 17H11V19H13V17ZM17 5H15V7H17V5ZM17 9H15V11H17V9ZM17 13H15V15H17V13ZM17 17H15V19H17V17ZM21 5H19V7H21V5ZM21 9H19V11H21V9ZM21 13H19V15H21V13ZM21 17H19V19H21V17ZM9 5H7V7H9V5ZM9 9H7V11H9V9ZM9 13H7V15H9V13ZM9 17H7V19H9V17ZM5 5H3V7H5V5ZM5 9H3V11H5V9ZM5 13H3V15H5V13ZM5 17H3V19H5V17Z" />
+                    </svg>
+                    Geser tabel ke kanan untuk rincian harian
+                </div>
             @endif
         </div>
 
         @if($week)
-        <!-- Top Scrollbar for Long Tables -->
-        <div id="top-scroll-container" class="overflow-x-auto overflow-y-hidden border-b border-gray-50 bg-gray-50/30 sticky top-0 z-30" style="height: 12px;">
-            <div id="top-scroll-content" style="height: 12px;"></div>
-        </div>
+            <!-- Top Scrollbar for Long Tables -->
+            <div id="top-scroll-container"
+                class="overflow-x-auto overflow-y-hidden border-b border-gray-50 bg-gray-50/30 sticky top-0 z-30"
+                style="height: 12px;">
+                <div id="top-scroll-content" style="height: 12px;"></div>
+            </div>
         @endif
 
         <div id="table-scroll-container" class="overflow-x-auto">
@@ -306,35 +334,49 @@ new class extends Component {
 
                         @if($week)
                             @php
-                                $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+                                $indoDays = [
+                                    'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu',
+                                    'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu', 'Sunday' => 'Minggu'
+                                ];
                             @endphp
                             @foreach($days as $day)
                                 <th
-                                    class="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-emerald-500 text-center min-w-[80px] bg-emerald-50/20">
-                                    {{ $day }}
+                                    class="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-emerald-500 text-center min-w-[100px] bg-emerald-50/20">
+                                    {{ $indoDays[$day->format('l')] }}<br>
+                                    <span class="text-[9px] text-emerald-400 font-bold">({{ $day->format('d/m') }})</span>
                                 </th>
                             @endforeach
                         @endif
 
-                        <th
-                            class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-emerald-600 text-right bg-emerald-50/30 min-w-[120px]">
-                            Total Masuk (+)</th>
+                        @if($week)
+                            <th
+                                class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-emerald-600 text-right bg-emerald-50/30 min-w-[120px]">
+                                Jumlah Masuk</th>
+                            <th
+                                class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-blue-600 text-right bg-blue-50/30 min-w-[120px]">
+                                Jumlah Stok</th>
+                        @else
+                            <th
+                                class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-emerald-600 text-right bg-emerald-50/30 min-w-[120px]">
+                                Total Masuk (+)</th>
+                        @endif
 
                         @if($week)
                             @foreach($days as $day)
                                 <th
-                                    class="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-red-500 text-center min-w-[80px] bg-red-50/20">
-                                    {{ $day }}
+                                    class="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-red-500 text-center min-w-[100px] bg-red-50/20">
+                                    {{ $indoDays[$day->format('l')] }}<br>
+                                    <span class="text-[9px] text-red-400 font-bold">({{ $day->format('d/m') }})</span>
                                 </th>
                             @endforeach
                         @endif
 
                         <th
                             class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-red-600 text-right bg-red-50/30 min-w-[120px]">
-                            Total Keluar (-)</th>
+                            {{ $week ? 'Jumlah Keluar' : 'Total Keluar (-)' }}</th>
                         <th
                             class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 text-right min-w-[150px]">
-                            Saldo Akhir</th>
+                            {{ $week ? 'Stock Sisa' : 'Saldo Akhir' }}</th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">
                             Aksi</th>
                     </tr>
@@ -359,25 +401,44 @@ new class extends Component {
 
                             @if($week)
                                 @foreach($item->daily_in as $val)
-                                    <td class="px-4 py-4 text-center bg-emerald-50/5">
-                                        <span class="text-[11px] {{ $val > 0 ? 'font-bold text-emerald-600' : 'text-gray-400' }}">
-                                            {{ $val > 0 ? number_format($val, 0, ',', '.') : '0' }}
-                                        </span>
+                                    <td class="px-4 py-4 text-center {{ $val === null ? 'bg-gray-100/50' : 'bg-emerald-50/5' }}">
+                                        @if($val === null)
+                                            <span class="text-[11px] text-gray-300 font-bold">-</span>
+                                        @else
+                                            <span class="text-[11px] {{ $val > 0 ? 'font-bold text-emerald-600' : 'text-gray-400' }}">
+                                                {{ $val > 0 ? number_format($val, 0, ',', '.') : '0' }}
+                                            </span>
+                                        @endif
                                     </td>
                                 @endforeach
                             @endif
 
-                            <td class="px-6 py-4 text-right bg-emerald-50/20">
-                                <span
-                                    class="text-xs font-black text-emerald-600">{{ number_format($item->total_in, 0, ',', '.') }}</span>
-                            </td>
+                             @if($week)
+                                <td class="px-6 py-4 text-right bg-emerald-50/20">
+                                    <span
+                                        class="text-xs font-black text-emerald-600">{{ number_format($item->total_in, 0, ',', '.') }}</span>
+                                </td>
+                                <td class="px-6 py-4 text-right bg-blue-50/20">
+                                    <span
+                                        class="text-xs font-black text-blue-600">{{ number_format($item->jumlah_stok, 0, ',', '.') }}</span>
+                                </td>
+                             @else
+                                <td class="px-6 py-4 text-right bg-emerald-50/20">
+                                    <span
+                                        class="text-xs font-black text-emerald-600">{{ number_format($item->total_in, 0, ',', '.') }}</span>
+                                </td>
+                             @endif
 
                             @if($week)
                                 @foreach($item->daily_out as $val)
-                                    <td class="px-4 py-4 text-center bg-red-50/5">
-                                        <span class="text-[11px] {{ $val > 0 ? 'font-bold text-red-600' : 'text-gray-400' }}">
-                                            {{ $val > 0 ? number_format($val, 0, ',', '.') : '0' }}
-                                        </span>
+                                    <td class="px-4 py-4 text-center {{ $val === null ? 'bg-gray-100/50' : 'bg-red-50/5' }}">
+                                        @if($val === null)
+                                            <span class="text-[11px] text-gray-300 font-bold">-</span>
+                                        @else
+                                            <span class="text-[11px] {{ $val > 0 ? 'font-bold text-red-600' : 'text-gray-400' }}">
+                                                {{ $val > 0 ? number_format($val, 0, ',', '.') : '0' }}
+                                            </span>
+                                        @endif
                                     </td>
                                 @endforeach
                             @endif
@@ -421,11 +482,11 @@ new class extends Component {
         function printReport() {
             const originalTitle = document.title;
             document.title = "Laporan Saldo & Mutasi - {{ $periodLabel }}";
-            
+
             document.getElementById('print-area').classList.add('print-active');
             window.print();
             document.getElementById('print-area').classList.remove('print-active');
-            
+
             document.title = originalTitle;
         }
 
@@ -441,12 +502,12 @@ new class extends Component {
                     topContent.style.width = table.scrollWidth + 'px';
 
                     // Sync Top to Bottom
-                    topScroll.onscroll = function() {
+                    topScroll.onscroll = function () {
                         tableScroll.scrollLeft = topScroll.scrollLeft;
                     };
 
                     // Sync Bottom to Top
-                    tableScroll.onscroll = function() {
+                    tableScroll.onscroll = function () {
                         topScroll.scrollLeft = tableScroll.scrollLeft;
                     };
                 }
@@ -462,9 +523,10 @@ new class extends Component {
         });
     </script>
 
-    <div id="print-area" class="hidden print-target bg-white text-black text-sm" style="font-family: 'Times New Roman', serif;">
+    <div id="print-area" class="hidden print-target bg-white text-black text-sm"
+        style="font-family: 'Times New Roman', serif;">
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-6">
-        
+
         <div class="text-center mb-6">
             <h1 class="text-xl font-bold uppercase leading-tight">LAPORAN SALDO & MUTASI BARANG</h1>
             <p class="text-md font-bold mt-1">Periode: {{ $periodLabel }}</p>
@@ -474,62 +536,96 @@ new class extends Component {
             <thead>
                 <tr class="bg-gray-100">
                     <th class="border border-black px-1 py-1 text-center w-6" rowspan="{{ $week ? '2' : '1' }}">No</th>
-                    <th class="border border-black px-2 py-1 text-left" rowspan="{{ $week ? '2' : '1' }}">Nama Material</th>
+                    <th class="border border-black px-2 py-1 text-left" rowspan="{{ $week ? '2' : '1' }}">Nama Material
+                    </th>
                     <th class="border border-black px-1 py-1 text-center" rowspan="{{ $week ? '2' : '1' }}">Satuan</th>
-                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">Saldo Awal</th>
+                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">Saldo Awal
+                    </th>
 
                     @if($week)
-                        @php $daysPrint = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']; @endphp
                         <th class="border border-black px-1 py-1 text-center" colspan="7">Masuk Harian</th>
                     @endif
-                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">Total Masuk</th>
+                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">
+                        {{ $week ? 'Jumlah Masuk' : 'Total Masuk' }}</th>
+                    @if($week)
+                        <th class="border border-black px-1 py-1 text-right" rowspan="2">Jumlah Stok</th>
+                    @endif
 
                     @if($week)
                         <th class="border border-black px-1 py-1 text-center" colspan="7">Keluar Harian</th>
                     @endif
-                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">Total Keluar</th>
-                    
-                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">Saldo Akhir</th>
+                    <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">
+                        {{ $week ? 'Jumlah Keluar' : 'Total Keluar' }}</th>
+
+                    <th class="border border-black px-1 py-1 text-right font-black" rowspan="{{ $week ? '2' : '1' }}">
+                        {{ $week ? 'Stock Sisa' : 'Saldo Akhir' }}</th>
                 </tr>
                 @if($week)
-                <tr class="bg-gray-50">
-                    @foreach($daysPrint as $day) <th class="border border-black px-1 py-1 text-center text-[7px]">{{ substr($day, 0, 3) }}</th> @endforeach
-                    @foreach($daysPrint as $day) <th class="border border-black px-1 py-1 text-center text-[7px]">{{ substr($day, 0, 3) }}</th> @endforeach
-                </tr>
+                    @php
+                        $indoDaysShort = [
+                            'Monday' => 'Sen', 'Tuesday' => 'Sel', 'Wednesday' => 'Rab',
+                            'Thursday' => 'Kam', 'Friday' => 'Jum', 'Saturday' => 'Sab', 'Sunday' => 'Min'
+                        ];
+                    @endphp
+                    <tr class="bg-gray-50">
+                        @foreach($days as $day)
+                            <th class="border border-black px-1 py-0.5 text-center text-[8px]">
+                                {{ $indoDaysShort[$day->format('l')] }}<br>{{ $day->format('d/m') }}
+                            </th>
+                        @endforeach
+                        @foreach($days as $day)
+                            <th class="border border-black px-1 py-0.5 text-center text-[8px]">
+                                {{ $indoDaysShort[$day->format('l')] }}<br>{{ $day->format('d/m') }}
+                            </th>
+                        @endforeach
+                    </tr>
                 @endif
             </thead>
             <tbody>
                 @forelse($items as $index => $item)
-                <tr>
-                    <td class="border border-black px-1 py-1 text-center">{{ $index + 1 }}</td>
-                    <td class="border border-black px-2 py-1 font-bold uppercase">{{ $item->name }}</td>
-                    <td class="border border-black px-1 py-1 text-center uppercase">{{ $item->unit }}</td>
-                    <td class="border border-black px-1 py-1 text-right">{{ number_format($item->opening_balance, 0, ',', '.') }}</td>
+                    <tr>
+                        <td class="border border-black px-1 py-1 text-center">{{ $index + 1 }}</td>
+                        <td class="border border-black px-2 py-1 font-bold uppercase">{{ $item->name }}</td>
+                        <td class="border border-black px-1 py-1 text-center uppercase">{{ $item->unit }}</td>
+                        <td class="border border-black px-1 py-1 text-right">
+                            {{ number_format($item->opening_balance, 0, ',', '.') }}</td>
 
-                    @if($week)
-                        @foreach($item->daily_in as $val)
-                            <td class="border border-black px-1 py-1 text-center">{{ $val > 0 ? number_format($val, 0, ',', '.') : '-' }}</td>
-                        @endforeach
-                    @endif
-                    <td class="border border-black px-1 py-1 text-right font-bold">{{ number_format($item->total_in, 0, ',', '.') }}</td>
+                        @if($week)
+                            @foreach($item->daily_in as $val)
+                                <td class="border border-black px-1 py-1 text-center {{ $val === null ? 'bg-gray-100' : '' }}">
+                                    {{ $val === null ? '-' : ($val > 0 ? number_format($val, 0, ',', '.') : '-') }}
+                                </td>
+                            @endforeach
+                        @endif
+                        <td class="border border-black px-1 py-1 text-right font-bold">
+                            {{ number_format($item->total_in, 0, ',', '.') }}</td>
+                        @if($week)
+                            <td class="border border-black px-1 py-1 text-right font-bold bg-gray-50">
+                                {{ number_format($item->jumlah_stok, 0, ',', '.') }}</td>
+                        @endif
 
-                    @if($week)
-                        @foreach($item->daily_out as $val)
-                            <td class="border border-black px-1 py-1 text-center">{{ $val > 0 ? number_format($val, 0, ',', '.') : '-' }}</td>
-                        @endforeach
-                    @endif
-                    <td class="border border-black px-1 py-1 text-right font-bold">{{ number_format($item->total_out, 0, ',', '.') }}</td>
-                    
-                    <td class="border border-black px-1 py-1 text-right font-black">{{ number_format($item->final_balance, 0, ',', '.') }}</td>
-                </tr>
+                        @if($week)
+                            @foreach($item->daily_out as $val)
+                                <td class="border border-black px-1 py-1 text-center {{ $val === null ? 'bg-gray-100' : '' }}">
+                                    {{ $val === null ? '-' : ($val > 0 ? number_format($val, 0, ',', '.') : '-') }}
+                                </td>
+                            @endforeach
+                        @endif
+                        <td class="border border-black px-1 py-1 text-right font-bold">
+                            {{ number_format($item->total_out, 0, ',', '.') }}</td>
+
+                        <td class="border border-black px-1 py-1 text-right font-black bg-gray-100">
+                            {{ number_format($item->final_balance, 0, ',', '.') }}</td>
+                    </tr>
                 @empty
-                <tr>
-                    <td colspan="{{ $week ? '21' : '7' }}" class="border border-black px-2 py-4 text-center italic">Tidak ada data</td>
-                </tr>
+                    <tr>
+                        <td colspan="{{ $week ? '21' : '7' }}" class="border border-black px-2 py-4 text-center italic">
+                            Tidak ada data</td>
+                    </tr>
                 @endforelse
             </tbody>
         </table>
-        
+
         <div class="mt-8 text-right pr-12 text-[12px]">
             <p>Jakarta, {{ \Carbon\Carbon::now()->format('d F Y') }}</p>
             <p class="mt-1">Petugas / Admin,</p>
@@ -539,16 +635,25 @@ new class extends Component {
     </div>
 
     <style>
-        .print-target { display: none; }
-        
+        .print-target {
+            display: none;
+        }
+
         @media print {
-            @page { size: landscape; margin: 1cm; }
+            @page {
+                size: landscape;
+                margin: 1cm;
+            }
+
             body * {
                 visibility: hidden;
             }
-            .print-active, .print-active * {
+
+            .print-active,
+            .print-active * {
                 visibility: visible;
             }
+
             .print-active {
                 position: absolute;
                 left: 0;

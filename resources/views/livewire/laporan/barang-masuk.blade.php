@@ -18,7 +18,13 @@ new class extends Component {
 
     // Detail Modal State
     public $showDetailModal = false;
+    public $showEditModal = false;
     public $selectedGroup = null;
+
+    // Edit State
+    public $editingItems = [];
+    public $editingMeta = [];
+
 
     protected $listeners = ['global-search' => 'handleGlobalSearch'];
 
@@ -34,6 +40,90 @@ new class extends Component {
             $this->resetPage();
         }
     }
+
+    public function editGroup($ref, $doId, $type, $date, $userId)
+    {
+        if (!auth()->user()->hasRole('superadmin')) return;
+
+        $query = InventoryTransaction::with(['material'])
+            ->where('type', $type)
+            ->where('user_id', $userId)
+            ->whereDate('created_at', $date);
+
+        if ($doId) {
+            $query->where('delivery_order_id', $doId);
+        } else {
+            $query->where('reference_number', $ref);
+        }
+
+        $items = $query->get();
+        $firstItem = $items->first();
+        
+        $this->editingItems = $items->map(function($item) {
+            return [
+                'id' => $item->id,
+                'material_name' => $item->material->name,
+                'volume' => (float)($item->type === 'in' ? $item->volume_masuk : $item->volume_keluar),
+                'note' => $item->note,
+                'type' => $item->type
+            ];
+        })->toArray();
+
+        $this->editingMeta = [
+            'reference' => $ref,
+            'date' => $date,
+            'type' => $type,
+            'delivery_order_id' => $doId,
+            'supplier' => $firstItem->supplier,
+            'lokasi' => $firstItem->deliveryOrder->lokasi ?? '',
+            'pemohon' => $firstItem->deliveryOrder->pemohon ?? ''
+        ];
+
+
+        $this->showEditModal = true;
+    }
+
+    public function saveEdit()
+    {
+        if (!auth()->user()->hasRole('superadmin')) return;
+
+        DB::beginTransaction();
+        try {
+            // 1. Update Group Metadata
+            if ($this->editingMeta['delivery_order_id']) {
+                $do = \App\Models\DeliveryOrder::find($this->editingMeta['delivery_order_id']);
+                if ($do) {
+                    $do->update([
+                        'surat_jalan_no' => $this->editingMeta['reference'],
+                        'lokasi' => $this->editingMeta['lokasi'],
+                        'pemohon' => $this->editingMeta['pemohon']
+                    ]);
+                }
+            }
+
+            // 2. Update Transactions
+            foreach ($this->editingItems as $itemData) {
+                $transaction = InventoryTransaction::find($itemData['id']);
+                if ($transaction) {
+                    $transaction->update([
+                        'reference_number' => $this->editingMeta['reference'],
+                        'supplier' => $this->editingMeta['supplier'],
+                        'volume_masuk' => $transaction->type === 'in' ? $itemData['volume'] : 0,
+                        'volume_keluar' => $transaction->type === 'out' ? $itemData['volume'] : 0,
+                        'note' => $itemData['note']
+                    ]);
+                }
+            }
+
+            DB::commit();
+            $this->showEditModal = false;
+            $this->dispatch('notify', message: 'Data berhasil diperbarui', type: 'success');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('notify', message: 'Gagal memperbarui data: ' . $e->getMessage(), type: 'error');
+        }
+    }
+
 
     public function openDetail($ref, $doId, $type, $date, $userId)
     {
@@ -64,6 +154,7 @@ new class extends Component {
 
         $this->showDetailModal = true;
     }
+
 
     public function with()
     {
@@ -103,6 +194,9 @@ new class extends Component {
                   ->orWhere('supplier', 'like', '%' . $this->search . '%')
                   ->orWhereHas('deliveryOrder', function($dq) {
                       $dq->where('lokasi', 'like', '%' . $this->search . '%');
+                  })
+                  ->orWhereHas('material', function($mq) {
+                      $mq->where('name', 'like', '%' . $this->search . '%');
                   });
             });
         }
@@ -285,14 +379,26 @@ new class extends Component {
                             <span class="text-xs font-bold text-gray-700">{{ $t->user->name ?? 'System' }}</span>
                         </td>
                         <td class="px-6 py-5 text-right">
-                            <button class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/5 group-hover:bg-accent text-accent group-hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                Detail
-                            </button>
+                            <div class="flex items-center justify-end gap-2">
+                                <button wire:click.stop="openDetail('{{ $t->reference_number }}', '{{ $t->delivery_order_id }}', '{{ $t->type }}', '{{ $t->date }}', {{ $t->user_id }})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent/5 hover:bg-accent text-accent hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Detail
+                                </button>
+
+                                @if(auth()->user()->hasRole('superadmin'))
+                                <button wire:click.stop="editGroup('{{ $t->reference_number }}', '{{ $t->delivery_order_id }}', '{{ $t->type }}', '{{ $t->date }}', {{ $t->user_id }})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-500 text-blue-500 hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Edit
+                                </button>
+                                @endif
+                            </div>
                         </td>
+
                     </tr>
                     @empty
                     <tr>
@@ -572,6 +678,90 @@ new class extends Component {
     </div>
 
     @endif
+
+    {{-- Edit Modal --}}
+    @if($showEditModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showEditModal', false)"></div>
+        <div class="relative bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up overflow-hidden">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Edit Data Transaksi</h2>
+                    <p class="text-xs text-gray-500 mt-1 font-mono">Ref: {{ $editingMeta['reference'] ?: '-' }} ({{ $editingMeta['type'] === 'in' ? 'Masuk' : 'Keluar' }})</p>
+                </div>
+                <button wire:click="$set('showEditModal', false)" class="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-base/50 p-6 rounded-3xl border border-gray-100">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">No. Surat Jalan / Ref</label>
+                    <input type="text" wire:model="editingMeta.reference" 
+                        class="w-full bg-white border-none rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 ring-1 ring-gray-100 focus:ring-2 focus:ring-accent/20 outline-none">
+                </div>
+                <div class="bg-base/50 p-6 rounded-3xl border border-gray-100">
+                    @if($editingMeta['type'] === 'in')
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Supplier / Sumber</label>
+                        <input type="text" wire:model="editingMeta.supplier" 
+                            class="w-full bg-white border-none rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 ring-1 ring-gray-100 focus:ring-2 focus:ring-accent/20 outline-none">
+                    @else
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Lokasi / Tujuan</label>
+                        <input type="text" wire:model="editingMeta.lokasi" 
+                            class="w-full bg-white border-none rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 ring-1 ring-gray-100 focus:ring-2 focus:ring-accent/20 outline-none">
+                    @endif
+                </div>
+            </div>
+
+            <div class="max-h-[40vh] overflow-y-auto mb-8 pr-2">
+
+                <div class="space-y-6">
+                    @foreach($editingItems as $index => $item)
+                    <div class="bg-base/30 p-6 rounded-3xl border border-gray-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-xs font-black text-gray-900 uppercase tracking-widest">{{ $item['material_name'] }}</span>
+                            <span @class([
+                                'px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest',
+                                'bg-emerald-100 text-emerald-600' => $item['type'] === 'in',
+                                'bg-red-100 text-red-600' => $item['type'] === 'out'
+                            ])>
+                                {{ $item['type'] === 'in' ? 'Masuk' : 'Keluar' }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Volume / Jumlah</label>
+                                <div class="relative">
+                                    <input type="number" step="any" wire:model="editingItems.{{ $index }}.volume" 
+                                        class="w-full bg-white border-none rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 ring-1 ring-gray-100 focus:ring-2 focus:ring-accent/20 outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Keterangan / Catatan</label>
+                                <input type="text" wire:model="editingItems.{{ $index }}.note" 
+                                    class="w-full bg-white border-none rounded-2xl px-4 py-3 text-sm font-bold text-gray-700 ring-1 ring-gray-100 focus:ring-2 focus:ring-accent/20 outline-none"
+                                    placeholder="Opsional...">
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button wire:click="saveEdit" wire:loading.attr="disabled" class="flex-1 bg-accent text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-accent/20 hover:bg-accent/90 transition-all flex items-center justify-center gap-2">
+                    <span wire:loading.remove>Simpan Perubahan</span>
+                    <span wire:loading>Menyimpan...</span>
+                </button>
+                <button wire:click="$set('showEditModal', false)" class="px-8 bg-gray-100 text-gray-500 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Batal</button>
+            </div>
+        </div>
+    </div>
+    @endif
+
 
     <style>
         .print-target { display: none; }

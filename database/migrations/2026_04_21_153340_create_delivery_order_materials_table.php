@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('delivery_order_id')->constrained()->cascadeOnDelete();
             $table->foreignId('material_id')->constrained()->cascadeOnDelete();
-            $table->decimal('requested_volume', 15, 2)->default(0);
+            $table->integer('requested_volume')->default(0);
             $table->timestamps();
         });
     }

@@ -15,23 +15,27 @@ class RoleAndUserSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Membuat Role
-        $superadminRole = Role::create(['name' => 'superadmin']);
-        $gudangRole = Role::create(['name' => 'gudang']);
+        $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
+        $gudangRole = Role::firstOrCreate(['name' => 'gudang']);
 
         // Membuat Akun Superadmin
-        $superadmin = User::create([
-            'name' => 'Super Administrator',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('password')
-        ]);
+        $superadmin = User::firstOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'Super Administrator',
+                'password' => Hash::make('password')
+            ]
+        );
         $superadmin->assignRole($superadminRole);
 
         // Membuat Akun Orang Gudang
-        $gudang = User::create([
-            'name' => 'Petugas Gudang',
-            'email' => 'gudang@gmail.com',
-            'password' => Hash::make('password')
-        ]);
+        $gudang = User::firstOrCreate(
+            ['email' => 'gudang@gmail.com'],
+            [
+                'name' => 'Petugas Gudang',
+                'password' => Hash::make('password')
+            ]
+        );
         $gudang->assignRole($gudangRole);
     }
 }

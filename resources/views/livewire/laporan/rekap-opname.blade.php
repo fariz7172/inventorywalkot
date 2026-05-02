@@ -5,26 +5,48 @@ use Livewire\Attributes\Layout;
 use App\Exports\StockOpnameExport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\StockOpnameItem;
+use App\Models\StockOpname;
 use Carbon\Carbon;
 
 new #[Layout('layouts.admin')] class extends Component {
     public $filterPeriod = 'this_month';
     public $filterDifference = 'all';
+    public $startDate = '';
+    public $endDate = '';
     public $items = [];
 
+    // Stats variables
+    public $statTotalOpname = 0;
+    public $statMinus = 0;
+    public $statPlus = 0;
+    public $statBalance = 0;
+
     public function mount() {
+        $this->startDate = now()->startOfMonth()->format('Y-m-d');
+        $this->endDate = now()->format('Y-m-d');
         $this->loadData();
     }
 
     public function updatedFilterPeriod() {
-        $this->loadData();
+        if ($this->filterPeriod !== 'custom') {
+            $this->loadData();
+        } elseif ($this->startDate && $this->endDate) {
+            $this->loadData();
+        }
     }
 
     public function updatedFilterDifference() {
         $this->loadData();
     }
 
+    public function applyCustomDate() {
+        if ($this->startDate && $this->endDate) {
+            $this->loadData();
+        }
+    }
+
     public function loadData() {
+        // Query for Table
         $query = StockOpnameItem::with(['opname.user', 'opname.approver', 'material'])
             ->whereHas('opname', function($q) {
                 if ($this->filterPeriod === 'this_week') {
@@ -34,6 +56,8 @@ new #[Layout('layouts.admin')] class extends Component {
                       ->whereYear('opname_date', now()->year);
                 } elseif ($this->filterPeriod === 'this_year') {
                     $q->whereYear('opname_date', now()->year);
+                } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
+                    $q->whereBetween('opname_date', [$this->startDate, $this->endDate]);
                 }
             });
 
@@ -52,11 +76,43 @@ new #[Layout('layouts.admin')] class extends Component {
             ->orderBy('stock_opnames.opname_date', 'desc');
 
         $this->items = $query->get();
+
+        // Query for Stats (Unfiltered by difference, only by period)
+        $statsQuery = clone $query;
+        $statsQuery = StockOpnameItem::whereHas('opname', function($q) {
+            if ($this->filterPeriod === 'this_week') {
+                $q->whereBetween('opname_date', [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')]);
+            } elseif ($this->filterPeriod === 'this_month') {
+                $q->whereMonth('opname_date', now()->month)
+                  ->whereYear('opname_date', now()->year);
+            } elseif ($this->filterPeriod === 'this_year') {
+                $q->whereYear('opname_date', now()->year);
+            } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
+                $q->whereBetween('opname_date', [$this->startDate, $this->endDate]);
+            }
+        });
+
+        $allStatsItems = $statsQuery->get();
+        $this->statMinus = $allStatsItems->where('difference', '<', 0)->count();
+        $this->statPlus = $allStatsItems->where('difference', '>', 0)->count();
+        $this->statBalance = $allStatsItems->where('difference', '==', 0)->count();
+
+        $this->statTotalOpname = StockOpname::when($this->filterPeriod !== 'all', function($q) {
+            if ($this->filterPeriod === 'this_week') {
+                $q->whereBetween('opname_date', [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')]);
+            } elseif ($this->filterPeriod === 'this_month') {
+                $q->whereMonth('opname_date', now()->month)->whereYear('opname_date', now()->year);
+            } elseif ($this->filterPeriod === 'this_year') {
+                $q->whereYear('opname_date', now()->year);
+            } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
+                $q->whereBetween('opname_date', [$this->startDate, $this->endDate]);
+            }
+        })->count();
     }
 
     public function exportExcel() {
         $export = new StockOpnameExport($this->filterPeriod, $this->filterDifference);
-        return Excel::download($export, 'rekap-stock-opname-' . now()->format('Y-m-d') . '.xlsx');
+        return Excel::download($export, 'analisa-selisih-stok-' . now()->format('Y-m-d') . '.xlsx');
     }
 };
 
@@ -65,8 +121,8 @@ new #[Layout('layouts.admin')] class extends Component {
 <div>
     <div class="flex items-center justify-between mb-6">
         <div>
-            <h1 class="text-2xl font-bold text-gray-900">Laporan Rekap Stock Opname</h1>
-            <p class="text-sm text-gray-500 mt-1">Daftar keseluruhan riwayat item barang yang di-opname (Sistem vs Fisik).</p>
+            <h1 class="text-2xl font-bold text-gray-900">Analisa Selisih Stok</h1>
+            <p class="text-sm text-gray-500 mt-1">Laporan analitik performa akurasi stok gudang (Fisik vs Sistem).</p>
         </div>
         <div class="flex items-center gap-3">
             <div class="flex gap-1 no-print">
@@ -79,33 +135,80 @@ new #[Layout('layouts.admin')] class extends Component {
                     Download Excel
                 </button>
             </div>
-            <div class="flex gap-2">
-                <div class="w-48">
-                    <div class="relative no-print">
-                        <select wire:model.live="filterDifference" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium text-sm">
-                            <option value="all">Semua Data</option>
-                            <option value="has_diff">Hanya Ada Selisih</option>
-                            <option value="plus">Hanya Selisih Lebih (+)</option>
-                            <option value="minus">Hanya Selisih Kurang (-)</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            <div class="flex flex-col gap-3">
+                <div class="flex gap-2 justify-end">
+                    <div class="w-48">
+                        <div class="relative no-print">
+                            <select wire:model.live="filterDifference" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium text-sm">
+                                <option value="all">Semua Data</option>
+                                <option value="has_diff">Hanya Ada Selisih</option>
+                                <option value="plus">Hanya Selisih Lebih (+)</option>
+                                <option value="minus">Hanya Selisih Kurang (-)</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-48">
+                        <div class="relative no-print">
+                            <select wire:model.live="filterPeriod" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium text-sm">
+                                <option value="all">Semua Waktu</option>
+                                <option value="this_week">Minggu Ini</option>
+                                <option value="this_month">Bulan Ini</option>
+                                <option value="this_year">Tahun Ini</option>
+                                <option value="custom">Kustom Tanggal</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="w-48">
-                    <div class="relative no-print">
-                        <select wire:model.live="filterPeriod" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium text-sm">
-                            <option value="all">Semua Waktu</option>
-                            <option value="this_week">Minggu Ini</option>
-                            <option value="this_month">Bulan Ini</option>
-                            <option value="this_year">Tahun Ini</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </div>
+
+                @if($filterPeriod === 'custom')
+                <div class="flex items-center gap-2 justify-end no-print bg-white p-2 border border-gray-200 rounded-xl shadow-sm">
+                    <input type="date" wire:model="startDate" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-accent focus:border-accent block px-3 py-1.5">
+                    <span class="text-gray-400 font-bold text-xs uppercase">s/d</span>
+                    <input type="date" wire:model="endDate" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-accent focus:border-accent block px-3 py-1.5">
+                    <button wire:click="applyCustomDate" class="bg-accent hover:bg-accent-light text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Terapkan</button>
                 </div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 no-print">
+        <div class="bg-white rounded-2xl p-5 shadow-card border border-gray-100 flex flex-col justify-center">
+            <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Gelar Opname</p>
+            <div class="flex items-end gap-2">
+                <span class="text-3xl font-black text-gray-800">{{ $statTotalOpname }}</span>
+                <span class="text-xs font-bold text-gray-400 mb-1">Kali</span>
+            </div>
+        </div>
+        <div class="bg-red-50/50 rounded-2xl p-5 shadow-card border border-red-100 flex flex-col justify-center relative overflow-hidden group hover:bg-red-50 transition-colors">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-red-100/50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+            <p class="text-[11px] font-black text-red-500 uppercase tracking-widest mb-1 relative z-10">Barang Hilang / Minus</p>
+            <div class="flex items-end gap-2 relative z-10">
+                <span class="text-3xl font-black text-red-600">{{ $statMinus }}</span>
+                <span class="text-xs font-bold text-red-400 mb-1">Item</span>
+            </div>
+        </div>
+        <div class="bg-emerald-50/50 rounded-2xl p-5 shadow-card border border-emerald-100 flex flex-col justify-center relative overflow-hidden group hover:bg-emerald-50 transition-colors">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-100/50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+            <p class="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-1 relative z-10">Kelebihan / Plus</p>
+            <div class="flex items-end gap-2 relative z-10">
+                <span class="text-3xl font-black text-emerald-700">{{ $statPlus }}</span>
+                <span class="text-xs font-bold text-emerald-500 mb-1">Item</span>
+            </div>
+        </div>
+        <div class="bg-blue-50/50 rounded-2xl p-5 shadow-card border border-blue-100 flex flex-col justify-center relative overflow-hidden group hover:bg-blue-50 transition-colors">
+            <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-100/50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+            <p class="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-1 relative z-10">Stok Akurat (Balance)</p>
+            <div class="flex items-end gap-2 relative z-10">
+                <span class="text-3xl font-black text-blue-700">{{ $statBalance }}</span>
+                <span class="text-xs font-bold text-blue-500 mb-1">Item</span>
             </div>
         </div>
     </div>

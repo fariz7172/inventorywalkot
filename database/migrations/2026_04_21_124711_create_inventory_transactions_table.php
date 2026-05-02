@@ -15,8 +15,8 @@ return new class extends Migration
             
             $table->enum('type', ['in', 'out'])->default('out');
             
-            $table->decimal('volume_masuk', 10, 2)->default(0);
-            $table->decimal('volume_keluar', 10, 2)->default(0);
+            $table->integer('volume_masuk')->default(0);
+            $table->integer('volume_keluar')->default(0);
             $table->integer('pcs')->default(0);
             
             $table->timestamps();

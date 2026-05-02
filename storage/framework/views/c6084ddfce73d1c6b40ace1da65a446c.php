@@ -16,8 +16,8 @@ use Illuminate\Support\Facades\DB;
         </div>
         <div class="flex items-center gap-3">
             <a href="<?php echo e(route('laporan.stock-opname')); ?>" class="bg-white border border-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:bg-gray-50 flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                Lihat Laporan Rekap
+                <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Lihat Analisa Selisih
             </a>
             
             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang')): ?>
@@ -42,22 +42,37 @@ use Illuminate\Support\Facades\DB;
         </div>
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    <div class="flex justify-between items-end mb-4">
-        <div class="w-64">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Filter Periode</label>
-            <div class="relative">
-                <select wire:model.live="filterPeriod" wire:change="loadData" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium">
-                    <option value="all">Menampilkan Semua Data</option>
-                    <option value="this_week">Minggu Ini</option>
-                    <option value="this_month">Bulan Ini</option>
-                    <option value="this_year">Tahun Ini</option>
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        <div class="flex flex-wrap items-end gap-4 mb-6">
+            <div class="w-64">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Filter Periode</label>
+                <div class="relative">
+                    <select wire:model.live="filterPeriod" wire:change="loadData" class="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2.5 px-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent shadow-sm transition-all cursor-pointer font-medium">
+                        <option value="all">Menampilkan Semua Data</option>
+                        <option value="this_week">Minggu Ini</option>
+                        <option value="this_month">Bulan Ini</option>
+                        <option value="this_year">Tahun Ini</option>
+                        <option value="custom">Rentang Tanggal Custom</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </div>
                 </div>
             </div>
+
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($filterPeriod === 'custom'): ?>
+                <div class="flex items-center gap-2 animate-fade-in">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Dari</label>
+                        <input type="date" wire:model.live="startDate" wire:change="loadData" class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm font-medium shadow-sm">
+                    </div>
+                    <div class="pt-6 text-gray-400 font-bold">sampai</div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Sampai</label>
+                        <input type="date" wire:model.live="endDate" wire:change="loadData" class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm font-medium shadow-sm">
+                    </div>
+                </div>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
-    </div>
 
     <!-- Table List Opname -->
     <div class="bg-white rounded-2xl shadow-card overflow-hidden ring-1 ring-accent/5">
@@ -212,6 +227,7 @@ use Illuminate\Support\Facades\DB;
                                 <th class="px-4 py-3 text-center">Fisik</th>
                                 <th class="px-4 py-3 text-center">Selisih</th>
                                 <th class="px-4 py-3">Keterangan</th>
+                                <th class="px-4 py-3 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y">
@@ -225,6 +241,12 @@ use Illuminate\Support\Facades\DB;
 
                                 </td>
                                 <td class="px-4 py-3 text-gray-600 italic text-xs"><?php echo e($item->notes ?? '-'); ?></td>
+                                <td class="px-4 py-3 text-center">
+                                    <button wire:click="$dispatch('show-riwayat-saldo', [<?php echo e($item->material->id); ?>, '<?php echo e(\Carbon\Carbon::parse($selectedOpname->opname_date)->startOfMonth()->format('Y-m-d')); ?>', '<?php echo e(\Carbon\Carbon::parse($selectedOpname->opname_date)->format('Y-m-d')); ?>'])" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        Lihat & Cetak Kartu
+                                    </button>
+                                </td>
                             </tr>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </tbody>
@@ -379,4 +401,26 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <script src="<?php echo e(asset('js/print-stock-opname.js')); ?>"></script>
+    
+    <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('laporan.riwayat-saldo-modal');
+
+$__key = null;
+
+$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1783172695-0', $__key);
+
+$__html = app('livewire')->mount($__name, $__params, $__key);
+
+echo $__html;
+
+unset($__html);
+unset($__key);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
 </div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/stock-opname/index.blade.php ENDPATH**/ ?>

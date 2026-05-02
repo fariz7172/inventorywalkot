@@ -4,6 +4,8 @@ use App\Models\Material;
 use Livewire\WithPagination;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Url;
+use Carbon\Carbon;
+
 
 new class extends Component {
     use WithPagination;
@@ -75,10 +77,43 @@ new class extends Component {
             $query->whereYear('created_at', now()->year);
         }
 
+        // Calculate Summary for selected period & material
+        $openingBalance = 0;
+        $totalIn = 0;
+        $totalOut = 0;
+
+        if ($this->material_id) {
+            $start = $this->startDate ? Carbon::parse($this->startDate)->startOfDay() : null;
+            $end = $this->endDate ? Carbon::parse($this->endDate)->endOfDay() : null;
+
+            if ($start) {
+                $openingTrx = InventoryTransaction::where('material_id', $this->material_id)
+                    ->where('created_at', '<', $start)
+                    ->selectRaw('SUM(volume_masuk) - SUM(volume_keluar) as balance')
+                    ->first();
+                $openingBalance = (float)($openingTrx->balance ?? 0);
+            }
+
+            $summaryTrx = InventoryTransaction::where('material_id', $this->material_id)
+                ->when($start, fn($q) => $q->where('created_at', '>=', $start))
+                ->when($end, fn($q) => $q->where('created_at', '<=', $end))
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
+                ->first();
+            
+            $totalIn = (float)($summaryTrx->total_in ?? 0);
+            $totalOut = (float)($summaryTrx->total_out ?? 0);
+        }
+
         return [
             'reportData' => $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(50),
             'allMaterials' => Material::orderBy('name', 'asc')->get(),
+            'openingBalance' => $openingBalance,
+            'totalIn' => $totalIn,
+            'totalOut' => $totalOut,
+            'finalBalance' => $openingBalance + $totalIn - $totalOut,
+            'selectedMaterial' => $this->material_id ? Material::find($this->material_id) : null
         ];
+
     }
 
     public function exportExcel()
@@ -95,9 +130,20 @@ new class extends Component {
 <div>
     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div>
-            <h1 class="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Laporan Inventory</h1>
-            <p class="text-sm text-gray-500 mt-1">Pantau mutasi barang masuk, keluar, dan sisa stok secara real-time.</p>
+            <div class="flex items-center gap-4">
+                @if($material_id || $startDate || $endDate || $search || $type != '')
+                <a href="/dashboard/laporan" wire:navigate class="flex-none p-2.5 bg-white rounded-2xl border border-warm/60 text-gray-400 hover:text-accent hover:border-accent transition-all group shadow-sm active:scale-95">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                </a>
+                @endif
+                <div class="min-w-0">
+                    <h1 class="text-2xl md:text-3xl font-black text-gray-900 tracking-tight truncate">Laporan Inventory</h1>
+                    <p class="text-xs md:text-sm text-gray-500 mt-0.5 truncate">Pantau mutasi barang masuk, keluar, dan sisa stok secara real-time.</p>
+                </div>
+            </div>
         </div>
+
+
         <div class="flex flex-wrap items-center gap-3">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex gap-3 w-full lg:w-auto">
                 <select wire:model.live="material_id" class="w-full lg:w-auto bg-white rounded-2xl px-4 py-2.5 text-sm font-bold border border-warm/60 focus:ring-4 focus:ring-accent/10 focus:border-accent outline-none transition-all shadow-sm">
@@ -135,9 +181,74 @@ new class extends Component {
                     </svg>
                     Export Excel
                 </button>
+                <button onclick="printReport()" class="w-full sm:w-auto bg-gray-900 text-white px-6 py-2.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-gray-900/20 active:scale-95">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                    </svg>
+                    Cetak
+                </button>
+
             </div>
         </div>
     </div>
+    @if($material_id)
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 animate-fade-in">
+        <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-warm/60 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 right-0 p-4 opacity-10">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Saldo Awal</span>
+            <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-black text-gray-900">{{ number_format($openingBalance, 0, ',', '.') }}</span>
+                <span class="text-[10px] font-bold text-gray-400 uppercase">{{ $selectedMaterial->unit ?? '' }}</span>
+            </div>
+            <p class="text-[9px] text-gray-400 mt-2 font-medium">
+                @if($startDate)
+                    Per tanggal {{ Carbon::parse($startDate)->format('d/m/Y') }}
+                @else
+                    Sejak awal sistem
+                @endif
+            </p>
+        </div>
+
+
+        <div class="bg-emerald-50/50 p-6 rounded-[2rem] shadow-sm border border-emerald-100 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 right-0 p-4 opacity-10 text-emerald-600">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+            <span class="text-[10px] font-black text-emerald-600/60 uppercase tracking-widest block mb-2">Total Masuk (+)</span>
+            <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-black text-emerald-700">{{ number_format($totalIn, 0, ',', '.') }}</span>
+                <span class="text-[10px] font-bold text-emerald-600/40 uppercase">{{ $selectedMaterial->unit ?? '' }}</span>
+            </div>
+            <p class="text-[9px] text-emerald-600/60 mt-2 font-medium">Selama periode terpilih</p>
+        </div>
+
+        <div class="bg-red-50/50 p-6 rounded-[2rem] shadow-sm border border-red-100 relative overflow-hidden group hover:shadow-md transition-all">
+            <div class="absolute top-0 right-0 p-4 opacity-10 text-red-600">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
+            </div>
+            <span class="text-[10px] font-black text-red-600/60 uppercase tracking-widest block mb-2">Total Keluar (-)</span>
+            <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-black text-red-700">{{ number_format($totalOut, 0, ',', '.') }}</span>
+                <span class="text-[10px] font-bold text-red-600/40 uppercase">{{ $selectedMaterial->unit ?? '' }}</span>
+            </div>
+            <p class="text-[9px] text-red-600/60 mt-2 font-medium">Selama periode terpilih</p>
+        </div>
+
+        <div class="bg-accent p-6 rounded-[2rem] shadow-lg shadow-accent/20 relative overflow-hidden group hover:shadow-xl transition-all">
+            <div class="absolute top-0 right-0 p-4 opacity-20 text-white">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            </div>
+            <span class="text-[10px] font-black text-white/60 uppercase tracking-widest block mb-2">Saldo Akhir</span>
+            <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-black text-white">{{ number_format($finalBalance, 0, ',', '.') }}</span>
+                <span class="text-[10px] font-bold text-white/60 uppercase">{{ $selectedMaterial->unit ?? '' }}</span>
+            </div>
+            <p class="text-[9px] text-white/60 mt-2 font-medium">Hingga akhir periode</p>
+        </div>
+    </div>
+    @endif
 
     <div class="bg-white rounded-[2.5rem] shadow-card ring-1 ring-accent/5 overflow-hidden border border-warm/20">
         <div class="overflow-x-auto scrollbar-thin scrollbar-thumb-warm scrollbar-track-base">
@@ -209,4 +320,123 @@ new class extends Component {
             {{ $reportData->links() }}
         </div>
     </div>
+
+    {{-- Print Area --}}
+    <div id="print-area" class="hidden print-target bg-white text-black text-xs" style="font-family: 'Times New Roman', serif;">
+        <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
+        
+        <div class="text-center mb-8">
+            <h1 class="text-xl font-bold uppercase underline">LAPORAN MUTASI BARANG</h1>
+            @if($selectedMaterial)
+                <p class="text-lg font-bold mt-1 uppercase">{{ $selectedMaterial->name }}</p>
+            @endif
+            <p class="text-sm mt-1">Periode: {{ $startDate ? Carbon::parse($startDate)->format('d/m/Y') : '-' }} s/d {{ $endDate ? Carbon::parse($endDate)->format('d/m/Y') : Carbon::now()->format('d/m/Y') }}</p>
+        </div>
+
+        @if($selectedMaterial)
+        <div class="grid grid-cols-4 gap-4 mb-8 border border-black p-4">
+            <div class="text-center border-r border-black">
+                <p class="text-[9px] font-bold uppercase mb-1">Saldo Awal</p>
+                <p class="text-lg font-black">{{ number_format($openingBalance, 0, ',', '.') }}</p>
+            </div>
+            <div class="text-center border-r border-black">
+                <p class="text-[9px] font-bold uppercase mb-1">Total Masuk (+)</p>
+                <p class="text-lg font-black">{{ number_format($totalIn, 0, ',', '.') }}</p>
+            </div>
+            <div class="text-center border-r border-black">
+                <p class="text-[9px] font-bold uppercase mb-1">Total Keluar (-)</p>
+                <p class="text-lg font-black">{{ number_format($totalOut, 0, ',', '.') }}</p>
+            </div>
+            <div class="text-center">
+                <p class="text-[9px] font-bold uppercase mb-1">Saldo Akhir</p>
+                <p class="text-lg font-black">{{ number_format($finalBalance, 0, ',', '.') }}</p>
+            </div>
+        </div>
+        @endif
+
+        <table class="w-full border-collapse border border-black">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="border border-black px-2 py-2 text-center text-[9px] uppercase font-bold w-6">No</th>
+                    <th class="border border-black px-2 py-2 text-left text-[9px] uppercase font-bold">Tanggal</th>
+                    <th class="border border-black px-2 py-2 text-left text-[9px] uppercase font-bold">No. Ref</th>
+                    <th class="border border-black px-2 py-2 text-left text-[9px] uppercase font-bold">Uraian / Lokasi</th>
+                    <th class="border border-black px-2 py-2 text-right text-[9px] uppercase font-bold">Masuk</th>
+                    <th class="border border-black px-2 py-2 text-right text-[9px] uppercase font-bold">Keluar</th>
+                    <th class="border border-black px-2 py-2 text-right text-[9px] uppercase font-bold">Saldo</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($reportData as $index => $trx)
+                <tr>
+                    <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
+                    <td class="border border-black px-2 py-1.5">{{ $trx->created_at->format('d/m/Y') }}</td>
+                    <td class="border border-black px-2 py-1.5">{{ $trx->reference_number ?: '-' }}</td>
+                    <td class="border border-black px-2 py-1.5 text-[8px]">
+                        {{ $trx->deliveryOrder->lokasi ?? ($trx->supplier ?: ($trx->description ?: 'Mutasi Stok')) }}
+                        @if($trx->deliveryOrder && $trx->deliveryOrder->no_polisi)
+                            ({{ $trx->deliveryOrder->no_polisi }})
+                        @endif
+                    </td>
+                    <td class="border border-black px-2 py-1.5 text-right font-bold">{{ $trx->volume_masuk > 0 ? number_format($trx->volume_masuk, 0, ',', '.') : '-' }}</td>
+                    <td class="border border-black px-2 py-1.5 text-right font-bold">{{ $trx->volume_keluar > 0 ? number_format($trx->volume_keluar, 0, ',', '.') : '-' }}</td>
+                    <td class="border border-black px-2 py-1.5 text-right font-black bg-gray-50">{{ number_format($trx->balance_after, 0, ',', '.') }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div class="mt-12 flex justify-end pr-8">
+            <div class="text-center w-64">
+                <p class="text-sm">Jakarta, {{ Carbon::now()->translatedFormat('d F Y') }}</p>
+                <p class="text-sm font-bold mt-1">Petugas Gudang / Admin,</p>
+                <div class="h-24"></div>
+                <p class="text-sm font-bold underline uppercase">{{ auth()->user()->name }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.printReport = function() {
+            const originalTitle = document.title;
+            const materialName = "{{ $selectedMaterial->name ?? 'Inventory' }}";
+            document.title = "LAPORAN MUTASI - " + materialName.toUpperCase();
+
+            document.getElementById('print-area').classList.add('print-active');
+            window.print();
+            document.getElementById('print-area').classList.remove('print-active');
+            
+            document.title = originalTitle;
+        }
+    </script>
+
+
+    <style>
+        .print-target { display: none; }
+        
+        @media print {
+            @page {
+                size: portrait;
+                margin: 1.5cm;
+            }
+            
+            body * { visibility: hidden; }
+            .print-active, .print-active * { visibility: visible; }
+            .print-active {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+                padding: 0 !important;
+            }
+            .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl {
+                box-shadow: none !important;
+            }
+            .animate-fade-in {
+                animation: none !important;
+            }
+        }
+    </style>
 </div>
+

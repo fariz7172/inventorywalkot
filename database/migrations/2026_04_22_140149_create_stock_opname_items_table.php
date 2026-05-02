@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('stock_opname_id')->constrained()->onDelete('cascade');
             $table->foreignId('material_id')->constrained()->onDelete('cascade');
-            $table->decimal('system_volume', 10, 2);
-            $table->decimal('physical_volume', 10, 2);
-            $table->decimal('difference', 10, 2);
+            $table->integer('system_volume');
+            $table->integer('physical_volume');
+            $table->integer('difference');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

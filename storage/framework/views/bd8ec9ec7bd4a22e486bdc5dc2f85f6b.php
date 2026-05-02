@@ -21,6 +21,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $petugas;
 
+    public $penerima;
+
     public $no_polisi;
 
     public $pelaksana_kecamatan;

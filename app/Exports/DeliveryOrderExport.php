@@ -42,12 +42,14 @@ class DeliveryOrderExport implements FromCollection, WithHeadings, WithMapping, 
     public function headings(): array
     {
         return [
-            'No. Surat Jalan',
             'Tanggal',
-            'Tujuan / Lokasi',
+            'Lokasi Tujuan',
             'Pemohon',
-            'Penerima',
-            'Status',
+            'Petugas Admin',
+            'Penerima Barang',
+            'No. Surat Tugas',
+            'Kecamatan/Pelaksana',
+            'Keterangan',
             'Daftar Material (Detail)',
         ];
     }
@@ -59,12 +61,14 @@ class DeliveryOrderExport implements FromCollection, WithHeadings, WithMapping, 
         })->implode("\n");
 
         return [
-            $order->surat_jalan_no,
             $order->tanggal->format('d/m/Y'),
             $order->lokasi,
             $order->pemohon,
+            $order->petugas,
             $order->penerima,
-            strtoupper($order->status),
+            $order->surat_jalan_no,
+            $order->pelaksana_kecamatan,
+            $order->keterangan,
             $materialList ?: '-',
         ];
     }
@@ -74,8 +78,8 @@ class DeliveryOrderExport implements FromCollection, WithHeadings, WithMapping, 
         // Get number of rows to apply wrapping
         $lastRow = $sheet->getHighestRow();
         
-        $sheet->getStyle('G2:G' . $lastRow)->getAlignment()->setWrapText(true);
-        $sheet->getStyle('A1:G' . $lastRow)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
+        $sheet->getStyle('I2:I' . $lastRow)->getAlignment()->setWrapText(true);
+        $sheet->getStyle('A1:I' . $lastRow)->getAlignment()->setVertical(Alignment::VERTICAL_TOP);
 
         return [
             1 => ['font' => ['bold' => true]],

@@ -37,7 +37,7 @@ use Livewire\Volt\Component;
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                 </svg>
-                Cetak (Dot Matrix)
+                Cetak Berita Acara
             </button>
         </div>
     </div>
@@ -53,6 +53,8 @@ use Livewire\Volt\Component;
                     <div class="font-bold text-gray-800"><?php echo e($order->lokasi); ?></div>
                     <div class="text-gray-400">Kecamatan</div>
                     <div class="font-bold text-gray-800"><?php echo e($order->pelaksana_kecamatan ?: '-'); ?></div>
+                    <div class="text-gray-400">Penerima</div>
+                    <div class="font-bold text-gray-800"><?php echo e($order->penerima ?: '-'); ?></div>
                     <div class="text-gray-400">No. Polisi</div>
                     <div class="font-bold text-gray-800 uppercase"><?php echo e($order->no_polisi ?: '-'); ?></div>
                 </div>
@@ -136,140 +138,116 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
     </div>
 
     <style>
-        @media screen {
-            #dot-matrix-print { display: none; }
-        }
-
         @media print {
-            body * { visibility: hidden; }
-            #dot-matrix-print, #dot-matrix-print * { visibility: visible; }
-            #dot-matrix-print {
-                display: block !important;
+            @page { margin: 1cm; }
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 21cm; /* Lebar F4 standar */
-                height: 10.5cm; /* 1/3 dari Panjang F4 (33cm / 3) */
-                font-family: 'Courier New', Courier, monospace;
-                font-size: 9pt;
-                color: black;
-                line-height: 1;
-            }
-
-            @page {
-                size: landscape;
-                margin: 0.2cm;
-            }
-
-            table {
                 width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 3px;
-            }
-            
-            th, td {
-                border: 1px solid black;
-                padding: 1px 4px;
-                text-align: left;
-            }
-
-            .no-border td {
-                border: none !important;
-            }
-
-            .header-compact {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid black;
-                margin-bottom: 5px;
-                padding-bottom: 2px;
+                display: block !important;
+                padding: 0 !important;
             }
         }
     </style>
 
-    <div id="dot-matrix-print">
-        <div class="header-compact">
-            <div style="font-weight: bold; font-size: 11pt;">SURAT JALAN</div>
-            <div style="text-align: right;">
-                <strong>No: <?php echo e($order->surat_jalan_no); ?></strong> | Tgl: <?php echo e($order->tanggal->format('d/m/Y')); ?>
+    <div id="print-area" class="hidden print:block bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+        <img src="<?php echo e(asset('assets/kop.png')); ?>" class="w-full h-auto mb-8">
 
-            </div>
+        <?php
+            $carbonDate = $order->tanggal;
+            $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            $dayName = $days[$carbonDate->dayOfWeek];
+            $monthName = $months[$carbonDate->month];
+            
+            $sumberTujuan = $order->lokasi ?: 'Internal';
+            
+            $title1 = "BERITA ACARA SERAH TERIMA BARANG";
+            $title2 = "DISTRIBUSI/PENGELUARAN";
+            $labelPihakSatu = 'Pengurus Barang/Pengurus Barang Pembantu';
+            $labelPihakDua = 'Pemakai Persediaan';
+        ?>
+
+        <div class="text-center mb-6">
+            <h1 class="text-lg font-bold underline uppercase leading-tight">
+                <?php echo e($title1); ?><br>
+                <?php echo e($title2); ?>
+
+            </h1>
+            <p class="text-sm font-bold mt-1">Nomor: <?php echo e($order->surat_jalan_no ?: '……………………………'); ?></p>
         </div>
 
-        <table class="no-border" style="width: 100%; margin-bottom: 3px;">
-            <tr>
-                <td style="width: 10%;">Tujuan</td>
-                <td style="width: 2%;">:</td>
-                <td style="width: 53%;"><strong><?php echo e($order->lokasi); ?></strong> (<?php echo e($order->pelaksana_kecamatan ?: '-'); ?>)</td>
-                <td style="width: 12%;">No. Pol</td>
-                <td style="width: 2%;">:</td>
-                <td style="width: 21%;"><strong><?php echo e($order->no_polisi ?: '-'); ?></strong></td>
-            </tr>
-        </table>
+        <div class="text-justify mb-4 text-[13px]">
+            <p>Pada Hari ini <span class="font-bold"><?php echo e($dayName); ?></span> Tanggal <span class="font-bold"><?php echo e($carbonDate->day); ?></span> Bulan <span class="font-bold"><?php echo e($monthName); ?></span> Tahun <span class="font-bold"><?php echo e($carbonDate->year); ?></span> </p>
+            <p>yang bertanda tangan dibawah ini:</p>
+            
+            <div class="mt-3 ml-8 space-y-0.5">
+                <p>Nama : <span class="font-bold"><?php echo e(auth()->user()->name); ?></span></p>
+                <p>Jabatan : <span class="font-bold text-[11px]"><?php echo e($labelPihakSatu); ?></span></p>
+            </div>
 
-        <table>
+            <p class="mt-3">
+                Telah menyerahkan barang persedian yang diterima oleh <span class="font-bold text-sm underline"><?php echo e($sumberTujuan); ?></span> 
+                sesuai dengan Berita Acara Pemeriksaan Barang Nomor <span class="font-bold"><?php echo e($order->surat_jalan_no ?: '……'); ?></span> 
+                Tanggal <span class="font-bold"><?php echo e($carbonDate->day); ?></span> Bulan <span class="font-bold"><?php echo e($monthName); ?></span> Tahun <span class="font-bold"><?php echo e($carbonDate->year); ?></span>. 
+                Sebagaimana daftar terlampir. Daftar barang yang diserahkan sebagai berikut:
+            </p>
+        </div>
+
+        <table class="w-full border-collapse border border-black text-[12px] mb-6">
             <thead>
-                <tr style="background-color: #f2f2f2;">
-                    <th style="width: 5%; text-align: center;">NO</th>
-                    <th style="width: 70%;">DESKRIPSI MATERIAL</th>
-                    <th style="width: 12%; text-align: center;">QTY</th>
-                    <th style="width: 13%;">SATUAN</th>
+                <tr class="bg-gray-50">
+                    <th class="border border-black px-2 py-1 text-center w-8">No</th>
+                    <th class="border border-black px-3 py-1 text-left">Uraian Nama Barang</th>
+                    <th class="border border-black px-3 py-1 text-center w-24">Satuan</th>
+                    <th class="border border-black px-3 py-1 text-center w-24">Volume</th>
+                    <th class="border border-black px-3 py-1 text-left">Keterangan</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $order->materials; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td style="text-align: center;"><?php echo e($index + 1); ?></td>
-                    <td><?php echo e($m->name); ?></td>
-                    <td style="text-align: center;"><strong><?php echo e((float)$m->pivot->requested_volume); ?></strong></td>
-                    <td><?php echo e($m->unit); ?></td>
+                    <td class="border border-black px-2 py-1.5 text-center"><?php echo e($index + 1); ?></td>
+                    <td class="border border-black px-3 py-1.5 font-bold uppercase"><?php echo e($m->name); ?></td>
+                    <td class="border border-black px-3 py-1.5 text-center uppercase"><?php echo e($m->unit); ?></td>
+                    <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
+                        <?php echo e((float)$m->pivot->requested_volume); ?>
+
+                    </td>
+                    <td class="border border-black px-3 py-1.5 italic text-[10px]"><?php echo e($order->keterangan ?: '-'); ?></td>
                 </tr>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php for($i = count($order->materials); $i < 3; $i++): ?>
-                <tr>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                    <td>&nbsp;</td>
-                </tr>
-                <?php endfor; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </tbody>
         </table>
 
-        <div style="margin-top: 5px;">
-            <table class="no-border" style="text-align: center; width: 100%;">
-                <tr style="font-weight: bold;">
-                    <td>Penerima</td>
-                    <td>Sopir</td>
-                    <td>Gudang</td>
-                    <td>Mengetahui</td>
-                </tr>
-                <tr>
-                    <td style="height: 35px;"></td>
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-                <tr>
-                    <td>( ________ )</td>
-                    <td>( ________ )</td>
-                    <td>( <?php echo e(auth()->user()->name); ?> )</td>
-                    <td>( ________ )</td>
-                </tr>
-            </table>
-        </div>
+        <p class="text-[13px] mb-8">Demikian Berita Acara Serah Terima Barang ini dibuat dalam rangkap 2 (dua) untuk digunakan sebagaimana mestinya.</p>
 
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px;">
-            <div style="font-size: 7pt; font-style: italic; border-top: 1px dotted black; width: 75%;">
-                * Putih: Kantor | Merah: Penerima | Kuning: Gudang | Hijau: Arsip
-                <br>Dicetak pada: <?php echo e(now()->format('d/m/Y H:i')); ?>
-
+        <div class="grid grid-cols-2 text-center text-[13px]">
+            <div>
+                <p>Jakarta, <?php echo e($carbonDate->day); ?> <?php echo e($monthName); ?> <?php echo e($carbonDate->year); ?></p>
+                <p class="mt-1">Yang menyerahkan Barang,</p>
+                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1"><?php echo e($labelPihakSatu); ?></p>
+                
+                <div class="h-20"></div>
+                
+                <p class="font-bold underline uppercase"><?php echo e(auth()->user()->name); ?></p>
             </div>
-            <div style="text-align: center;">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=<?php echo e(urlencode(request()->url())); ?>" style="width: 55px; height: 55px; border: 1px solid #000; padding: 2px;">
-                <div style="font-size: 6pt; font-weight: bold; margin-top: 2px;">SCAN DATA</div>
+            <div>
+                <p class="invisible">Jakarta, ...</p>
+                <p class="mt-1">Yang menerima Barang,</p>
+                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1"><?php echo e($labelPihakDua); ?></p>
+                
+                <div class="h-20"></div>
+                
+                <p class="font-bold underline uppercase"><?php echo e($order->penerima ?: ($order->pemohon ?: $sumberTujuan)); ?></p>
             </div>
         </div>
     </div>

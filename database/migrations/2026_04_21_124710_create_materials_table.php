@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('category_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('unit')->default('Pcs'); // Satuan, misal m3, sak, pcs
-            $table->decimal('current_volume', 10, 2)->default(0);
+            $table->integer('current_volume')->default(0);
             $table->integer('current_pcs')->default(0);
             $table->timestamps();
         });
