@@ -92,7 +92,7 @@ new class extends Component {
             if ($calcStartDate->lt($monthStart)) {
                 $calcStartDate = $monthStart->copy();
             }
-            
+
             $calcEndDate = $displayEndDate->copy();
             if ($calcEndDate->gt($monthEnd)) {
                 $calcEndDate = $monthEnd->copy();
@@ -121,7 +121,7 @@ new class extends Component {
                 ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
                 ->first();
 
-            $openingBalance = (float)($openingTrx->total_in ?? 0) - (float)($openingTrx->total_out ?? 0);
+            $openingBalance = (float) ($openingTrx->total_in ?? 0) - (float) ($openingTrx->total_out ?? 0);
 
             // 2. Mutasi Selama Periode: Transaksi ANTARA tanggal awal dan akhir kalkulasi
             $periodTransactions = InventoryTransaction::where('material_id', $material->id)
@@ -158,7 +158,7 @@ new class extends Component {
 
                 foreach ($days as $day) {
                     $dateStr = $day->format('Y-m-d');
-                    
+
                     // Jika hari di luar bulan, beri nilai null (block abu-abu)
                     if ($day->month != (int) $this->month) {
                         $dailyIn[] = null;
@@ -335,8 +335,13 @@ new class extends Component {
                         @if($week)
                             @php
                                 $indoDays = [
-                                    'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu',
-                                    'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu', 'Sunday' => 'Minggu'
+                                    'Monday' => 'Senin',
+                                    'Tuesday' => 'Selasa',
+                                    'Wednesday' => 'Rabu',
+                                    'Thursday' => 'Kamis',
+                                    'Friday' => 'Jumat',
+                                    'Saturday' => 'Sabtu',
+                                    'Sunday' => 'Minggu'
                                 ];
                             @endphp
                             @foreach($days as $day)
@@ -373,10 +378,12 @@ new class extends Component {
 
                         <th
                             class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-red-600 text-right bg-red-50/30 min-w-[120px]">
-                            {{ $week ? 'Jumlah Keluar' : 'Total Keluar (-)' }}</th>
+                            {{ $week ? 'Jumlah Keluar' : 'Total Keluar (-)' }}
+                        </th>
                         <th
                             class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 text-right min-w-[150px]">
-                            {{ $week ? 'Stock Sisa' : 'Saldo Akhir' }}</th>
+                            {{ $week ? 'Stock Sisa' : 'Saldo Akhir' }}
+                        </th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">
                             Aksi</th>
                     </tr>
@@ -413,7 +420,7 @@ new class extends Component {
                                 @endforeach
                             @endif
 
-                             @if($week)
+                            @if($week)
                                 <td class="px-6 py-4 text-right bg-emerald-50/20">
                                     <span
                                         class="text-xs font-black text-emerald-600">{{ number_format($item->total_in, 0, ',', '.') }}</span>
@@ -422,12 +429,12 @@ new class extends Component {
                                     <span
                                         class="text-xs font-black text-blue-600">{{ number_format($item->jumlah_stok, 0, ',', '.') }}</span>
                                 </td>
-                             @else
+                            @else
                                 <td class="px-6 py-4 text-right bg-emerald-50/20">
                                     <span
                                         class="text-xs font-black text-emerald-600">{{ number_format($item->total_in, 0, ',', '.') }}</span>
                                 </td>
-                             @endif
+                            @endif
 
                             @if($week)
                                 @foreach($item->daily_out as $val)
@@ -528,7 +535,7 @@ new class extends Component {
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-6">
 
         <div class="text-center mb-6">
-            <h1 class="text-xl font-bold uppercase leading-tight">LAPORAN SALDO & MUTASI BARANG</h1>
+            <h1 class="text-xl font-bold uppercase leading-tight">LAPORAN MUTASI BARANG PERSEDIAAN</h1>
             <p class="text-md font-bold mt-1">Periode: {{ $periodLabel }}</p>
         </div>
 
@@ -546,7 +553,8 @@ new class extends Component {
                         <th class="border border-black px-1 py-1 text-center" colspan="7">Masuk Harian</th>
                     @endif
                     <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">
-                        {{ $week ? 'Jumlah Masuk' : 'Total Masuk' }}</th>
+                        {{ $week ? 'Jumlah Masuk' : 'Total Masuk' }}
+                    </th>
                     @if($week)
                         <th class="border border-black px-1 py-1 text-right" rowspan="2">Jumlah Stok</th>
                     @endif
@@ -555,16 +563,23 @@ new class extends Component {
                         <th class="border border-black px-1 py-1 text-center" colspan="7">Keluar Harian</th>
                     @endif
                     <th class="border border-black px-1 py-1 text-right" rowspan="{{ $week ? '2' : '1' }}">
-                        {{ $week ? 'Jumlah Keluar' : 'Total Keluar' }}</th>
+                        {{ $week ? 'Jumlah Keluar' : 'Total Keluar' }}
+                    </th>
 
                     <th class="border border-black px-1 py-1 text-right font-black" rowspan="{{ $week ? '2' : '1' }}">
-                        {{ $week ? 'Stock Sisa' : 'Saldo Akhir' }}</th>
+                        {{ $week ? 'Stock Sisa' : 'Saldo Akhir' }}
+                    </th>
                 </tr>
                 @if($week)
                     @php
                         $indoDaysShort = [
-                            'Monday' => 'Sen', 'Tuesday' => 'Sel', 'Wednesday' => 'Rab',
-                            'Thursday' => 'Kam', 'Friday' => 'Jum', 'Saturday' => 'Sab', 'Sunday' => 'Min'
+                            'Monday' => 'Sen',
+                            'Tuesday' => 'Sel',
+                            'Wednesday' => 'Rab',
+                            'Thursday' => 'Kam',
+                            'Friday' => 'Jum',
+                            'Saturday' => 'Sab',
+                            'Sunday' => 'Min'
                         ];
                     @endphp
                     <tr class="bg-gray-50">
@@ -588,7 +603,8 @@ new class extends Component {
                         <td class="border border-black px-2 py-1 font-bold uppercase">{{ $item->name }}</td>
                         <td class="border border-black px-1 py-1 text-center uppercase">{{ $item->unit }}</td>
                         <td class="border border-black px-1 py-1 text-right">
-                            {{ number_format($item->opening_balance, 0, ',', '.') }}</td>
+                            {{ number_format($item->opening_balance, 0, ',', '.') }}
+                        </td>
 
                         @if($week)
                             @foreach($item->daily_in as $val)
@@ -598,10 +614,12 @@ new class extends Component {
                             @endforeach
                         @endif
                         <td class="border border-black px-1 py-1 text-right font-bold">
-                            {{ number_format($item->total_in, 0, ',', '.') }}</td>
+                            {{ number_format($item->total_in, 0, ',', '.') }}
+                        </td>
                         @if($week)
                             <td class="border border-black px-1 py-1 text-right font-bold bg-gray-50">
-                                {{ number_format($item->jumlah_stok, 0, ',', '.') }}</td>
+                                {{ number_format($item->jumlah_stok, 0, ',', '.') }}
+                            </td>
                         @endif
 
                         @if($week)
@@ -612,10 +630,12 @@ new class extends Component {
                             @endforeach
                         @endif
                         <td class="border border-black px-1 py-1 text-right font-bold">
-                            {{ number_format($item->total_out, 0, ',', '.') }}</td>
+                            {{ number_format($item->total_out, 0, ',', '.') }}
+                        </td>
 
                         <td class="border border-black px-1 py-1 text-right font-black bg-gray-100">
-                            {{ number_format($item->final_balance, 0, ',', '.') }}</td>
+                            {{ number_format($item->final_balance, 0, ',', '.') }}
+                        </td>
                     </tr>
                 @empty
                     <tr>

@@ -69,11 +69,17 @@ new class extends Component {
             Kembali
         </a>
         <div class="flex items-center gap-2">
-            <button onclick="window.print()" class="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:bg-gray-50 transition-all">
+            <button onclick="printBA()" class="bg-white text-gray-700 border border-gray-200 px-4 py-2 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:bg-gray-50 transition-all">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                 </svg>
                 Cetak Berita Acara
+            </button>
+            <button onclick="printSPB()" class="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:bg-blue-700 transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Cetak SPB
             </button>
         </div>
     </div>
@@ -166,26 +172,30 @@ new class extends Component {
     </div>
 
     <style>
+        .print-target { display: none; }
+        
         @media print {
             @page { margin: 1cm; }
             body * {
                 visibility: hidden;
             }
-            #print-area, #print-area * {
+            .print-active, .print-active * {
                 visibility: visible;
             }
-            #print-area {
+            .print-active {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
                 display: block !important;
                 padding: 0 !important;
+                visibility: visible !important;
             }
         }
     </style>
 
-    <div id="print-area" class="hidden print:block bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+    {{-- AREA CETAK BERITA ACARA --}}
+    <div id="print-ba-area" class="print-target bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
 
         @php
@@ -277,4 +287,72 @@ new class extends Component {
             </div>
         </div>
     </div>
+
+    {{-- AREA CETAK SPB --}}
+    <div id="print-spb-area" class="print-target bg-white p-6 text-black leading-tight" style="font-family: 'Times New Roman', serif;">
+        <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-8">
+
+        <div class="text-center mb-6">
+            <h1 class="text-lg font-bold underline uppercase leading-tight">
+                SURAT PERMINTAAN BARANG (SPB)
+            </h1>
+            <p class="text-sm font-bold mt-1">Nomor: {{ $order->surat_jalan_no ?: '……………………………' }}</p>
+        </div>
+
+        <table class="w-full border-collapse border border-black text-[12px] mb-8">
+            <thead>
+                <tr>
+                    <th class="border border-black px-2 py-2 text-center w-8">No</th>
+                    <th class="border border-black px-3 py-2 text-left">Uraian / Nama Barang</th>
+                    <th class="border border-black px-3 py-2 text-center w-24">Jumlah</th>
+                    <th class="border border-black px-3 py-2 text-left w-32">Keterangan</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($order->materials as $index => $m)
+                <tr>
+                    <td class="border border-black px-2 py-1.5 text-center">{{ $index + 1 }}</td>
+                    <td class="border border-black px-3 py-1.5 font-bold uppercase">{{ $m->name }}</td>
+                    <td class="border border-black px-3 py-1.5 text-center font-bold text-sm">
+                        {{ (float)$m->pivot->requested_volume }} {{ $m->unit }}
+                    </td>
+                    <td class="border border-black px-3 py-1.5 italic text-[10px]">{{ $order->keterangan ?: '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        <div class="grid grid-cols-2 text-center text-[13px] mt-12">
+            <div>
+                <p class="invisible">Jakarta, ...</p>
+                <p class="mt-1">Mengetahui,</p>
+                <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">Unit / Kabag / Kabid</p>
+                <div class="h-24"></div>
+                <p class="font-bold underline uppercase">______________________</p>
+                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+            </div>
+            <div>
+                <p>Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
+                <p class="mt-1">Yang Meminta Barang,</p>
+                <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">Petugas / Pemohon</p>
+                <div class="h-24"></div>
+                <p class="font-bold underline uppercase">{{ $order->pemohon ?: '______________________' }}</p>
+                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function printBA() {
+            document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
+            document.getElementById('print-ba-area').classList.add('print-active');
+            window.print();
+        }
+        function printSPB() {
+            document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
+            document.getElementById('print-spb-area').classList.add('print-active');
+            window.print();
+        }
+    </script>
 </div>
+

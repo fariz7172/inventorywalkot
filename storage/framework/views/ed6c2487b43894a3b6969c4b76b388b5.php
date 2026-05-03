@@ -8,125 +8,6 @@ use App\Models\StockOpnameItem;
 use App\Models\StockOpname;
 use Carbon\Carbon;
 
-new #[Layout('layouts.admin')] class extends Component {
-    public $filterPeriod = 'this_month';
-    public $filterDifference = 'all';
-    public $startDate = '';
-    public $endDate = '';
-    public $items = [];
-
-    // Stats variables
-    public $statTotalOpname = 0;
-    public $statMinus = 0;
-    public $statPlus = 0;
-    public $statBalance = 0;
-
-    public function mount() {
-        $this->startDate = now()->startOfMonth()->format('Y-m-d');
-        $this->endDate = now()->format('Y-m-d');
-        $this->loadData();
-    }
-
-    public function updatedFilterPeriod() {
-        if ($this->filterPeriod !== 'custom') {
-            $this->loadData();
-        } elseif ($this->startDate && $this->endDate) {
-            $this->loadData();
-        }
-    }
-
-    public function updatedFilterDifference() {
-        $this->loadData();
-    }
-
-    public function applyCustomDate() {
-        if ($this->startDate && $this->endDate) {
-            $this->loadData();
-        }
-    }
-
-    public function loadData() {
-        // Query for Table
-        $query = StockOpnameItem::with(['opname.user', 'opname.approver', 'material'])
-            ->whereHas('opname', function($q) {
-                if ($this->filterPeriod === 'this_week') {
-                    $q->whereBetween('opname_date', [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')]);
-                } elseif ($this->filterPeriod === 'this_month') {
-                    $q->whereMonth('opname_date', now()->month)
-                      ->whereYear('opname_date', now()->year);
-                } elseif ($this->filterPeriod === 'this_year') {
-                    $q->whereYear('opname_date', now()->year);
-                } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
-                    $q->whereBetween('opname_date', [$this->startDate, $this->endDate]);
-                }
-            });
-
-        if ($this->filterDifference === 'has_diff') {
-            $query->where('stock_opname_items.difference', '!=', 0);
-        } elseif ($this->filterDifference === 'plus') {
-            $query->where('stock_opname_items.difference', '>', 0);
-        } elseif ($this->filterDifference === 'minus') {
-            $query->where('stock_opname_items.difference', '<', 0);
-        }
-
-        $query->join('stock_opnames', 'stock_opname_items.stock_opname_id', '=', 'stock_opnames.id')
-            ->join('materials', 'stock_opname_items.material_id', '=', 'materials.id')
-            ->select('stock_opname_items.*')
-            ->orderBy('materials.name', 'asc')
-            ->orderBy('stock_opnames.opname_date', 'desc');
-
-        $this->items = $query->get();
-
-        // Query for Stats (Unfiltered by difference, only by period)
-        $statsQuery = clone $query;
-        $statsQuery = StockOpnameItem::whereHas('opname', function($q) {
-            if ($this->filterPeriod === 'this_week') {
-                $q->whereBetween('opname_date', [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')]);
-            } elseif ($this->filterPeriod === 'this_month') {
-                $q->whereMonth('opname_date', now()->month)
-                  ->whereYear('opname_date', now()->year);
-            } elseif ($this->filterPeriod === 'this_year') {
-                $q->whereYear('opname_date', now()->year);
-            } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
-                $q->whereBetween('opname_date', [$this->startDate, $this->endDate]);
-            }
-        });
-
-        $allStatsItems = $statsQuery->get();
-        $this->statMinus = $allStatsItems->where('difference', '<', 0)->count();
-        $this->statPlus = $allStatsItems->where('difference', '>', 0)->count();
-        $this->statBalance = $allStatsItems->where('difference', '==', 0)->count();
-
-        $this->statTotalOpname = StockOpname::when($this->filterPeriod !== 'all', function($q) {
-            if ($this->filterPeriod === 'this_week') {
-                $q->whereBetween('opname_date', [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')]);
-            } elseif ($this->filterPeriod === 'this_month') {
-                $q->whereMonth('opname_date', now()->month)->whereYear('opname_date', now()->year);
-            } elseif ($this->filterPeriod === 'this_year') {
-                $q->whereYear('opname_date', now()->year);
-            } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
-                $q->whereBetween('opname_date', [$this->startDate, $this->endDate]);
-            }
-        })->count();
-    }
-
-    public function exportExcel() {
-        $export = new StockOpnameExport($this->filterPeriod, $this->filterDifference);
-        return Excel::download($export, 'analisa-selisih-stok-' . now()->format('Y-m-d') . '.xlsx');
-    }
-
-    public function getPeriodLabelProperty()
-    {
-        if ($this->filterPeriod === 'this_week') return 'Minggu Ini (' . now()->startOfWeek()->format('d M') . ' - ' . now()->endOfWeek()->format('d M Y') . ')';
-        if ($this->filterPeriod === 'this_month') return now()->translatedFormat('F Y');
-        if ($this->filterPeriod === 'this_year') return 'Tahun ' . now()->year;
-        if ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
-            return Carbon::parse($this->startDate)->format('d M Y') . ' - ' . Carbon::parse($this->endDate)->format('d M Y');
-        }
-        return 'Semua Waktu';
-    }
-};
-
 ?>
 
 <div>
@@ -177,14 +58,14 @@ new #[Layout('layouts.admin')] class extends Component {
                     </div>
                 </div>
 
-                @if($filterPeriod === 'custom')
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($filterPeriod === 'custom'): ?>
                 <div class="flex items-center gap-2 justify-end no-print bg-white p-2 border border-gray-200 rounded-xl shadow-sm">
                     <input type="date" wire:model="startDate" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-accent focus:border-accent block px-3 py-1.5">
                     <span class="text-gray-400 font-bold text-xs uppercase">s/d</span>
                     <input type="date" wire:model="endDate" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-accent focus:border-accent block px-3 py-1.5">
                     <button wire:click="applyCustomDate" class="bg-accent hover:bg-accent-light text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Terapkan</button>
                 </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
         </div>
     </div>
@@ -194,7 +75,7 @@ new #[Layout('layouts.admin')] class extends Component {
         <div class="bg-white rounded-2xl p-5 shadow-card border border-gray-100 flex flex-col justify-center">
             <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Gelar Opname</p>
             <div class="flex items-end gap-2">
-                <span class="text-3xl font-black text-gray-800">{{ $statTotalOpname }}</span>
+                <span class="text-3xl font-black text-gray-800"><?php echo e($statTotalOpname); ?></span>
                 <span class="text-xs font-bold text-gray-400 mb-1">Kali</span>
             </div>
         </div>
@@ -202,7 +83,7 @@ new #[Layout('layouts.admin')] class extends Component {
             <div class="absolute -right-4 -top-4 w-16 h-16 bg-red-100/50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
             <p class="text-[11px] font-black text-red-500 uppercase tracking-widest mb-1 relative z-10">Barang Hilang / Minus</p>
             <div class="flex items-end gap-2 relative z-10">
-                <span class="text-3xl font-black text-red-600">{{ $statMinus }}</span>
+                <span class="text-3xl font-black text-red-600"><?php echo e($statMinus); ?></span>
                 <span class="text-xs font-bold text-red-400 mb-1">Item</span>
             </div>
         </div>
@@ -210,7 +91,7 @@ new #[Layout('layouts.admin')] class extends Component {
             <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-100/50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
             <p class="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-1 relative z-10">Kelebihan / Plus</p>
             <div class="flex items-end gap-2 relative z-10">
-                <span class="text-3xl font-black text-emerald-700">{{ $statPlus }}</span>
+                <span class="text-3xl font-black text-emerald-700"><?php echo e($statPlus); ?></span>
                 <span class="text-xs font-bold text-emerald-500 mb-1">Item</span>
             </div>
         </div>
@@ -218,7 +99,7 @@ new #[Layout('layouts.admin')] class extends Component {
             <div class="absolute -right-4 -top-4 w-16 h-16 bg-blue-100/50 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
             <p class="text-[11px] font-black text-blue-600 uppercase tracking-widest mb-1 relative z-10">Stok Akurat (Balance)</p>
             <div class="flex items-end gap-2 relative z-10">
-                <span class="text-3xl font-black text-blue-700">{{ $statBalance }}</span>
+                <span class="text-3xl font-black text-blue-700"><?php echo e($statBalance); ?></span>
                 <span class="text-xs font-bold text-blue-500 mb-1">Item</span>
             </div>
         </div>
@@ -239,38 +120,40 @@ new #[Layout('layouts.admin')] class extends Component {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-warm/30">
-                    @forelse($items as $item)
-                    <tr class="hover:bg-base/50 transition-colors {{ $item->difference != 0 ? 'bg-orange-50/20' : '' }}">
-                        <td class="px-6 py-4 font-medium text-gray-900">{{ \Carbon\Carbon::parse($item->opname->opname_date)->format('d M Y') }}</td>
-                        <td class="px-6 py-4 text-gray-800 font-bold">{{ $item->material->name }} <br><span class="text-xs font-normal text-gray-500">Satuan: {{ $item->material->unit }}</span></td>
-                        <td class="px-6 py-4 text-center text-gray-600">{{ (float)$item->system_volume }}</td>
-                        <td class="px-6 py-4 text-center text-gray-900 font-bold">{{ (float)$item->physical_volume }}</td>
-                        <td class="px-6 py-4 text-center font-bold {{ $item->difference > 0 ? 'text-emerald-600' : ($item->difference < 0 ? 'text-red-600' : 'text-gray-400') }}">
-                            {{ $item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference) }}
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                    <tr class="hover:bg-base/50 transition-colors <?php echo e($item->difference != 0 ? 'bg-orange-50/20' : ''); ?>">
+                        <td class="px-6 py-4 font-medium text-gray-900"><?php echo e(\Carbon\Carbon::parse($item->opname->opname_date)->format('d M Y')); ?></td>
+                        <td class="px-6 py-4 text-gray-800 font-bold"><?php echo e($item->material->name); ?> <br><span class="text-xs font-normal text-gray-500">Satuan: <?php echo e($item->material->unit); ?></span></td>
+                        <td class="px-6 py-4 text-center text-gray-600"><?php echo e((float)$item->system_volume); ?></td>
+                        <td class="px-6 py-4 text-center text-gray-900 font-bold"><?php echo e((float)$item->physical_volume); ?></td>
+                        <td class="px-6 py-4 text-center font-bold <?php echo e($item->difference > 0 ? 'text-emerald-600' : ($item->difference < 0 ? 'text-red-600' : 'text-gray-400')); ?>">
+                            <?php echo e($item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference)); ?>
+
                         </td>
                         <td class="px-6 py-4 text-gray-600 italic">
-                            {{ $item->notes ?? '-' }}
+                            <?php echo e($item->notes ?? '-'); ?>
+
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex flex-col gap-1">
-                                @if($item->opname->status === 'approved')
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($item->opname->status === 'approved'): ?>
                                     <span class="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded w-max">
                                         Disetujui
                                     </span>
-                                @elseif($item->opname->status === 'rejected')
+                                <?php elseif($item->opname->status === 'rejected'): ?>
                                     <span class="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded w-max">
                                         Ditolak
                                     </span>
-                                @else
+                                <?php else: ?>
                                     <span class="inline-flex items-center gap-1 text-xs font-bold text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded w-max">
                                         Pending
                                     </span>
-                                @endif
-                                <span class="text-[10px] text-gray-500">Oleh: {{ $item->opname->user->name }}</span>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                <span class="text-[10px] text-gray-500">Oleh: <?php echo e($item->opname->user->name); ?></span>
                             </div>
                         </td>
                     </tr>
-                    @empty
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
                         <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center justify-center">
@@ -279,19 +162,19 @@ new #[Layout('layouts.admin')] class extends Component {
                             </div>
                         </td>
                     </tr>
-                    @endforelse
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    {{-- Print Area --}}
+    
     <div id="print-area" class="hidden print-target bg-white text-black text-xs" style="font-family: 'Times New Roman', serif;">
-        <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-6">
+        <img src="<?php echo e(asset('assets/kop.png')); ?>" class="w-full h-auto mb-6">
         
         <div class="text-center mb-6">
             <h1 class="text-xl font-bold uppercase leading-tight">(BERITA ACARA STOCK OPNAME)</h1>
-            <p class="text-md font-bold mt-1">Periode: {{ $this->periodLabel }}</p>
+            <p class="text-md font-bold mt-1">Periode: <?php echo e($this->periodLabel); ?></p>
         </div>
 
         <table class="w-full border-collapse border border-black text-[9px]">
@@ -307,28 +190,29 @@ new #[Layout('layouts.admin')] class extends Component {
                 </tr>
             </thead>
             <tbody>
-                @foreach($items as $item)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td class="border border-black px-2 py-1 text-center">{{ \Carbon\Carbon::parse($item->opname->opname_date)->format('d/m/Y') }}</td>
-                    <td class="border border-black px-2 py-1 font-bold uppercase">{{ $item->material->name }} ({{ $item->material->unit }})</td>
-                    <td class="border border-black px-2 py-1 text-center">{{ (float)$item->system_volume }}</td>
-                    <td class="border border-black px-2 py-1 text-center font-bold">{{ (float)$item->physical_volume }}</td>
+                    <td class="border border-black px-2 py-1 text-center"><?php echo e(\Carbon\Carbon::parse($item->opname->opname_date)->format('d/m/Y')); ?></td>
+                    <td class="border border-black px-2 py-1 font-bold uppercase"><?php echo e($item->material->name); ?> (<?php echo e($item->material->unit); ?>)</td>
+                    <td class="border border-black px-2 py-1 text-center"><?php echo e((float)$item->system_volume); ?></td>
+                    <td class="border border-black px-2 py-1 text-center font-bold"><?php echo e((float)$item->physical_volume); ?></td>
                     <td class="border border-black px-2 py-1 text-center font-bold">
-                        {{ $item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference) }}
+                        <?php echo e($item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference)); ?>
+
                     </td>
-                    <td class="border border-black px-2 py-1 text-[8px]">{{ $item->notes ?? '-' }}</td>
-                    <td class="border border-black px-2 py-1 text-[8px] uppercase">{{ $item->opname->user->name }}</td>
+                    <td class="border border-black px-2 py-1 text-[8px]"><?php echo e($item->notes ?? '-'); ?></td>
+                    <td class="border border-black px-2 py-1 text-[8px] uppercase"><?php echo e($item->opname->user->name); ?></td>
                 </tr>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </tbody>
         </table>
 
         <div class="mt-8 flex justify-end pr-8">
             <div class="text-center w-64">
-                <p class="text-xs">Jakarta, {{ Carbon::now()->translatedFormat('d F Y') }}</p>
+                <p class="text-xs">Jakarta, <?php echo e(Carbon::now()->translatedFormat('d F Y')); ?></p>
                 <p class="text-xs font-bold mt-1">Petugas Gudang / Admin,</p>
                 <div class="h-20"></div>
-                <p class="text-xs font-bold underline uppercase">{{ auth()->user()->name }}</p>
+                <p class="text-xs font-bold underline uppercase"><?php echo e(auth()->user()->name); ?></p>
             </div>
         </div>
     </div>
@@ -339,7 +223,7 @@ new #[Layout('layouts.admin')] class extends Component {
             if (!el) return;
 
             const originalTitle = document.title;
-            document.title = "LAPORAN_STOCK_OPNAME_{{ now()->format('d_m_Y') }}";
+            document.title = "LAPORAN_STOCK_OPNAME_<?php echo e(now()->format('d_m_Y')); ?>";
 
             const printClone = el.cloneNode(true);
             printClone.id = 'temp-print-area';
@@ -381,4 +265,4 @@ new #[Layout('layouts.admin')] class extends Component {
             th, td { border: 1px solid black !important; }
         }
     </style>
-</div>
+</div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/laporan/rekap-opname.blade.php ENDPATH**/ ?>

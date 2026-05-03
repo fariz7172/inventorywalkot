@@ -139,8 +139,13 @@ use Carbon\Carbon;
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                             <?php
                                 $indoDays = [
-                                    'Monday' => 'Senin', 'Tuesday' => 'Selasa', 'Wednesday' => 'Rabu',
-                                    'Thursday' => 'Kamis', 'Friday' => 'Jumat', 'Saturday' => 'Sabtu', 'Sunday' => 'Minggu'
+                                    'Monday' => 'Senin',
+                                    'Tuesday' => 'Selasa',
+                                    'Wednesday' => 'Rabu',
+                                    'Thursday' => 'Kamis',
+                                    'Friday' => 'Jumat',
+                                    'Saturday' => 'Sabtu',
+                                    'Sunday' => 'Minggu'
                                 ];
                             ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $days; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -177,10 +182,14 @@ use Carbon\Carbon;
 
                         <th
                             class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-red-600 text-right bg-red-50/30 min-w-[120px]">
-                            <?php echo e($week ? 'Jumlah Keluar' : 'Total Keluar (-)'); ?></th>
+                            <?php echo e($week ? 'Jumlah Keluar' : 'Total Keluar (-)'); ?>
+
+                        </th>
                         <th
                             class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-900 text-right min-w-[150px]">
-                            <?php echo e($week ? 'Stock Sisa' : 'Saldo Akhir'); ?></th>
+                            <?php echo e($week ? 'Stock Sisa' : 'Saldo Akhir'); ?>
+
+                        </th>
                         <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-right">
                             Aksi</th>
                     </tr>
@@ -218,7 +227,7 @@ use Carbon\Carbon;
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                                 <td class="px-6 py-4 text-right bg-emerald-50/20">
                                     <span
                                         class="text-xs font-black text-emerald-600"><?php echo e(number_format($item->total_in, 0, ',', '.')); ?></span>
@@ -227,12 +236,12 @@ use Carbon\Carbon;
                                     <span
                                         class="text-xs font-black text-blue-600"><?php echo e(number_format($item->jumlah_stok, 0, ',', '.')); ?></span>
                                 </td>
-                             <?php else: ?>
+                            <?php else: ?>
                                 <td class="px-6 py-4 text-right bg-emerald-50/20">
                                     <span
                                         class="text-xs font-black text-emerald-600"><?php echo e(number_format($item->total_in, 0, ',', '.')); ?></span>
                                 </td>
-                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $item->daily_out; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -335,7 +344,7 @@ use Carbon\Carbon;
         <img src="<?php echo e(asset('assets/kop.png')); ?>" class="w-full h-auto mb-6">
 
         <div class="text-center mb-6">
-            <h1 class="text-xl font-bold uppercase leading-tight">LAPORAN SALDO & MUTASI BARANG</h1>
+            <h1 class="text-xl font-bold uppercase leading-tight">LAPORAN MUTASI BARANG PERSEDIAAN</h1>
             <p class="text-md font-bold mt-1">Periode: <?php echo e($periodLabel); ?></p>
         </div>
 
@@ -353,7 +362,9 @@ use Carbon\Carbon;
                         <th class="border border-black px-1 py-1 text-center" colspan="7">Masuk Harian</th>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <th class="border border-black px-1 py-1 text-right" rowspan="<?php echo e($week ? '2' : '1'); ?>">
-                        <?php echo e($week ? 'Jumlah Masuk' : 'Total Masuk'); ?></th>
+                        <?php echo e($week ? 'Jumlah Masuk' : 'Total Masuk'); ?>
+
+                    </th>
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                         <th class="border border-black px-1 py-1 text-right" rowspan="2">Jumlah Stok</th>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -362,16 +373,25 @@ use Carbon\Carbon;
                         <th class="border border-black px-1 py-1 text-center" colspan="7">Keluar Harian</th>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <th class="border border-black px-1 py-1 text-right" rowspan="<?php echo e($week ? '2' : '1'); ?>">
-                        <?php echo e($week ? 'Jumlah Keluar' : 'Total Keluar'); ?></th>
+                        <?php echo e($week ? 'Jumlah Keluar' : 'Total Keluar'); ?>
+
+                    </th>
 
                     <th class="border border-black px-1 py-1 text-right font-black" rowspan="<?php echo e($week ? '2' : '1'); ?>">
-                        <?php echo e($week ? 'Stock Sisa' : 'Saldo Akhir'); ?></th>
+                        <?php echo e($week ? 'Stock Sisa' : 'Saldo Akhir'); ?>
+
+                    </th>
                 </tr>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                     <?php
                         $indoDaysShort = [
-                            'Monday' => 'Sen', 'Tuesday' => 'Sel', 'Wednesday' => 'Rab',
-                            'Thursday' => 'Kam', 'Friday' => 'Jum', 'Saturday' => 'Sab', 'Sunday' => 'Min'
+                            'Monday' => 'Sen',
+                            'Tuesday' => 'Sel',
+                            'Wednesday' => 'Rab',
+                            'Thursday' => 'Kam',
+                            'Friday' => 'Jum',
+                            'Saturday' => 'Sab',
+                            'Sunday' => 'Min'
                         ];
                     ?>
                     <tr class="bg-gray-50">
@@ -397,7 +417,9 @@ use Carbon\Carbon;
                         <td class="border border-black px-2 py-1 font-bold uppercase"><?php echo e($item->name); ?></td>
                         <td class="border border-black px-1 py-1 text-center uppercase"><?php echo e($item->unit); ?></td>
                         <td class="border border-black px-1 py-1 text-right">
-                            <?php echo e(number_format($item->opening_balance, 0, ',', '.')); ?></td>
+                            <?php echo e(number_format($item->opening_balance, 0, ',', '.')); ?>
+
+                        </td>
 
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $item->daily_in; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $val): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
@@ -408,10 +430,14 @@ use Carbon\Carbon;
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <td class="border border-black px-1 py-1 text-right font-bold">
-                            <?php echo e(number_format($item->total_in, 0, ',', '.')); ?></td>
+                            <?php echo e(number_format($item->total_in, 0, ',', '.')); ?>
+
+                        </td>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
                             <td class="border border-black px-1 py-1 text-right font-bold bg-gray-50">
-                                <?php echo e(number_format($item->jumlah_stok, 0, ',', '.')); ?></td>
+                                <?php echo e(number_format($item->jumlah_stok, 0, ',', '.')); ?>
+
+                            </td>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($week): ?>
@@ -423,10 +449,14 @@ use Carbon\Carbon;
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         <td class="border border-black px-1 py-1 text-right font-bold">
-                            <?php echo e(number_format($item->total_out, 0, ',', '.')); ?></td>
+                            <?php echo e(number_format($item->total_out, 0, ',', '.')); ?>
+
+                        </td>
 
                         <td class="border border-black px-1 py-1 text-right font-black bg-gray-100">
-                            <?php echo e(number_format($item->final_balance, 0, ',', '.')); ?></td>
+                            <?php echo e(number_format($item->final_balance, 0, ',', '.')); ?>
+
+                        </td>
                     </tr>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
