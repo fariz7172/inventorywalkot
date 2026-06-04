@@ -43,7 +43,7 @@ new class extends Component {
 
     public function editGroup($ref, $doId, $type, $date, $userId)
     {
-        if (!auth()->user()->hasRole('superadmin')) return;
+        if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) return;
 
         $query = InventoryTransaction::with(['material'])
             ->where('type', $type)
@@ -85,7 +85,7 @@ new class extends Component {
 
     public function saveEdit()
     {
-        if (!auth()->user()->hasRole('superadmin')) return;
+        if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) return;
 
         DB::beginTransaction();
         try {
@@ -388,7 +388,7 @@ new class extends Component {
                                     Detail
                                 </button>
 
-                                @if(auth()->user()->hasRole('superadmin'))
+                                @if(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin'))
                                 <button wire:click.stop="editGroup('{{ $t->reference_number }}', '{{ $t->delivery_order_id }}', '{{ $t->type }}', '{{ $t->date }}', {{ $t->user_id }})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-500 text-blue-500 hover:text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

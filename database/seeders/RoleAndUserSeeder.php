@@ -17,6 +17,8 @@ class RoleAndUserSeeder extends Seeder
         // Membuat Role
         $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
         $gudangRole = Role::firstOrCreate(['name' => 'gudang']);
+        $kepalaGudangRole = Role::firstOrCreate(['name' => 'kepala_gudang']);
+        $sudinRole = Role::firstOrCreate(['name' => 'sudin']);
 
         // Membuat Akun Superadmin
         $superadmin = User::firstOrCreate(
@@ -37,5 +39,25 @@ class RoleAndUserSeeder extends Seeder
             ]
         );
         $gudang->assignRole($gudangRole);
+
+        // Membuat Akun Kepala Gudang
+        $kepalaGudang = User::firstOrCreate(
+            ['email' => 'kepalagudang@gmail.com'],
+            [
+                'name' => 'Kepala Gudang',
+                'password' => Hash::make('password')
+            ]
+        );
+        $kepalaGudang->assignRole($kepalaGudangRole);
+
+        // Membuat Akun SUDIN
+        $sudin = User::firstOrCreate(
+            ['email' => 'sudin@gmail.com'],
+            [
+                'name' => 'Kepala Suku Dinas (SUDIN)',
+                'password' => Hash::make('password')
+            ]
+        );
+        $sudin->assignRole($sudinRole);
     }
 }

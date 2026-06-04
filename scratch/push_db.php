@@ -30,7 +30,7 @@ if ($returnVar !== 0) die("❌ Local backup failed!\n");
 echo "✅ Local backup successful.\n";
 
 // 2. UPLOAD TO SERVER
-$sshHost = '145.79.14.233';
+$sshHost = 'farizahmad.com';
 $sshPort = 65002;
 $sshUser = 'u674511048';
 $sshPass = '!FarizAhmad123456';

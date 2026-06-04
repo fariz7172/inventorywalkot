@@ -25,7 +25,7 @@ $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 
 mount(function() {
-    if (!auth()->user()->hasRole('superadmin')) {
+    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) {
         return $this->redirect('/dashboard/surat-jalan', navigate: true);
     }
 });

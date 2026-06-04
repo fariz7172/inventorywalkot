@@ -3,7 +3,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use phpseclib3\Net\SSH2;
 
-$host     = '145.79.14.233';
+$host     = 'farizahmad.com';
 $port     = 65002;
 $user     = 'u674511048';
 $password = '!FarizAhmad123456';

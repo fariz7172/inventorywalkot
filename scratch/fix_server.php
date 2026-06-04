@@ -3,7 +3,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use phpseclib3\Net\SSH2;
 
-$ssh = new SSH2('145.79.14.233', 65002);
+$ssh = new SSH2('farizahmad.com', 65002);
 if (!$ssh->login('u674511048', '!FarizAhmad123456')) {
     exit('Login Failed');
 }

@@ -219,7 +219,7 @@
                             'label' => 'Data Barang',
                             'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10',
                             'children' => [
-                                ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin'],
+                                ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Stok Barang', 'route' => 'material.index'],
                                 ['label' => 'BAP Barang', 'route' => 'surat-jalan.index'],
                             ]
@@ -229,7 +229,7 @@
                             'icon' => 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
                             'children' => [
                              ['label' => 'Rekap Barang', 'route' => 'laporan.barang-masuk'],
-                                ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin'],
+                                ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo'],
                                 ['label' => 'Stock Opname', 'route' => 'stock-opname.index'],
                             ]
@@ -238,7 +238,7 @@
                             'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
                             'label' => 'Manajemen User',
                             'route' => 'user.index',
-                            'role' => 'superadmin'
+                            'role' => 'superadmin|sudin'
                         ],
                     ];
                 @endphp
@@ -246,11 +246,11 @@
                 @foreach($navItems as $item)
                     @php
                         $hasChildren = isset($item['children']);
-                        $isAuthorized = !isset($item['role']) || auth()->user()->hasRole($item['role']);
+                        $isAuthorized = !isset($item['role']) || auth()->user()->hasAnyRole(explode('|', $item['role']));
 
                         if ($hasChildren) {
                             $authorizedChildren = array_filter($item['children'], function ($child) {
-                                return !isset($child['role']) || auth()->user()->hasRole($child['role']);
+                                return !isset($child['role']) || auth()->user()->hasAnyRole(explode('|', $child['role']));
                             });
                             $isAuthorized = !empty($authorizedChildren);
                         }
@@ -288,7 +288,7 @@
                                     x-transition:enter-start="opacity-0 transform -translate-y-2"
                                     x-transition:enter-end="opacity-100 transform translate-y-0" class="pl-10 space-y-1">
                                     @foreach($item['children'] as $child)
-                                        @if(!isset($child['role']) || auth()->user()->hasRole($child['role']))
+                                        @if(!isset($child['role']) || auth()->user()->hasAnyRole(explode('|', $child['role'])))
                                             <a href="{{ route($child['route']) }}"
                                                 class="block px-3 py-2 rounded-lg text-sm transition-all {{ request()->routeIs($child['route']) ? 'text-accent font-bold bg-white/40' : 'text-gray-500 hover:text-gray-900' }}">
                                                 {{ $child['label'] }}
@@ -311,7 +311,7 @@
                     @endif
                 @endforeach
 
-                @role('superadmin')
+                @hasanyrole('superadmin|sudin')
                     <p class="nav-label text-[10px] font-semibold uppercase tracking-widest text-gray-400 px-3 mt-4 mb-2">
                         Sistem</p>
 
@@ -330,7 +330,7 @@
                             <span class="nav-label text-sm font-medium">{{ $item['label'] }}</span>
                         </a>
                     @endforeach
-                @endrole
+                @endhasanyrole
 
                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">
                     @csrf
@@ -417,14 +417,14 @@
                         @php
                             $notifCount = 0;
                             $notifItems = collect();
-                            // Jika gudang: Hitung yang masih draft (menunggu konfirmasi pengeluaran)
-                            if (auth()->user()->hasRole('gudang') || auth()->user()->hasRole('staff')) {
+                            // Jika gudang/kepala gudang: Hitung yang masih draft (menunggu konfirmasi pengeluaran)
+                            if (auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang') || auth()->user()->hasRole('staff')) {
                                 $notifCount = \App\Models\DeliveryOrder::where('status', 'draft')->count();
                                 $notifItems = \App\Models\DeliveryOrder::where('status', 'draft')
                                                 ->orderBy('created_at', 'desc')->take(5)->get();
                             } 
-                            // Jika superadmin: Hitung yang sudah dikonfirmasi (shipped) hari ini
-                            elseif (auth()->user()->hasRole('superadmin')) {
+                            // Jika superadmin/sudin: Hitung yang sudah dikonfirmasi (shipped) hari ini
+                            elseif (auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) {
                                 $notifCount = \App\Models\DeliveryOrder::where('status', 'shipped')
                                                 ->whereDate('updated_at', \Carbon\Carbon::today())
                                                 ->count();
@@ -480,7 +480,7 @@
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-800">{{ $item->surat_jalan_no }}</p>
                                                         <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                                                            @if(auth()->user()->hasRole('superadmin'))
+                                                            @if(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin'))
                                                                 Telah dikonfirmasi dan dikirim oleh pihak Gudang.
                                                             @else
                                                                 Surat Jalan baru (Draft) menunggu konfirmasi Anda.
@@ -573,7 +573,7 @@
     @stack('scripts')
 
     @auth
-        @if(session('show_opname_reminder') && auth()->user()->hasRole('gudang') && in_array(date('w'), [5, 6]))
+        @if(session('show_opname_reminder') && (auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang')) && in_array(date('w'), [5, 6]))
             <script>
                 Swal.fire({
                     title: 'Pengingat Penting!',

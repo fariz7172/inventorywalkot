@@ -120,7 +120,7 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->status === 'draft' && auth()->user()->hasRole('gudang')): ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->status === 'draft' && (auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang') || auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin'))): ?>
                     <button wire:click="processShipment" wire:loading.attr="disabled" class="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent/30 hover:bg-accent-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                         <svg wire:loading.remove class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -136,7 +136,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <?php elseif($order->status === 'draft'): ?>
                     <div class="p-4 bg-warm/30 rounded-xl border border-warm/60 text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Menunggu Konfirmasi</p>
-                        <p class="text-[10px] text-gray-400 mt-1 italic">Hanya petugas gudang yang dapat melakukan konfirmasi pengiriman.</p>
+                        <p class="text-[10px] text-gray-400 mt-1 italic">Hanya petugas gudang, kepala gudang, superadmin, atau SUDIN yang dapat melakukan konfirmasi pengiriman.</p>
                     </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
@@ -148,6 +148,11 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         
         @media print {
             @page { margin: 1cm; }
+            html, body, .flex, main, .page-content {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
             body * {
                 visibility: hidden;
             }
@@ -200,7 +205,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
             <p>yang bertanda tangan dibawah ini:</p>
             
             <div class="mt-3 ml-8 space-y-0.5">
-                <p>Nama : <span class="font-bold"><?php echo e(auth()->user()->name); ?></span></p>
+                <p>Nama : <span class="font-bold"><?php echo e($order->petugas ?: auth()->user()->name); ?></span></p>
                 <p>Jabatan : <span class="font-bold text-[11px]"><?php echo e($labelPihakSatu); ?></span></p>
             </div>
 
@@ -248,7 +253,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 
                 <div class="h-20"></div>
                 
-                <p class="font-bold underline uppercase"><?php echo e(auth()->user()->name); ?></p>
+                <p class="font-bold underline uppercase"><?php echo e($order->petugas ?: auth()->user()->name); ?></p>
             </div>
             <div>
                 <p class="invisible">Jakarta, ...</p>

@@ -121,7 +121,7 @@ use Livewire\Volt\Component;
                     <button wire:click="closeModal" class="flex-1 bg-base hover:bg-warm/60 text-gray-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
                         Tutup
                     </button>
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('admin')): ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang') || auth()->user()->hasRole('admin')): ?>
                     <a href="<?php echo e(route('surat-jalan.show', $order->id)); ?>" class="flex-1 bg-accent text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-center shadow-lg shadow-accent/20 hover:bg-accent-dark transition-all">
                         Kelola Dokumen
                     </a>

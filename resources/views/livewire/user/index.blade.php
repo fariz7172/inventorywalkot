@@ -132,7 +132,7 @@ $deleteUser = function(User $user) {
                         <td class="px-6 py-4 text-gray-600">{{ $u->email }}</td>
                         <td class="px-6 py-4 text-center">
                             @foreach($u->roles as $role)
-                                <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {{ $role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600' }}">
+                                <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {{ $role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : ($role->name === 'sudin' ? 'bg-purple-100 text-purple-600' : ($role->name === 'kepala_gudang' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600')) }}">
                                     {{ $role->name }}
                                 </span>
                             @endforeach
