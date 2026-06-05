@@ -221,6 +221,7 @@
                             'children' => [
                                 ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Stok Barang', 'route' => 'material.index'],
+                                ['label' => 'Data RAB', 'route' => 'rab.index'],
                                 ['label' => 'BAP Barang', 'route' => 'surat-jalan.index'],
                             ]
                         ],
@@ -231,6 +232,7 @@
                              ['label' => 'Rekap Barang', 'route' => 'laporan.barang-masuk'],
                                 ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo'],
+                                ['label' => 'Laporan RAB', 'route' => 'laporan.rab'],
                                 ['label' => 'Stock Opname', 'route' => 'stock-opname.index'],
                             ]
                         ],

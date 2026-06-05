@@ -38,10 +38,12 @@ Route::prefix('dashboard')->middleware('auth')->group(function () {
     Volt::route('/laporan/saldo', 'laporan.saldo')->name('laporan.saldo');
     Volt::route('/laporan/barang-masuk', 'laporan.barang-masuk')->name('laporan.barang-masuk');
     Volt::route('/laporan/stock-opname', 'laporan.rekap-opname')->name('laporan.stock-opname');
+    Volt::route('/laporan/rab', 'laporan.rab')->name('laporan.rab');
     
     // Fitur Tambahan
     Volt::route('/stock-opname', 'stock-opname.index')->name('stock-opname.index');
     Volt::route('/settings', 'settings')->name('settings');
+    Volt::route('/rab', 'rab.index')->name('rab.index');
     Route::get('/laporan/print-riwayat/{id}', [App\Http\Controllers\ReportController::class, 'printRiwayat'])->name('laporan.print-riwayat');
     Route::get('/pengaturan', fn() => view('admin.settings'))->name('settings_alias');
 });

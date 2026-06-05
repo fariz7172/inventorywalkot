@@ -75,6 +75,9 @@ echo $ssh->exec("cd $appPath && php artisan key:generate --no-interaction 2>&1")
 echo "--- Cache Clear ---\n";
 echo $ssh->exec("cd $appPath && php artisan config:clear && php artisan cache:clear && php artisan view:clear 2>&1") . "\n";
 
+echo "--- Database Migration ---\n";
+echo $ssh->exec("cd $appPath && php artisan migrate --force 2>&1") . "\n";
+
 echo "--- Permissions ---\n";
 echo $ssh->exec("chmod -R 775 $appPath/storage $appPath/bootstrap/cache && echo 'Permissions set OK'") . "\n";
 

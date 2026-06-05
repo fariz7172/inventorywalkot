@@ -3,6 +3,7 @@
 use App\Models\DeliveryOrder;
 use App\Models\Material;
 use App\Models\Category;
+use App\Models\Rab;
 use function Livewire\Volt\{state, rules, computed, layout, mount};
 
 layout('layouts.admin');
@@ -24,10 +25,11 @@ state([
 
 $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
+$rabs = computed(fn() => Rab::orderBy('lokasi', 'asc')->get());
 
 mount(function(DeliveryOrder $order) {
     if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) {
-        return $this->redirect('/dashboard/surat-jalan', navigate: true);
+        abort(403, 'Akses Ditolak. Hanya Superadmin dan Sudin yang dapat mengedit Surat Jalan.');
     }
 
     $this->order = $order->load('materials');
@@ -101,10 +103,20 @@ $save = function () {
     // Update Materials ONLY if not shipped
     if ($this->order->status !== 'shipped') {
         $syncData = [];
+        $rabSync = [];
         foreach ($this->selected_materials as $item) {
-            $syncData[$item['material_id']] = ['requested_volume' => $item['requested_volume']];
+            if (!empty($item['material_id'])) {
+                $syncData[$item['material_id']] = ['requested_volume' => $item['requested_volume']];
+                $rabSync[$item['material_id']] = [];
+            }
         }
         $this->order->materials()->sync($syncData);
+
+        // Auto-register material to RAB location
+        $rab = Rab::where('lokasi', $this->lokasi)->first();
+        if ($rab) {
+            $rab->materials()->syncWithoutDetaching($rabSync);
+        }
     }
 
     session()->flash('message', 'Perubahan Surat Jalan berhasil disimpan.');
@@ -160,8 +172,13 @@ $save = function () {
                     @error('tanggal') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lokasi Tujuan</label>
-                    <input type="text" wire:model="lokasi" placeholder="Contoh: Proyek A, Gedung B" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lokasi Tujuan (RAB)</label>
+                    <select wire:model="lokasi" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror">
+                        <option value="">-- Pilih Lokasi RAB --</option>
+                        @foreach($this->rabs as $rab)
+                            <option value="{{ $rab->lokasi }}">{{ $rab->lokasi }}</option>
+                        @endforeach
+                    </select>
                     @error('lokasi') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>

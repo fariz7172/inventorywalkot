@@ -60,7 +60,7 @@ use Illuminate\Support\Facades\Hash;
                         <td class="px-6 py-4 text-gray-600"><?php echo e($u->email); ?></td>
                         <td class="px-6 py-4 text-center">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $u->roles; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $role): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider <?php echo e($role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : ($role->name === 'kepala_gudang' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600')); ?>">
+                                <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider <?php echo e($role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : ($role->name === 'sudin' ? 'bg-purple-100 text-purple-600' : ($role->name === 'kepala_gudang' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'))); ?>">
                                     <?php echo e($role->name); ?>
 
                                 </span>
@@ -110,7 +110,7 @@ use Illuminate\Support\Facades\Hash;
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Role / Peran</label>
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-2 gap-3">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->roles; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $role): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <label class="relative flex items-center justify-center p-3 rounded-2xl bg-base cursor-pointer hover:bg-accent/5 transition-all border-2 <?php echo e($selected_role === $role->name ? 'border-accent bg-accent/5' : 'border-transparent'); ?>">
                             <input type="radio" wire:model="selected_role" value="<?php echo e($role->name); ?>" class="hidden">

@@ -255,18 +255,18 @@ use Illuminate\Support\Facades\DB;
             </div>
             
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col gap-4">
-                <!-- Jika ada Catatan dari Superadmin (History) -->
+                <!-- Jika ada Catatan dari Pemeriksa (History) -->
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($selectedOpname->approver_notes): ?>
                     <div class="p-3 <?php echo e($selectedOpname->status === 'approved' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'); ?> border rounded-xl">
-                        <span class="font-bold text-sm <?php echo e($selectedOpname->status === 'approved' ? 'text-emerald-700' : 'text-red-700'); ?>">Catatan Superadmin:</span>
+                        <span class="font-bold text-sm <?php echo e($selectedOpname->status === 'approved' ? 'text-emerald-700' : 'text-red-700'); ?>">Catatan Pemeriksa:</span>
                         <p class="text-sm text-gray-700 mt-1"><?php echo e($selectedOpname->approver_notes); ?></p>
                     </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                <!-- Input Catatan Superadmin (Saat Pending) -->
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('superadmin') && $selectedOpname->status === 'pending'): ?>
+                <!-- Input Catatan Pemeriksa (Saat Pending) -->
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) && $selectedOpname->status === 'pending'): ?>
                     <div class="w-full">
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Catatan Superadmin <span class="text-xs font-normal text-gray-500">(Wajib jika menolak)</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Catatan Pemeriksa <span class="text-xs font-normal text-gray-500">(Wajib jika menolak)</span></label>
                         <textarea wire:model="approverNotes" rows="2" class="w-full rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-accent/50 outline-none" placeholder="Tuliskan alasan penolakan atau catatan tambahan persetujuan..."></textarea>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['approverNotes'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -297,7 +297,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                         </button>
                         <button wire:click="closeDetail" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors">Tutup</button>
                         
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('superadmin') && $selectedOpname->status === 'pending'): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) && $selectedOpname->status === 'pending'): ?>
                             <button wire:click="rejectOpname(<?php echo e($selectedOpname->id); ?>)" class="px-5 py-2.5 rounded-xl font-bold bg-red-100 text-red-600 hover:bg-red-200 transition-colors">Tolak</button>
                             <button wire:click="approveOpname(<?php echo e($selectedOpname->id); ?>)" class="px-5 py-2.5 rounded-xl font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md">Setujui & Sesuaikan Stok</button>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -381,7 +381,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                     <td style="border: none; width: 50%; vertical-align: top;">
                         <p style="margin: 0;">Jakarta, <?php echo e($carbonDate->day); ?> <?php echo e($monthName); ?> <?php echo e($carbonDate->year); ?></p>
                         <p style="margin: 4px 0; font-weight: bold;">Yang Memeriksa Barang,</p>
-                        <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">(Super Admin)</p>
+                        <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">(<?php echo e(($selectedOpname->approver && $selectedOpname->approver->hasRole('sudin')) ? 'SUDIN' : 'Super Admin'); ?>)</p>
                         <div style="height: 80px;"></div>
                         <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;"><?php echo e($namaSuperAdmin); ?></p>
                         <p style="margin: 0; font-size: 9pt;">NIP: ……………………………</p>

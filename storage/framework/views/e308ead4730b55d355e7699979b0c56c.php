@@ -11,6 +11,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+    public $order;
+
     public $surat_jalan_no;
 
     public $tanggal;
@@ -31,7 +33,7 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $selected_materials;
 
-    public function mount()
+    public function mount(\App\Models\DeliveryOrder $order)
     {
         (new Actions\InitializeState)->execute(static::$__context, $this, get_defined_vars());
 
@@ -52,14 +54,6 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         return (new Actions\CallMethod('allMaterials'))->execute(...$arguments);
-    }
-
-    #[\Livewire\Attributes\Computed()]
-    public function rabs()
-    {
-        $arguments = [static::$__context, $this, func_get_args()];
-
-        return (new Actions\CallMethod('rabs'))->execute(...$arguments);
     }
 
     public function addMaterial()

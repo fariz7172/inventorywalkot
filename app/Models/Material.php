@@ -24,4 +24,9 @@ class Material extends Model
     {
         return $this->hasMany(InventoryTransaction::class);
     }
+
+    public function rabs()
+    {
+        return $this->belongsToMany(Rab::class, 'material_rab')->withPivot('target_volume')->withTimestamps();
+    }
 }
