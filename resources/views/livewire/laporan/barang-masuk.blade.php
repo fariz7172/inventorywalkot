@@ -172,8 +172,21 @@ new class extends Component {
                 DB::raw('MAX(id) as max_id')
             )
             ->with(['user', 'deliveryOrder'])
-            ->groupBy('reference_number', 'delivery_order_id', 'type', 'user_id', 'date')
-            ->orderBy('latest_created_at', 'desc')
+            ->groupBy('reference_number', 'delivery_order_id', 'type', 'user_id', 'date');
+            
+        if (auth()->check() && auth()->user()->kecamatan_id) {
+            $userKecId = auth()->user()->kecamatan_id;
+            $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', $userKecId)->pluck('lokasi');
+            $query->where(function($q) use ($userKecId, $lokasiKecamatan) {
+                $q->whereHas('user', function($uq) use ($userKecId) {
+                    $uq->where('kecamatan_id', $userKecId);
+                })->orWhereHas('deliveryOrder', function($dq) use ($lokasiKecamatan) {
+                    $dq->whereIn('lokasi', $lokasiKecamatan);
+                });
+            });
+        }
+            
+        $query->orderBy('latest_created_at', 'desc')
             ->orderBy('max_id', 'desc');
 
         if ($this->filterType !== 'all') {

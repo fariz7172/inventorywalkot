@@ -220,7 +220,7 @@
                             'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10',
                             'children' => [
                                 ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin|sudin'],
-                                ['label' => 'Stok Barang', 'route' => 'material.index'],
+                                ['label' => 'Stok Barang', 'route' => 'material.index', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Data RAB', 'route' => 'rab.index'],
                                 ['label' => 'BAP Barang', 'route' => 'surat-jalan.index'],
                             ]
@@ -231,9 +231,9 @@
                             'children' => [
                              ['label' => 'Rekap Barang', 'route' => 'laporan.barang-masuk'],
                                 ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin|sudin'],
-                                ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo'],
+                                ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Laporan RAB', 'route' => 'laporan.rab'],
-                                ['label' => 'Stock Opname', 'route' => 'stock-opname.index'],
+                                ['label' => 'Stock Opname', 'route' => 'stock-opname.index', 'role' => 'superadmin|sudin'],
                             ]
                         ],
                         [

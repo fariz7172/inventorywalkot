@@ -9,10 +9,15 @@ class Rab extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['lokasi'];
+    protected $fillable = ['lokasi', 'kecamatan_id'];
 
     public function materials()
     {
         return $this->belongsToMany(Material::class, 'material_rab')->withPivot('target_volume')->withTimestamps();
+    }
+
+    public function kecamatan()
+    {
+        return $this->belongsTo(Kecamatan::class);
     }
 }

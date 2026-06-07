@@ -13,6 +13,7 @@ state([
     'surat_jalan_no' => '',
     'tanggal' => date('Y-m-d'),
     'lokasi' => '',
+    'is_manual_lokasi' => false,
     'pemohon' => '',
     'petugas' => 'SANJAYA',
     'penerima' => '',
@@ -24,11 +25,20 @@ state([
 
 $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
-$rabs = computed(fn() => Rab::orderBy('lokasi', 'asc')->get());
+$rabs = computed(function() {
+    $query = Rab::orderBy('lokasi', 'asc');
+    
+    $userKecamatanId = auth()->user()->kecamatan_id;
+    if ($userKecamatanId) {
+        $query->where('kecamatan_id', $userKecamatanId);
+    }
+    
+    return $query->get();
+});
 
 mount(function() {
-    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) {
-        abort(403, 'Akses Ditolak. Hanya Superadmin dan Sudin yang dapat membuat Surat Jalan.');
+    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin') && !auth()->user()->hasRole('kecamatan_admin')) {
+        abort(403, 'Akses Ditolak. Hanya Superadmin, Sudin, dan Admin Kecamatan yang dapat membuat Surat Jalan.');
     }
 });
 
@@ -97,6 +107,13 @@ $save = function () {
 
     // Auto-register material to RAB location so it appears in planning
     $rab = Rab::where('lokasi', $this->lokasi)->first();
+    if (!$rab && $this->is_manual_lokasi) {
+        $rab = Rab::create([
+            'lokasi' => $this->lokasi,
+            'kecamatan_id' => auth()->user()->kecamatan_id
+        ]);
+    }
+
     if ($rab) {
         $rabSync = [];
         foreach ($this->selected_materials as $item) {
@@ -142,13 +159,24 @@ $save = function () {
                     @error('tanggal') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lokasi Tujuan</label>
-                    <select wire:model="lokasi" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror">
-                        <option value="">-- Pilih Lokasi --</option>
-                        @foreach($this->rabs as $rab)
-                            <option value="{{ $rab->lokasi }}">{{ $rab->lokasi }}</option>
-                        @endforeach
-                    </select>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-semibold text-gray-600">Lokasi Tujuan</label>
+                        <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="checkbox" wire:model.live="is_manual_lokasi" class="rounded text-accent focus:ring-accent border-warm/60">
+                            <span class="text-[10px] font-bold text-gray-500 uppercase">Input Manual</span>
+                        </label>
+                    </div>
+                    
+                    @if($is_manual_lokasi)
+                        <textarea wire:model="lokasi" rows="2" placeholder="Masukkan detail lokasi manual..." class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror"></textarea>
+                    @else
+                        <select wire:model="lokasi" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror">
+                            <option value="">-- Pilih Lokasi --</option>
+                            @foreach($this->rabs as $rab)
+                                <option value="{{ $rab->lokasi }}">{{ $rab->lokasi }}</option>
+                            @endforeach
+                        </select>
+                    @endif
                     @error('lokasi') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>

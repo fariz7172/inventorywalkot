@@ -55,6 +55,12 @@ $loadData = function() {
         $query->whereBetween('opname_date', [$this->startDate, $this->endDate]);
     }
     
+    if (auth()->check() && auth()->user()->kecamatan_id) {
+        $query->whereHas('user', function($uq) {
+            $uq->where('kecamatan_id', auth()->user()->kecamatan_id);
+        });
+    }
+    
     $this->opnames = $query->get();
     $this->hasPendingOpname = StockOpname::where('status', 'pending')->exists();
 };

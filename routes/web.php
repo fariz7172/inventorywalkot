@@ -19,7 +19,7 @@ Route::get('/', fn() => redirect('/dashboard'));
 use Livewire\Volt\Volt;
 
 // Admin Pages
-Route::prefix('dashboard')->middleware('auth')->group(function () {
+Route::prefix('dashboard')->middleware(['auth', \App\Http\Middleware\CheckKecamatanAccess::class])->group(function () {
     Route::get('/',        fn() => view('admin.dashboard'))->name('dashboard');
     Route::get('/produk',  fn() => view('admin.products'))->name('products');
     

@@ -2,6 +2,7 @@
 
 use App\Models\Rab;
 use App\Models\Material;
+use App\Models\Kecamatan;
 use function Livewire\Volt\{state, computed, layout, on};
 
 layout('layouts.admin');
@@ -10,6 +11,7 @@ state([
     'showModal' => false,
     'editingRab' => null,
     'lokasi' => '',
+    'kecamatan_id' => '',
     'search' => '',
     
     // Manage Material RAB
@@ -23,7 +25,13 @@ on(['global-search' => function($search) {
 }]);
 
 $rabs = computed(function() {
-    $query = Rab::withCount('materials');
+    $query = Rab::withCount('materials')->with('kecamatan');
+    
+    $userKecamatanId = auth()->user()->kecamatan_id;
+    if ($userKecamatanId) {
+        $query->where('kecamatan_id', $userKecamatanId);
+    }
+    
     if ($this->search) {
         $query->where('lokasi', 'like', '%' . $this->search . '%');
     }
@@ -31,25 +39,40 @@ $rabs = computed(function() {
 });
 
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
+$allKecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->get());
 
 $openCreate = function() {
-    $this->reset(['editingRab', 'lokasi']);
+    $this->reset(['editingRab', 'lokasi', 'kecamatan_id']);
     $this->showModal = true;
 };
 
 $save = function() {
-    $this->validate([
+    $userKecamatanId = auth()->user()->kecamatan_id;
+    
+    $rules = [
         'lokasi' => 'required|string|max:255',
+    ];
+    
+    if (!$userKecamatanId) {
+        $rules['kecamatan_id'] = 'required|exists:kecamatans,id';
+    }
+
+    $this->validate($rules, [
+        'kecamatan_id.required' => 'Wajib memilih kecamatan.'
     ]);
+
+    $finalKecamatanId = $userKecamatanId ?: $this->kecamatan_id;
 
     if ($this->editingRab) {
         Rab::find($this->editingRab['id'])->update([
             'lokasi' => $this->lokasi,
+            'kecamatan_id' => $finalKecamatanId,
         ]);
         session()->flash('message', 'Data RAB berhasil diperbarui!');
     } else {
         Rab::create([
             'lokasi' => $this->lokasi,
+            'kecamatan_id' => $finalKecamatanId,
         ]);
         session()->flash('message', 'Data RAB baru berhasil ditambahkan!');
     }
@@ -60,6 +83,7 @@ $save = function() {
 $edit = function(Rab $rab) {
     $this->editingRab = $rab->toArray();
     $this->lokasi = $rab->lokasi;
+    $this->kecamatan_id = $rab->kecamatan_id;
     $this->showModal = true;
 };
 
@@ -158,7 +182,12 @@ $saveMaterials = function() {
                     </div>
                 </div>
                 
-                <h3 class="text-sm font-bold text-gray-400 mb-1">ID: #{{ $rab->id }}</h3>
+                <div class="flex items-center gap-2 mb-1">
+                    <h3 class="text-sm font-bold text-gray-400">ID: #{{ $rab->id }}</h3>
+                    @if($rab->kecamatan)
+                        <span class="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">{{ $rab->kecamatan->nama_kecamatan }}</span>
+                    @endif
+                </div>
                 <p class="text-lg font-bold text-gray-900 mb-4 flex-1">{{ $rab->lokasi }}</p>
                 
                 <div class="pt-4 border-t border-warm/60 flex items-center justify-between">
@@ -189,6 +218,19 @@ $saveMaterials = function() {
                     <input type="text" wire:model="lokasi" placeholder="Contoh: Gedung A, Proyek B" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
                     @error('lokasi') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
+
+                @if(!auth()->user()->kecamatan_id)
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Kecamatan</label>
+                    <select wire:model="kecamatan_id" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none text-gray-700">
+                        <option value="">-- Pilih Kecamatan --</option>
+                        @foreach($this->allKecamatans as $kecamatan)
+                            <option value="{{ $kecamatan->id }}">{{ $kecamatan->nama_kecamatan }}</option>
+                        @endforeach
+                    </select>
+                    @error('kecamatan_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+                @endif
 
                 <div class="pt-4 flex gap-3">
                     <button type="button" wire:click="$set('showModal', false)" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-2xl font-bold text-sm">Batal</button>

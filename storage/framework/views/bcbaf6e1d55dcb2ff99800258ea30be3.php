@@ -17,6 +17,8 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
 
     public $lokasi;
 
+    public $kecamatan_id;
+
     public $search;
 
     public $showMaterialModal;
@@ -46,6 +48,14 @@ new class extends Component implements Livewire\Volt\Contracts\FunctionalCompone
         $arguments = [static::$__context, $this, func_get_args()];
 
         return (new Actions\CallMethod('allMaterials'))->execute(...$arguments);
+    }
+
+    #[\Livewire\Attributes\Computed()]
+    public function allKecamatans()
+    {
+        $arguments = [static::$__context, $this, func_get_args()];
+
+        return (new Actions\CallMethod('allKecamatans'))->execute(...$arguments);
     }
 
     public function openCreate()

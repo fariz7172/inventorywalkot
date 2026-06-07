@@ -12,7 +12,13 @@ state([
     'selectedYear' => date('Y'),
 ]);
 
-$rabs = computed(fn() => Rab::orderBy('lokasi', 'asc')->get());
+$rabs = computed(function() {
+    $q = Rab::orderBy('lokasi', 'asc');
+    if (auth()->check() && auth()->user()->kecamatan_id) {
+        $q->where('kecamatan_id', auth()->user()->kecamatan_id);
+    }
+    return $q->get();
+});
 
 with(fn() => [
     'months' => [

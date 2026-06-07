@@ -44,6 +44,23 @@ new class extends Component {
     {
         $query = InventoryTransaction::with(['material', 'deliveryOrder']);
         
+        $applyKecamatanFilter = function($q) {
+            if (auth()->check() && auth()->user()->kecamatan_id) {
+                $userKecId = auth()->user()->kecamatan_id;
+                $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', $userKecId)->pluck('lokasi');
+                $q->where(function($subQ) use ($userKecId, $lokasiKecamatan) {
+                    $subQ->whereHas('user', function($uq) use ($userKecId) {
+                        $uq->where('kecamatan_id', $userKecId);
+                    })->orWhereHas('deliveryOrder', function($dq) use ($lokasiKecamatan) {
+                        $dq->whereIn('lokasi', $lokasiKecamatan);
+                    });
+                });
+            }
+            return $q;
+        };
+
+        $applyKecamatanFilter($query);
+        
         if ($this->material_id) {
             $query->where('material_id', $this->material_id);
         }
@@ -89,18 +106,20 @@ new class extends Component {
         foreach ($targetMaterials as $m) {
             $op = 0;
             if ($start) {
-                $opTrx = InventoryTransaction::where('material_id', $m->id)
+                $qOp = InventoryTransaction::where('material_id', $m->id)
                     ->where('created_at', '<', $start)
-                    ->selectRaw('SUM(volume_masuk) - SUM(volume_keluar) as balance')
-                    ->first();
+                    ->selectRaw('SUM(volume_masuk) - SUM(volume_keluar) as balance');
+                $applyKecamatanFilter($qOp);
+                $opTrx = $qOp->first();
                 $op = (float)($opTrx->balance ?? 0);
             }
 
-            $sumTrx = InventoryTransaction::where('material_id', $m->id)
+            $qSum = InventoryTransaction::where('material_id', $m->id)
                 ->when($start, fn($q) => $q->where('created_at', '>=', $start))
                 ->when($end, fn($q) => $q->where('created_at', '<=', $end))
-                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
-                ->first();
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out');
+            $applyKecamatanFilter($qSum);
+            $sumTrx = $qSum->first();
             
             $tin = (float)($sumTrx->total_in ?? 0);
             $tout = (float)($sumTrx->total_out ?? 0);

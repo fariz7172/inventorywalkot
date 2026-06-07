@@ -19,6 +19,10 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $request->session()->flash('show_opname_reminder', true);
 
+            if (Auth::user()->hasRole('kecamatan_admin')) {
+                return redirect()->intended('dashboard/surat-jalan');
+            }
+
             return redirect()->intended('dashboard');
         }
 

@@ -115,19 +115,36 @@ new class extends Component {
         }
 
         $items = collect($paginatedMaterials->items())->map(function ($material) use ($calcStartDate, $calcEndDate, $now, $days) {
+            $applyKecamatanFilter = function($q) {
+                if (auth()->check() && auth()->user()->kecamatan_id) {
+                    $userKecId = auth()->user()->kecamatan_id;
+                    $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', $userKecId)->pluck('lokasi');
+                    $q->where(function($subQ) use ($userKecId, $lokasiKecamatan) {
+                        $subQ->whereHas('user', function($uq) use ($userKecId) {
+                            $uq->where('kecamatan_id', $userKecId);
+                        })->orWhereHas('deliveryOrder', function($dq) use ($lokasiKecamatan) {
+                            $dq->whereIn('lokasi', $lokasiKecamatan);
+                        });
+                    });
+                }
+                return $q;
+            };
+
             // 1. Saldo Awal: Semua transaksi SEBELUM tanggal awal kalkulasi
-            $openingTrx = InventoryTransaction::where('material_id', $material->id)
+            $qOp = InventoryTransaction::where('material_id', $material->id)
                 ->where('created_at', '<', $calcStartDate->copy()->startOfDay())
-                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
-                ->first();
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out');
+            $applyKecamatanFilter($qOp);
+            $openingTrx = $qOp->first();
 
             $openingBalance = (float) ($openingTrx->total_in ?? 0) - (float) ($openingTrx->total_out ?? 0);
 
             // 2. Mutasi Selama Periode: Transaksi ANTARA tanggal awal dan akhir kalkulasi
-            $periodTransactions = InventoryTransaction::where('material_id', $material->id)
+            $qPeriod = InventoryTransaction::where('material_id', $material->id)
                 ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
-                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
-                ->first();
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out');
+            $applyKecamatanFilter($qPeriod);
+            $periodTransactions = $qPeriod->first();
 
             $totalIn = (float) ($periodTransactions->total_in ?? 0);
             $totalOut = (float) ($periodTransactions->total_out ?? 0);
@@ -140,21 +157,21 @@ new class extends Component {
             $dailyOut = [];
             if ($this->week) {
                 // Query data harian hanya untuk range yang valid dalam bulan ini
-                $dailyInTrx = InventoryTransaction::where('material_id', $material->id)
+                $qDailyIn = InventoryTransaction::where('material_id', $material->id)
                     ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
                     ->where('type', 'in')
                     ->selectRaw('DATE(created_at) as date, SUM(volume_masuk) as daily_total')
-                    ->groupBy('date')
-                    ->get()
-                    ->pluck('daily_total', 'date');
+                    ->groupBy('date');
+                $applyKecamatanFilter($qDailyIn);
+                $dailyInTrx = $qDailyIn->get()->pluck('daily_total', 'date');
 
-                $dailyOutTrx = InventoryTransaction::where('material_id', $material->id)
+                $qDailyOut = InventoryTransaction::where('material_id', $material->id)
                     ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
                     ->where('type', 'out')
                     ->selectRaw('DATE(created_at) as date, SUM(volume_keluar) as daily_total')
-                    ->groupBy('date')
-                    ->get()
-                    ->pluck('daily_total', 'date');
+                    ->groupBy('date');
+                $applyKecamatanFilter($qDailyOut);
+                $dailyOutTrx = $qDailyOut->get()->pluck('daily_total', 'date');
 
                 foreach ($days as $day) {
                     $dateStr = $day->format('Y-m-d');
