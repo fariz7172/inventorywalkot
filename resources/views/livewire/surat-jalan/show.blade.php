@@ -175,7 +175,9 @@ new class extends Component {
         .print-target { display: none; }
         
         @media print {
-            @page { margin: 1cm; }
+            @page { 
+                margin: 0; /* Menghilangkan header/footer bawaan browser (termasuk URL) */
+            }
             html, body, .flex, main, .page-content {
                 height: auto !important;
                 overflow: visible !important;
@@ -193,7 +195,7 @@ new class extends Component {
                 top: 0;
                 width: 100%;
                 display: block !important;
-                padding: 0 !important;
+                padding: 1.5cm !important; /* Memberikan margin konten agar tidak menempel di ujung kertas */
                 visibility: visible !important;
             }
         }
@@ -291,6 +293,8 @@ new class extends Component {
                 <p class="font-bold underline uppercase">{{ $order->penerima ?: ($order->pemohon ?: $sumberTujuan) }}</p>
             </div>
         </div>
+        <div class="fixed bottom-[1.5cm] left-[1.5cm] text-[10px] text-gray-500">{{ url()->current() }}</div>
+        <div class="fixed bottom-[1.5cm] right-[1.5cm] text-[10px] text-gray-500">Dicetak pada: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     {{-- AREA CETAK SPB --}}
@@ -345,6 +349,8 @@ new class extends Component {
                 <p class="text-[11px] mt-0.5">NIP: ..............................</p>
             </div>
         </div>
+        <div class="fixed bottom-[1.5cm] left-[1.5cm] text-[10px] text-gray-500">{{ url()->current() }}</div>
+        <div class="fixed bottom-[1.5cm] right-[1.5cm] text-[10px] text-gray-500">Dicetak pada: {{ now()->format('d/m/Y H:i') }}</div>
     </div>
 
     <script>

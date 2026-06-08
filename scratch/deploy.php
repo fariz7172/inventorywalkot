@@ -82,7 +82,7 @@ echo "--- Permissions ---\n";
 echo $ssh->exec("chmod -R 775 $appPath/storage $appPath/bootstrap/cache && echo 'Permissions set OK'") . "\n";
 
 echo "--- .htaccess Check ---\n";
-$htaccess = "Options -Indexes\nRewriteEngine On\nRewriteCond %{REQUEST_URI} !^/public\nRewriteRule ^(.*)$ /public/$1 [L,QSA]";
+$htaccess = "<IfModule mod_rewrite.c>\n    RewriteEngine On\n    RewriteCond %{REQUEST_URI} !^/public/\n    RewriteRule ^(.*)$ public/$1 [L,QSA]\n</IfModule>";
 $ssh->exec("echo '$htaccess' > $appPath/.htaccess");
 echo "✅ .htaccess created\n";
 

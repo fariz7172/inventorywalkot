@@ -801,8 +801,8 @@ new class extends Component {
     <script>
         function printBeritaAcara() {
             const originalTitle = document.title;
-            const ref = "{{ $selectedGroup['reference'] ?? 'Draft' }}";
-            document.title = "Berita Acara - " + ref;
+            const ref = "{{ $selectedGroup['reference'] ?? '' }}";
+            document.title = " " + ref;
             
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
             document.getElementById('print-ba-area').classList.add('print-active');
@@ -815,8 +815,8 @@ new class extends Component {
 
         function printSPB() {
             const originalTitle = document.title;
-            const ref = "{{ $selectedGroup['reference'] ?? 'Draft' }}";
-            document.title = "SPB - " + ref;
+            const ref = "{{ $selectedGroup['reference'] ?? '' }}";
+            document.title = " " + ref;
             
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
             document.getElementById('print-spb-area').classList.add('print-active');
