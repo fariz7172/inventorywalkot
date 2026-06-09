@@ -23,6 +23,36 @@ state([
     'selected_materials' => [['material_id' => '', 'requested_volume' => 0]]
 ]);
 
+$remainingQuotas = computed(function() {
+    $quotas = [];
+    if (!$this->lokasi || $this->is_manual_lokasi) {
+        return $quotas;
+    }
+
+    $query = Rab::with('materials')->where('lokasi', $this->lokasi);
+    $userKecamatanId = auth()->user()->kecamatan_id;
+    if ($userKecamatanId) {
+        $query->where('kecamatan_id', $userKecamatanId);
+    }
+    
+    $rab = $query->first();
+    if (!$rab) return $quotas;
+
+    foreach ($rab->materials as $mat) {
+        $targetVolume = (float)$mat->pivot->target_volume;
+        
+        $usedVolume = \Illuminate\Support\Facades\DB::table('delivery_order_materials')
+            ->join('delivery_orders', 'delivery_order_materials.delivery_order_id', '=', 'delivery_orders.id')
+            ->where('delivery_orders.lokasi', $this->lokasi)
+            ->where('delivery_order_materials.material_id', $mat->id)
+            ->sum('delivery_order_materials.requested_volume');
+            
+        $quotas[$mat->id] = max(0, $targetVolume - (float)$usedVolume);
+    }
+    
+    return $quotas;
+});
+
 $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 $rabs = computed(function() {
@@ -71,14 +101,24 @@ $save = function () {
         'min' => 'Jumlah minimal adalah 0.01.',
     ]);
 
-    // Validasi Stok
+    // Validasi Stok & RAB
     foreach ($this->selected_materials as $index => $item) {
         if (!empty($item['material_id'])) {
             $material = Material::find($item['material_id']);
             if ($material && $item['requested_volume'] > $material->current_volume) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    "selected_materials.{$index}.requested_volume" => "Maaf, Stok Kosong (Tersisa: " . (float)$material->current_volume . " {$material->unit})"
+                    "selected_materials.{$index}.requested_volume" => "Maaf, Stok Kosong atau Melebihi RAB(Tersisa: " . (float)$material->current_volume . " {$material->unit})"
                 ]);
+            }
+
+            // Limit RAB
+            if (!$this->is_manual_lokasi && $this->lokasi) {
+                $sisaRAB = isset($this->remainingQuotas[$item['material_id']]) ? $this->remainingQuotas[$item['material_id']] : 0;
+                if ($item['requested_volume'] > $sisaRAB) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        "selected_materials.{$index}.requested_volume" => "Melebihi Limit RAB Lokasi Ini (Sisa: " . $sisaRAB . " {$material->unit})"
+                    ]);
+                }
             }
         }
     }
@@ -228,7 +268,10 @@ $save = function () {
                         <select wire:model="selected_materials.{{ $index }}.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.material_id') border-red-500 @enderror">
                             <option value="">-- Pilih --</option>
                             @foreach($this->allMaterials as $m)
-                                <option value="{{ $m->id }}">{{ $m->name }} (Stok: {{ (float)$m->current_volume }} {{ $m->unit }})</option>
+                                @php
+                                    $sisaRABText = ($lokasi && !$is_manual_lokasi) ? (isset($this->remainingQuotas[$m->id]) ? $this->remainingQuotas[$m->id] : 0) : '?';
+                                @endphp
+                                <option value="{{ $m->id }}">{{ $m->name }} (Stok: {{ (float)$m->current_volume }} | RAB Sisa: {{ $sisaRABText }})</option>
                             @endforeach
                         </select>
                         @error('selected_materials.'.$index.'.material_id') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror

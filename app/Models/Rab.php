@@ -9,7 +9,7 @@ class Rab extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['lokasi', 'kecamatan_id'];
+    protected $fillable = ['lokasi', 'kecamatan_id', 'is_locked'];
 
     public function materials()
     {

@@ -233,7 +233,7 @@
                                 ['label' => 'Laporan Utama', 'route' => 'reports', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Laporan Saldo', 'route' => 'laporan.saldo', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Laporan RAB', 'route' => 'laporan.rab'],
-                                ['label' => 'Stock Opname', 'route' => 'stock-opname.index', 'role' => 'superadmin|sudin'],
+                                ['label' => 'Stock Opname', 'route' => 'stock-opname.index', 'role' => 'superadmin|sudin|gudang|kepala_gudang'],
                             ]
                         ],
                         [

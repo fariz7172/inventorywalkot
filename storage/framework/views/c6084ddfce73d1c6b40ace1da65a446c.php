@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
                 Lihat Analisa Selisih
             </a>
             
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang')): ?>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang') || auth()->user()->hasRole('sudin')): ?>
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($hasPendingOpname): ?>
                     <div class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-xl text-sm font-bold border border-yellow-200">
                         Selesaikan Opname yang masih Pending
