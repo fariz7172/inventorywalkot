@@ -110,7 +110,8 @@ $edit = function(Rab $rab) {
 };
 
 $delete = function(Rab $rab) {
-    if ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang'])) {
+    if (auth()->user()->hasRole('gudang')) abort(403, 'Gudang hanya bisa melihat.');
+    if ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang'])) {
         abort(403, 'Akses Ditolak: RAB telah dikunci.');
     }
     $rab->delete();
@@ -118,7 +119,7 @@ $delete = function(Rab $rab) {
 };
 
 $toggleLock = function(Rab $rab) {
-    if (!auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang'])) {
+    if (!auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang'])) {
         abort(403, 'Akses Ditolak: Anda tidak memiliki izin untuk mengunci/membuka RAB.');
     }
     $rab->update(['is_locked' => !$rab->is_locked]);
@@ -188,8 +189,8 @@ $importExcel = function() {
 
 // --- Material Management ---
 $openManageMaterial = function(Rab $rab) {
-    // If locked and not an admin, open as view only
-    $this->isViewOnly = $rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang']);
+    // If locked and not an admin, or if role is gudang, open as view only
+    $this->isViewOnly = auth()->user()->hasRole('gudang') || ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang']));
     
     $this->managingRab = $rab;
     $this->rabMaterials = [];
@@ -247,10 +248,12 @@ $saveMaterials = function() {
             <h1 class="text-2xl font-bold text-gray-900">Rencana Anggaran Biaya (RAB)</h1>
             <p class="text-sm text-gray-500">Kelola data RAB, Lokasi, dan Kuota Material.</p>
         </div>
+        @unless(auth()->user()->hasRole('gudang'))
         <button wire:click="openCreate" class="bg-accent text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20 flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Tambah RAB
         </button>
+        @endunless
     </div>
 
     @if (session()->has('message'))
@@ -272,7 +275,7 @@ $saveMaterials = function() {
                         </svg>
                     </div>
                     <div class="flex gap-1">
-                        @if(!$rab->is_locked || auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang']))
+                        @if(!auth()->user()->hasRole('gudang') && (!$rab->is_locked || auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang'])))
                         <button wire:click="edit({{ $rab->id }})" class="p-1.5 text-gray-400 hover:text-accent transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         </button>
@@ -309,7 +312,7 @@ $saveMaterials = function() {
                 
                 <div class="flex items-center gap-2 mt-4">
                     <button wire:click="openManageMaterial({{ $rab->id }})" class="flex-1 bg-accent/10 text-accent font-bold text-xs py-2 rounded-xl hover:bg-accent hover:text-white transition-colors flex items-center justify-center gap-1">
-                        @if($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang']))
+                        @if(auth()->user()->hasRole('gudang') || ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang'])))
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             Lihat Detail RAB
                         @else
@@ -318,7 +321,7 @@ $saveMaterials = function() {
                         @endif
                     </button>
 
-                    @hasanyrole('superadmin|sudin|kepala_gudang|gudang')
+                    @hasanyrole('superadmin|sudin|kepala_gudang')
                     <button wire:click="toggleLock({{ $rab->id }})" class="flex-1 {{ $rab->is_locked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-red-50 text-red-600 hover:bg-red-600' }} font-bold text-xs py-2 rounded-xl hover:text-white transition-colors flex items-center justify-center gap-1">
                         @if($rab->is_locked)
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
