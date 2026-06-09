@@ -147,7 +147,9 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
         .print-target { display: none; }
         
         @media print {
-            @page { margin: 1cm; }
+            @page { 
+                margin: 0; /* Menghilangkan header/footer bawaan browser (termasuk URL) */
+            }
             html, body, .flex, main, .page-content {
                 height: auto !important;
                 overflow: visible !important;
@@ -165,7 +167,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 top: 0;
                 width: 100%;
                 display: block !important;
-                padding: 0 !important;
+                padding: 1.5cm !important; /* Memberikan margin konten agar tidak menempel di ujung kertas */
                 visibility: visible !important;
             }
         }
@@ -265,6 +267,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <p class="font-bold underline uppercase"><?php echo e($order->penerima ?: ($order->pemohon ?: $sumberTujuan)); ?></p>
             </div>
         </div>
+        <div class="fixed bottom-[1.5cm] left-[1.5cm] text-[10px] text-gray-500"><?php echo e(url()->current()); ?></div>
+        <div class="fixed bottom-[1.5cm] right-[1.5cm] text-[10px] text-gray-500">Dicetak pada: <?php echo e(now()->format('d/m/Y H:i')); ?></div>
     </div>
 
     
@@ -320,6 +324,8 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <p class="text-[11px] mt-0.5">NIP: ..............................</p>
             </div>
         </div>
+        <div class="fixed bottom-[1.5cm] left-[1.5cm] text-[10px] text-gray-500"><?php echo e(url()->current()); ?></div>
+        <div class="fixed bottom-[1.5cm] right-[1.5cm] text-[10px] text-gray-500">Dicetak pada: <?php echo e(now()->format('d/m/Y H:i')); ?></div>
     </div>
 
     <script>

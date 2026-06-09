@@ -580,8 +580,8 @@ use Livewire\Attributes\Url;
     <script>
         function printBeritaAcara() {
             const originalTitle = document.title;
-            const ref = "<?php echo e($selectedGroup['reference'] ?? 'Draft'); ?>";
-            document.title = "Berita Acara - " + ref;
+            const ref = "<?php echo e($selectedGroup['reference'] ?? ''); ?>";
+            document.title = " " + ref;
             
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
             document.getElementById('print-ba-area').classList.add('print-active');
@@ -594,8 +594,8 @@ use Livewire\Attributes\Url;
 
         function printSPB() {
             const originalTitle = document.title;
-            const ref = "<?php echo e($selectedGroup['reference'] ?? 'Draft'); ?>";
-            document.title = "SPB - " + ref;
+            const ref = "<?php echo e($selectedGroup['reference'] ?? ''); ?>";
+            document.title = " " + ref;
             
             document.querySelectorAll('.print-target').forEach(el => el.classList.remove('print-active'));
             document.getElementById('print-spb-area').classList.add('print-active');
