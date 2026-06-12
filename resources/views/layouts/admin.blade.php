@@ -222,7 +222,7 @@
                             'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10',
                             'children' => [
                                 ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin|sudin'],
-                                ['label' => 'Stok Barang', 'route' => 'material.index', 'role' => 'superadmin|sudin'],
+                                ['label' => 'Stok Barang', 'route' => 'material.index', 'role' => 'superadmin|sudin|kepala_gudang'],
                                 ['label' => 'Data RAB', 'route' => 'rab.index'],
                                 ['label' => 'BAP Barang', 'route' => 'surat-jalan.index'],
                             ]

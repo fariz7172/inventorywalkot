@@ -68,7 +68,7 @@ new class extends Component {
 
     public function importBarangMasuk()
     {
-        abort_if(auth()->user()->hasRole('gudang'), 403);
+        abort_if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'), 403);
 
         $this->validate([
             'importFile' => 'required|mimes:xlsx,xls,csv|max:10240',
@@ -210,7 +210,7 @@ new class extends Component {
 
     public function openRestock($id = null)
     {
-        abort_if(auth()->user()->hasRole('gudang'), 403);
+        abort_if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'), 403);
 
         $this->reset(['items', 'reference_number', 'supplier', 'photo']);
 
@@ -267,7 +267,7 @@ new class extends Component {
 
     public function processIncoming(InventoryService $service)
     {
-        abort_if(auth()->user()->hasRole('gudang'), 403);
+        abort_if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'), 403);
 
         $this->validate([
             'items.*.material_id' => 'required|exists:materials,id',
@@ -330,7 +330,7 @@ new class extends Component {
                     Tambah Jenis Barang
                 </button>
             @endunless
-            @unless(auth()->user()->hasRole('gudang'))
+            @unless(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'))
                 <button wire:click="$set('showImportModal', true)"
                     class="bg-emerald-100 text-emerald-700 border border-emerald-200 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm flex items-center gap-2 hover:bg-emerald-200 transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -435,7 +435,7 @@ new class extends Component {
                                 </button>
                             @endunless
 
-                            @unless(auth()->user()->hasRole('gudang'))
+                            @unless(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'))
                                 <button wire:click="openRestock({{ $m->id }})"
                                     class="w-10 h-10 bg-base rounded-xl flex items-center justify-center text-gray-400 hover:bg-accent hover:text-white transition-all shadow-sm group/btn relative">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
