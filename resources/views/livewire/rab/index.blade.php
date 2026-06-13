@@ -248,7 +248,7 @@ $saveMaterials = function() {
             <h1 class="text-2xl font-bold text-gray-900">Rencana Anggaran Biaya (RAB)</h1>
             <p class="text-sm text-gray-500">Kelola data RAB, Lokasi, dan Kuota Material.</p>
         </div>
-        @unless(auth()->user()->hasRole('gudang'))
+        @unless(auth()->user()->hasAnyRole(['gudang', 'kecamatan_admin']))
         <button wire:click="openCreate" class="bg-accent text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20 flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Tambah RAB
