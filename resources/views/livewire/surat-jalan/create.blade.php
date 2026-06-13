@@ -55,10 +55,15 @@ $remainingQuotas = computed(function() {
 $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 $rabs = computed(function() {
-    $query = Rab::orderBy('lokasi', 'asc');
+    $query = Rab::has('materials')->orderBy('lokasi', 'asc');
     
     if (auth()->user()->hasRole('kecamatan_admin')) {
-        $query->where('kecamatan_id', auth()->user()->kecamatan_id);
+        if (auth()->user()->kecamatan_id) {
+            $query->where('kecamatan_id', auth()->user()->kecamatan_id);
+        } else {
+            // Mencegah query `where('kecamatan_id', null)` yang akan menampilkan data tanpa kecamatan
+            $query->where('id', '<', 0); 
+        }
     }
     
     return $query->get();
@@ -299,18 +304,67 @@ $save = function () {
 
             <div class="space-y-3">
                 @foreach($selected_materials as $index => $item)
-                <div class="flex flex-col sm:flex-row gap-3 bg-base/40 p-3 rounded-xl border border-warm/40 items-end">
-                    <div class="flex-1">
+                <div class="flex flex-col sm:flex-row gap-3 bg-base/40 p-3 rounded-xl border border-warm/40 sm:items-end">
+                    <div class="flex-1 w-full min-w-0">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Material</label>
-                        <select wire:model="selected_materials.{{ $index }}.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.material_id') border-red-500 @enderror">
-                            <option value="">-- Pilih --</option>
-                            @foreach($this->allMaterials as $m)
-                                @php
-                                    $sisaRABText = ($lokasi && !$is_manual_lokasi) ? (isset($this->remainingQuotas[$m->id]) ? $this->remainingQuotas[$m->id] : 0) : '?';
-                                @endphp
-                                <option value="{{ $m->id }}">{{ $m->name }} (Stok: {{ (float)$m->current_volume }} | RAB Sisa: {{ $sisaRABText }})</option>
-                            @endforeach
-                        </select>
+                        
+                        @php
+                            $materialOptions = [];
+                            foreach($this->allMaterials as $m) {
+                                $sisaRABText = ($lokasi && !$is_manual_lokasi) ? (isset($this->remainingQuotas[$m->id]) ? $this->remainingQuotas[$m->id] : 0) : '?';
+                                $label = $m->name . ' (Stok: ' . (float)$m->current_volume . ' | RAB Sisa: ' . $sisaRABText . ')';
+                                $materialOptions[] = ['id' => $m->id, 'label' => $label];
+                            }
+                        @endphp
+                        
+                        <div x-data="{
+                                open: false,
+                                search: '',
+                                selectedId: @entangle('selected_materials.' . $index . '.material_id').live,
+                                options: {{ json_encode($materialOptions) }},
+                                get filteredOptions() {
+                                    if (this.search === '') return this.options;
+                                    return this.options.filter(opt => opt.label.toLowerCase().includes(this.search.toLowerCase()));
+                                },
+                                get selectedLabel() {
+                                    const selectedOpt = this.options.find(opt => opt.id == this.selectedId);
+                                    return selectedOpt ? selectedOpt.label : '-- Pilih Material --';
+                                }
+                            }"
+                            class="relative w-full"
+                            @click.away="open = false"
+                        >
+                            <div @click="open = !open"
+                                 class="w-full bg-white rounded-lg px-3 py-2 text-xs border border-warm/60 focus:ring-1 focus:ring-accent outline-none cursor-pointer flex justify-between items-center gap-2 @error('selected_materials.'.$index.'.material_id') border-red-500 @enderror">
+                                <span x-text="selectedLabel" :class="selectedId ? 'text-gray-700 font-medium' : 'text-gray-500'" class="truncate flex-1 text-left block"></span>
+                                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+
+                            <div x-show="open" 
+                                 x-transition.opacity
+                                 style="display: none;"
+                                 class="absolute z-50 w-full mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                 
+                                 <div x-show="options.length > 10" class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm z-10">
+                                     <input type="text" x-model="search" placeholder="Cari material..." 
+                                            class="w-full bg-gray-50 rounded-md px-3 py-1.5 text-xs border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
+                                            @click.stop>
+                                 </div>
+
+                                 <ul class="py-1">
+                                     <template x-for="option in filteredOptions" :key="option.id">
+                                         <li @click="selectedId = option.id; open = false; search = ''"
+                                             class="px-3 py-2 text-xs text-gray-700 hover:bg-accent hover:text-white cursor-pointer transition-colors"
+                                             x-text="option.label">
+                                         </li>
+                                     </template>
+                                     <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
+                                         Material tidak ditemukan...
+                                     </li>
+                                 </ul>
+                            </div>
+                        </div>
+                        
                         @error('selected_materials.'.$index.'.material_id') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                     </div>
                     <div class="w-full sm:w-32">

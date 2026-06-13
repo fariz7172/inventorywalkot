@@ -2,23 +2,45 @@
 
 use App\Models\Rab;
 use App\Models\DeliveryOrder;
+use App\Models\Kecamatan;
 use function Livewire\Volt\{state, computed, layout, with};
 
 layout('layouts.admin');
 
 state([
+    'selectedKecamatanId' => '',
     'selectedRabId' => '',
     'selectedMonth' => date('n'),
     'selectedYear' => date('Y'),
 ]);
 
+$kecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->get());
+
 $rabs = computed(function() {
     $q = Rab::orderBy('lokasi', 'asc');
-    if (auth()->check() && auth()->user()->kecamatan_id) {
-        $q->where('kecamatan_id', auth()->user()->kecamatan_id);
+    
+    if (auth()->check() && auth()->user()->hasRole('kecamatan_admin')) {
+        if (auth()->user()->kecamatan_id) {
+            $q->where('kecamatan_id', auth()->user()->kecamatan_id);
+        } else {
+            $q->where('id', '<', 0);
+        }
+    } else {
+        if ($this->selectedKecamatanId !== '') {
+            if ($this->selectedKecamatanId === 'null') {
+                $q->whereNull('kecamatan_id');
+            } else {
+                $q->where('kecamatan_id', $this->selectedKecamatanId);
+            }
+        }
     }
+    
     return $q->get();
 });
+
+$updatedSelectedKecamatanId = function () {
+    $this->selectedRabId = '';
+};
 
 with(fn() => [
     'months' => [
@@ -140,13 +162,70 @@ $exportExcel = function() {
             <p class="text-sm text-gray-500">Rekap pengambilan material harian berbanding Stok RAB.</p>
         </div>
         
-        <div class="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-            <select wire:model.live="selectedRabId" class="bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20">
-                <option value="">-- Pilih Lokasi RAB --</option>
-                @foreach($this->rabs as $rab)
-                    <option value="{{ $rab->id }}">{{ $rab->lokasi }}</option>
+        <div class="flex flex-col md:flex-row md:flex-wrap items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+            @if(!auth()->user()->hasRole('kecamatan_admin'))
+            <select wire:model.live="selectedKecamatanId" class="bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20">
+                <option value="">-- Semua Kecamatan --</option>
+                <option value="null">-- Nota Dinas --</option>
+                @foreach($this->kecamatans as $kec)
+                    <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan }}</option>
                 @endforeach
             </select>
+            @endif
+
+            @php
+                $rabOptions = [];
+                foreach($this->rabs as $rab) {
+                    $rabOptions[] = ['id' => $rab->id, 'label' => $rab->lokasi];
+                }
+            @endphp
+            <div wire:key="dropdown-rab-{{ $selectedKecamatanId }}" x-data="{
+                    open: false,
+                    search: '',
+                    selectedId: @entangle('selectedRabId').live,
+                    options: {{ json_encode($rabOptions) }},
+                    get filteredOptions() {
+                        if (this.search === '') return this.options;
+                        return this.options.filter(opt => opt.label.toLowerCase().includes(this.search.toLowerCase()));
+                    },
+                    get selectedLabel() {
+                        const selectedOpt = this.options.find(opt => opt.id == this.selectedId);
+                        return selectedOpt ? selectedOpt.label : '-- Pilih Lokasi RAB --';
+                    }
+                }"
+                class="relative w-full md:w-72"
+                @click.away="open = false"
+            >
+                <div @click="open = !open"
+                     class="w-full bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20 cursor-pointer flex justify-between items-center gap-2">
+                    <span x-text="selectedLabel" class="truncate flex-1 text-left block"></span>
+                    <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+
+                <div x-show="open" 
+                     x-transition.opacity
+                     style="display: none;"
+                     class="absolute z-50 w-full md:w-[400px] mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto left-0 md:left-auto">
+                     
+                     <div x-show="options.length > 10" class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm z-10">
+                         <input type="text" x-model="search" placeholder="Cari lokasi RAB..." 
+                                class="w-full bg-gray-50 rounded-md px-3 py-2 text-sm border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
+                                @click.stop>
+                     </div>
+
+                     <ul class="py-1">
+                         <template x-for="option in filteredOptions" :key="option.id">
+                             <li @click="selectedId = option.id; open = false; search = ''"
+                                 class="px-4 py-2 text-sm text-gray-700 hover:bg-accent hover:text-white cursor-pointer transition-colors border-b border-gray-50 last:border-0"
+                                 x-text="option.label">
+                             </li>
+                         </template>
+                         <li x-show="filteredOptions.length === 0" class="px-4 py-2 text-sm text-gray-400 italic">
+                             Lokasi tidak ditemukan...
+                         </li>
+                     </ul>
+                </div>
+            </div>
             
             <select wire:model.live="selectedMonth" class="bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20">
                 @foreach($months as $num => $name)
