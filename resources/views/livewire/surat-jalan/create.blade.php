@@ -30,9 +30,8 @@ $remainingQuotas = computed(function() {
     }
 
     $query = Rab::with('materials')->where('lokasi', $this->lokasi);
-    $userKecamatanId = auth()->user()->kecamatan_id;
-    if ($userKecamatanId) {
-        $query->where('kecamatan_id', $userKecamatanId);
+    if (auth()->user()->hasRole('kecamatan_admin')) {
+        $query->where('kecamatan_id', auth()->user()->kecamatan_id);
     }
     
     $rab = $query->first();
@@ -58,9 +57,8 @@ $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 $rabs = computed(function() {
     $query = Rab::orderBy('lokasi', 'asc');
     
-    $userKecamatanId = auth()->user()->kecamatan_id;
-    if ($userKecamatanId) {
-        $query->where('kecamatan_id', $userKecamatanId);
+    if (auth()->user()->hasRole('kecamatan_admin')) {
+        $query->where('kecamatan_id', auth()->user()->kecamatan_id);
     }
     
     return $query->get();
@@ -221,7 +219,7 @@ $save = function () {
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Kecamatan / Pelaksana</label>
-                    <input type="text" wire:model="pelaksana_kecamatan" placeholder="Contoh: Kec. Gambir" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all">
+                    <input type="text" wire:model="pelaksana_kecamatan" placeholder="Contoh: Kec. Cilincing" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all">
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Pemohon</label>
