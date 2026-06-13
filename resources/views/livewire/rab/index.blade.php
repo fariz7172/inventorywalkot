@@ -438,12 +438,59 @@ $saveMaterials = function() {
                                     {{ $item['material_name'] ?? 'Tidak diketahui' }}
                                 </div>
                             @else
-                                <select wire:model="rabMaterials.{{ $index }}.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none">
-                                    <option value="">-- Pilih --</option>
-                                    @foreach($this->allMaterials as $m)
-                                        <option value="{{ $m->id }}">{{ $m->name }}</option>
-                                    @endforeach
-                                </select>
+                                @php
+                                    $materialOptions = [];
+                                    foreach($this->allMaterials as $m) {
+                                        $materialOptions[] = ['id' => $m->id, 'label' => $m->name];
+                                    }
+                                @endphp
+                                <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedId: @entangle('rabMaterials.' . $index . '.material_id').live,
+                                        options: {{ json_encode($materialOptions) }},
+                                        get filteredOptions() {
+                                            if (this.search === '') return this.options;
+                                            return this.options.filter(opt => opt.label.toLowerCase().includes(this.search.toLowerCase()));
+                                        },
+                                        get selectedLabel() {
+                                            const selectedOpt = this.options.find(opt => opt.id == this.selectedId);
+                                            return selectedOpt ? selectedOpt.label : '-- Pilih Material --';
+                                        }
+                                    }"
+                                    class="relative w-full"
+                                    @click.away="open = false"
+                                >
+                                    <div @click="open = !open"
+                                         class="w-full bg-white rounded-lg px-3 py-2 text-xs border border-warm/60 focus:ring-1 focus:ring-accent outline-none cursor-pointer flex justify-between items-center gap-2 @error('rabMaterials.'.$index.'.material_id') border-red-500 @enderror">
+                                        <span x-text="selectedLabel" :class="selectedId ? 'text-gray-700 font-medium' : 'text-gray-500'" class="truncate flex-1 text-left block"></span>
+                                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+
+                                    <div x-show="open" 
+                                         x-transition.opacity
+                                         style="display: none;"
+                                         class="absolute z-50 w-full mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                         
+                                         <div x-show="options.length > 10" class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm z-10">
+                                             <input type="text" x-model="search" placeholder="Cari material..." 
+                                                    class="w-full bg-gray-50 rounded-md px-3 py-1.5 text-xs border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
+                                                    @click.stop>
+                                         </div>
+
+                                         <ul class="py-1">
+                                             <template x-for="option in filteredOptions" :key="option.id">
+                                                 <li @click="selectedId = option.id; open = false; search = ''"
+                                                     class="px-3 py-2 text-xs text-gray-700 hover:bg-accent hover:text-white cursor-pointer transition-colors"
+                                                     x-text="option.label">
+                                                 </li>
+                                             </template>
+                                             <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
+                                                 Material tidak ditemukan...
+                                             </li>
+                                         </ul>
+                                    </div>
+                                </div>
                                 @error('rabMaterials.'.$index.'.material_id') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                             @endif
                         </div>
