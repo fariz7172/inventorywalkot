@@ -36,8 +36,10 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
             position: relative;
+            padding: 2rem 0; /* Add padding to prevent cutoff on very small vertical screens */
         }
 
         /* Strip Garis Kuning-Hitam (Yellow Line) */
@@ -172,7 +174,8 @@
             color: var(--accent-orange);
             text-decoration: none;
             font-weight: 800;
-            font-size: 1.25rem;
+            font-size: 1.15rem; /* slightly smaller for mobile fit */
+            word-break: break-all; /* Ensure long URLs wrap on small screens */
             background: #fff7ed;
             padding: 6px 16px;
             border-radius: 12px;
@@ -261,15 +264,16 @@
 
         /* Responsif */
         @media (max-width: 640px) {
-            .error-code { font-size: 4rem; }
-            h1 { font-size: 1.8rem; }
-            p { font-size: 1rem; }
-            .container { padding: 2.5rem 1.5rem; box-shadow: 8px 8px 0px var(--black); }
-            .btn-primary { width: 100%; padding: 1rem; font-size: 1.1rem; }
-            .graphics { height: 160px; }
-            .cone-wrapper { width: 120px; }
-            .gear-1 { width: 100px; }
-            .gear-2 { width: 70px; }
+            .error-code { font-size: 3.5rem; }
+            h1 { font-size: 1.6rem; }
+            p { font-size: 0.95rem; margin-bottom: 1.5rem; }
+            .container { padding: 2rem 1rem; width: 95%; box-shadow: 6px 6px 0px var(--black); margin: 2rem 0; }
+            .btn-primary { width: 100%; padding: 1rem; font-size: 1.05rem; }
+            .highlight-link { font-size: 1rem; padding: 4px 10px; }
+            .graphics { height: 140px; }
+            .cone-wrapper { width: 100px; }
+            .gear-1 { width: 80px; left: 10%; }
+            .gear-2 { width: 60px; right: 15%; }
         }
     </style>
 </head>
