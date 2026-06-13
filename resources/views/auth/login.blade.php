@@ -1,331 +1,194 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Under Maintenance | 404</title>
-    
-    <meta name="description" content="Halaman sedang dalam pemeliharaan (Under Maintenance). Kami akan segera kembali.">
-    <meta name="theme-color" content="#facc15">
-    
-    <!-- Google Fonts: Fredoka untuk kesan ceria & Inter untuk teks paragraf -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    
+    <title>Login — {{ \App\Models\Setting::get('app_name', 'Admin Panel') }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/logo.ico') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        base:  '#F3E3D0',
+                        warm:  '#F7F8F0',
+                        accent: '#2F2FE4',
+                        'accent-dark': '#2020B0',
+                    },
+                    fontFamily: { sans: ['Inter','sans-serif'] }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --bg-color: #fffbeb;      /* Light yellow/cream */
-            --text-main: #1e293b;     /* Slate 800 */
-            --text-muted: #475569;    /* Slate 600 */
-            --accent-yellow: #facc15; /* Yellow 400 */
-            --accent-orange: #f97316; /* Orange 500 */
-            --black: #0f172a;         /* Slate 900 */
+        body { font-family: 'Inter', sans-serif; }
+        .blob1 {
+            position: absolute; width: 400px; height: 400px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(47,47,228,0.12) 0%, transparent 70%);
+            top: -100px; right: -100px; animation: float 8s ease-in-out infinite;
         }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        .blob2 {
+            position: absolute; width: 300px; height: 300px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(247,248,240,0.7) 0%, transparent 70%);
+            bottom: -80px; left: -80px; animation: float 10s ease-in-out infinite reverse;
         }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow-x: hidden;
-            overflow-y: auto;
-            position: relative;
-            padding: 2rem 0; /* Add padding to prevent cutoff on very small vertical screens */
+        @keyframes float {
+            0%,100% { transform: translateY(0px) scale(1); }
+            50%      { transform: translateY(-20px) scale(1.05); }
         }
-
-        /* Strip Garis Kuning-Hitam (Yellow Line) */
-        .warning-strip {
-            position: absolute;
-            width: 100%;
-            height: 28px;
-            background: repeating-linear-gradient(
-                -45deg,
-                var(--accent-yellow),
-                var(--accent-yellow) 40px,
-                var(--black) 40px,
-                var(--black) 80px
-            );
-            z-index: 10;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            animation: moveStripes 20s linear infinite;
+        .card-glass {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(243,227,208,0.8);
         }
-
-        .strip-top { top: 0; }
-        .strip-bottom { bottom: 0; }
-
-        @keyframes moveStripes {
-            0% { background-position: 0 0; }
-            100% { background-position: 1000px 0; }
+        .input-field {
+            background: #F7F8F0;
+            border: 1.5px solid transparent;
+            transition: all 0.2s ease;
         }
-
-        /* Main Container - Bergaya Neobrutalism Ceria */
-        .container {
-            position: relative;
-            z-index: 1;
-            text-align: center;
-            padding: 3.5rem 2rem;
-            max-width: 650px;
-            width: 90%;
-            background: #ffffff;
-            border: 4px solid var(--black);
-            border-radius: 32px;
-            box-shadow: 12px 12px 0px var(--black);
-            animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        .input-field:focus {
+            outline: none;
+            border-color: #2F2FE4;
+            box-shadow: 0 0 0 3px rgba(47,47,228,0.1);
         }
-
-        /* Area Grafik (Gears & Cone) */
-        .graphics {
-            position: relative;
-            height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.5rem;
-        }
-
-        /* Gears (Roda Gigi) */
-        .gear {
-            position: absolute;
-            fill: var(--text-muted);
-            opacity: 0.15;
-            z-index: 0;
-        }
-
-        .gear-1 {
-            width: 150px;
-            left: 20%;
-            top: 10%;
-            fill: var(--accent-orange);
-            opacity: 0.25;
-            animation: spin 10s linear infinite;
-        }
-
-        .gear-2 {
-            width: 100px;
-            right: 25%;
-            top: 40%;
-            animation: spin-reverse 7s linear infinite;
-        }
-
-        /* Cone (Kerucut Lalu Lintas) */
-        .cone-wrapper {
-            position: relative;
-            z-index: 2;
-            width: 160px;
-            animation: bounce 2s ease-in-out infinite;
-            transform-origin: bottom center;
-        }
-
-        .cone-shadow {
-            position: absolute;
-            bottom: -20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 110px;
-            height: 25px;
-            background: rgba(0,0,0,0.15);
-            border-radius: 50%;
-            z-index: 1;
-            animation: shadowPulse 2s ease-in-out infinite;
-        }
-
-        /* Typography */
-        .error-code {
-            font-family: 'Fredoka', sans-serif;
-            font-size: 5rem;
-            font-weight: 700;
-            color: var(--accent-yellow);
-            text-shadow: 4px 4px 0px var(--black), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-            margin-bottom: 0.5rem;
-            line-height: 1;
-            letter-spacing: 2px;
-            transform: rotate(-3deg);
-            display: inline-block;
-        }
-
-        h1 {
-            font-family: 'Fredoka', sans-serif;
-            font-size: 2.2rem;
-            font-weight: 600;
-            margin-bottom: 1.5rem;
-            color: var(--black);
-        }
-
-        p {
-            font-size: 1.15rem;
-            color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 2rem;
-            font-weight: 400;
-        }
-
-        /* Link Highlight */
-        .highlight-link {
-            display: inline-block;
-            color: var(--accent-orange);
-            text-decoration: none;
-            font-weight: 800;
-            font-size: 1.15rem; /* slightly smaller for mobile fit */
-            word-break: break-all; /* Ensure long URLs wrap on small screens */
-            background: #fff7ed;
-            padding: 6px 16px;
-            border-radius: 12px;
-            border: 2px dashed var(--accent-orange);
-            margin: 10px 0;
+        .btn-login {
+            background: linear-gradient(135deg, #2F2FE4, #5B5BFF);
             transition: all 0.3s ease;
         }
-
-        .highlight-link:hover {
-            background: var(--accent-orange);
-            color: white;
-            transform: scale(1.05) rotate(-2deg);
+        .btn-login:hover {
+            background: linear-gradient(135deg, #2020B0, #2F2FE4);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(47,47,228,0.35);
         }
-
-        /* Button Utama */
-        .actions {
-            display: flex;
-            justify-content: center;
-        }
-
-        .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.2rem 3rem;
-            font-size: 1.2rem;
-            font-weight: 700;
-            font-family: 'Fredoka', sans-serif;
-            background: var(--accent-yellow);
-            color: var(--black);
-            border: 4px solid var(--black);
-            border-radius: 99px;
-            text-decoration: none;
-            box-shadow: 6px 6px 0px var(--black);
-            transition: all 0.2s ease;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-primary:hover {
-            transform: translate(-2px, -2px);
-            box-shadow: 8px 8px 0px var(--black);
-            background: var(--accent-orange);
-            color: white;
-        }
-
-        .btn-primary:active {
-            transform: translate(4px, 4px);
-            box-shadow: 2px 2px 0px var(--black);
-        }
-
-        /* Keyframe Animations */
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0) scaleY(1); }
-            50% { transform: translateY(-25px) scaleY(1.05) rotate(4deg); }
-        }
-        @keyframes shadowPulse {
-            0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.2; }
-            50% { transform: translateX(-50%) scale(0.7); opacity: 0.05; }
-        }
-        @keyframes popIn {
-            0% { opacity: 0; transform: scale(0.8) translateY(50px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        /* Pola Latar Belakang Ceria */
-        .bg-pattern {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image: radial-gradient(var(--accent-yellow) 3px, transparent 3px);
-            background-size: 40px 40px;
-            opacity: 0.4;
-            z-index: 0;
-            animation: slideBg 30s linear infinite;
-        }
-
-        @keyframes slideBg {
-            0% { background-position: 0 0; }
-            100% { background-position: -400px -400px; }
-        }
-
-        /* Responsif */
-        @media (max-width: 640px) {
-            .error-code { font-size: 3.5rem; }
-            h1 { font-size: 1.6rem; }
-            p { font-size: 0.95rem; margin-bottom: 1.5rem; }
-            .container { padding: 2rem 1rem; width: 95%; box-shadow: 6px 6px 0px var(--black); margin: 2rem 0; }
-            .btn-primary { width: 100%; padding: 1rem; font-size: 1.05rem; }
-            .highlight-link { font-size: 1rem; padding: 4px 10px; }
-            .graphics { height: 140px; }
-            .cone-wrapper { width: 100px; }
-            .gear-1 { width: 80px; left: 10%; }
-            .gear-2 { width: 60px; right: 15%; }
-        }
+        .btn-login:active { transform: translateY(0); }
     </style>
 </head>
-<body>
 
-    <!-- Strip Kuning Garis Atas -->
-    <div class="warning-strip strip-top"></div>
-    
-    <!-- Pattern Latar Belakang -->
-    <div class="bg-pattern"></div>
+<body class="min-h-screen bg-base flex flex-col items-center justify-center relative overflow-y-auto py-12 px-4">
 
-    <div class="container">
-        
-        <div class="graphics">
-            <!-- Gear Besar (Berputar Kanan) -->
-            <svg class="gear gear-1" viewBox="0 0 24 24">
-                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-            </svg>
+    <!-- Decorative Blobs -->
+    <div class="blob1"></div>
+    <div class="blob2"></div>
 
-            <!-- Gear Kecil (Berputar Kiri) -->
-            <svg class="gear gear-2" viewBox="0 0 24 24">
-                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-            </svg>
+    <!-- Decorative Grid -->
+    <div class="absolute inset-0 opacity-20"
+         style="background-image: radial-gradient(circle, #2F2FE4 1px, transparent 1px);
+                background-size: 40px 40px;"></div>
 
-            <!-- Bayangan Cone -->
-            <div class="cone-shadow"></div>
-            
-            <!-- Traffic Cone SVG (Animasi Bouncing) -->
-            <div class="cone-wrapper">
-                <svg viewBox="0 0 512 512" width="100%" height="100%">
-                    <path d="M448 416H64c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h384c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" fill="#1e293b"/>
-                    <path d="M356.17 416L297.87 43.14C293.98 23.36 276.55 8 256 8s-37.98 15.36-41.87 35.14L155.83 416h200.34z" fill="#f97316"/>
-                    <path d="M269.1 128h-26.2l-15.6 80h57.4l-15.6-80z" fill="#ffffff"/>
-                    <path d="M282.2 256H216.7l-18.7 96h116l-18.7-96z" fill="#ffffff"/>
-                </svg>
+    <!-- Login Card -->
+    <div class="relative w-full max-w-md z-10">
+
+        <!-- Logo / Brand -->
+        <div class="text-center mb-8">
+            @php
+                $appLogo = \App\Models\Setting::get('app_logo');
+                $appName = \App\Models\Setting::get('app_name', 'InventoryPro');
+                $appDesc = \App\Models\Setting::get('app_description', 'Warehouse Management System');
+            @endphp
+            @if($appLogo)
+                <div class="inline-flex w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-3xl bg-white items-center justify-center shadow-xl shadow-black/5 mb-6 p-4 border border-gray-100 transition-all hover:scale-105">
+                    <img src="{{ asset($appLogo) }}" alt="Logo" class="w-full h-full object-contain">
+                </div>
+            @else
+                <div class="inline-flex w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-accent items-center justify-center shadow-xl shadow-accent/30 mb-6 transition-all hover:scale-105">
+                    <svg class="w-10 h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+            @endif
+            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{{ $appName ?: 'InventoryPro' }}</h1>
+            <p class="text-sm md:text-base text-accent font-extrabold mt-2" style="color: #2F2FE4; font-size: 16px;">{{ $appDesc ?: 'Warehouse Management System' }}</p>
+        </div>
+
+        <!-- Card -->
+        <div class="card-glass rounded-[2rem] shadow-2xl p-8 ring-1 ring-black/5">
+            <div class="mb-6">
+                <h2 class="text-xl font-bold text-gray-900">Selamat Datang 👋</h2>
+                <p class="text-xs text-gray-500 font-medium mt-1">Silakan masuk untuk mengelola stok gudang.</p>
             </div>
+
+            @if ($errors->any())
+                <div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 animate-fade-in-up">
+                    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <div>
+                        <h3 class="text-sm font-bold">Login Gagal</h3>
+                        <p class="text-xs mt-1 font-medium">{{ $errors->first() }}</p>
+                    </div>
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('login') }}" class="space-y-5">
+                @csrf
+
+                <!-- Email -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-2">Alamat Email</label>
+                    <div class="relative">
+                        <div class="absolute left-3.5 top-1/2 -translate-y-1/2">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+                            </svg>
+                        </div>
+                        <input type="email" name="email" placeholder="admin@panel.com"
+                               class="input-field w-full rounded-xl pl-10 pr-4 py-3 text-sm text-gray-700"/>
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-2">Password</label>
+                    <div class="relative">
+                        <div class="absolute left-3.5 top-1/2 -translate-y-1/2">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                            </svg>
+                        </div>
+                        <input type="password" name="password" id="passInput" placeholder="••••••••"
+                               class="input-field w-full rounded-xl pl-10 pr-12 py-3 text-sm text-gray-700"/>
+                        <button type="button" onclick="togglePass()" class="absolute right-3.5 top-1/2 -translate-y-1/2">
+                            <svg id="eyeIcon" class="w-4 h-4 text-gray-400 hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Remember & Forgot -->
+                <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" class="w-4 h-4 rounded accent-accent">
+                        <span class="text-xs text-gray-600 font-medium">Ingat saya</span>
+                    </label>
+                    <a href="#" class="text-xs font-semibold text-accent hover:text-accent-dark transition-colors">
+                        Lupa password?
+                    </a>
+                </div>
+
+                <!-- Submit -->
+                <button type="submit" class="btn-login w-full py-3 rounded-xl text-white font-semibold text-sm tracking-wide">
+                    Masuk ke Dashboard
+                </button>
+
+            </form>
         </div>
 
-        <div class="error-code">404</div>
-        <h1>Sedang Dalam Perbaikan</h1>
-        <p>Kami sedang meningkatkan layanan agar lebih optimal. Silakan kembali beberapa saat lagi.<br><br>
-        silahkan beralih kedalam <strong>WEB RESMI</strong><br>
-        <a href="https://inventorysdaju.com/login" class="highlight-link">https://inventorysdaju.com/login</a><br><br>
-        untuk melanjutkan Pendataan Inventori.</p>
-
-        <div class="actions">
-            <a href="https://inventorysdaju.com/login" class="btn-primary">Beralih ke Web Resmi</a>
-        </div>
+        <!-- Footer -->
+        <p class="text-center text-xs text-gray-400 mt-6">
+            &copy; {{ date('Y') }} {{ \App\Models\Setting::get('app_name', 'AdminPro') }}. All rights reserved.
+        </p>
     </div>
 
-    <!-- Strip Kuning Garis Bawah -->
-    <div class="warning-strip strip-bottom"></div>
-
+    <script>
+        function togglePass() {
+            const inp = document.getElementById('passInput');
+            inp.type = inp.type === 'password' ? 'text' : 'password';
+        }
+    </script>
 </body>
 </html>
