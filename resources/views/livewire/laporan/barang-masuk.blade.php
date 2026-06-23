@@ -139,12 +139,19 @@ new class extends Component {
         }
 
         $items = $query->get();
+        $firstItem = $items->first();
 
         // Jika sedang melakukan pencarian, saring item di dalam detail
         if (!empty($this->search)) {
-            $items = $items->filter(function($item) {
+            $filteredItems = $items->filter(function($item) {
                 return stripos($item->material->name, $this->search) !== false;
             })->values();
+            
+            // Jika hasil filter tidak kosong (berarti pencarian cocok dengan nama barang), gunakan item yang disaring.
+            // Jika kosong (berarti pencarian cocok dengan supplier/referensi), tampilkan semua item.
+            if ($filteredItems->isNotEmpty()) {
+                $items = $filteredItems;
+            }
         }
 
         $this->selectedGroup = [
@@ -152,11 +159,11 @@ new class extends Component {
             'type' => $type,
             'date' => $date,
             'items' => $items,
-            'user' => $items->first()->user->name ?? 'System',
-            'supplier' => $items->first()->supplier,
-            'lokasi' => $items->first()->deliveryOrder->lokasi ?? null,
-            'pemohon' => $items->first()->deliveryOrder->pemohon ?? null,
-            'image' => $items->first()->image
+            'user' => $firstItem->user->name ?? 'System',
+            'supplier' => $firstItem->supplier,
+            'lokasi' => $firstItem->deliveryOrder->lokasi ?? null,
+            'pemohon' => $firstItem->deliveryOrder->pemohon ?? null,
+            'image' => $firstItem->image
         ];
 
         $this->showDetailModal = true;
