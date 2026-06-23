@@ -171,6 +171,12 @@ class SuratJalanImport implements ToCollection
 
                         $volume = (float) $item['volume_keluar'];
 
+                        // Validasi sisa stok
+                        $currentStock = (float) $material->fresh()->current_volume;
+                        if ($volume > $currentStock) {
+                            throw new \Exception("Stok {$material->name} tidak cukup (Sisa: {$currentStock}, Diminta: {$volume}) pada baris No Surat Jalan: {$sjNo}. Silakan kurangi atau hapus baris tersebut lalu ulangi import.");
+                        }
+
                         // 1. Update/Link to Delivery Order (Pivot)
                         $deliveryOrder->materials()->syncWithoutDetaching([
                             $material->id => ['requested_volume' => $volume]
