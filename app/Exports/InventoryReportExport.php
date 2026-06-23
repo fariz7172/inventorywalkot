@@ -60,12 +60,18 @@ class InventoryReportExport implements FromView, ShouldAutoSize, WithStyles
             $query->whereYear('created_at', now()->year);
         }
 
-        $transactions = $query->orderBy('material_id')->orderBy('created_at', 'asc')->get();
+        $transactions = $query
+            ->orderBy('material_id')
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')  // secondary sort: deterministic order within same timestamp
+            ->get();
         $grouped = $transactions->groupBy('material_id');
 
         return view('exports.inventory-report', [
-            'grouped' => $grouped,
-            'period' => $this->period
+            'grouped'    => $grouped,
+            'period'     => $this->period,
+            'startDate'  => $this->startDate,
+            'endDate'    => $this->endDate,
         ]);
     }
 

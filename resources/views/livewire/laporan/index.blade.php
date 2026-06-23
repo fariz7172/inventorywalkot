@@ -139,26 +139,43 @@ new class extends Component {
 
         // Keep existing single-material variables for backward compatibility in view
         $openingBalance = 0;
-        $totalIn = 0;
-        $totalOut = 0;
+        $totalIn        = 0;
+        $totalOut       = 0;
         if ($this->material_id) {
             $sm = $materialsSummary->first();
             if ($sm) {
                 $openingBalance = $sm->opening;
-                $totalIn = $sm->in;
-                $totalOut = $sm->out;
+                $totalIn        = $sm->in;
+                $totalOut       = $sm->out;
+            }
+        }
+
+        // Hitung running balance per transaksi (ALL TIME) agar kolom Saldo di tabel akurat
+        // Tidak bergantung pada balance_after yang tersimpan di DB (bisa stale akibat import batch)
+        $runningBalanceMap = [];
+        if ($this->material_id) {
+            $allTrxForMaterial = InventoryTransaction::where('material_id', $this->material_id)
+                ->orderBy('created_at', 'asc')
+                ->orderBy('id', 'asc')
+                ->get(['id', 'volume_masuk', 'volume_keluar']);
+
+            $runBalance = 0;
+            foreach ($allTrxForMaterial as $t) {
+                $runBalance += (float) $t->volume_masuk - (float) $t->volume_keluar;
+                $runningBalanceMap[$t->id] = $runBalance;
             }
         }
 
         return [
-            'reportData' => $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(50),
-            'allMaterials' => Material::orderBy('name', 'asc')->get(),
-            'materialsSummary' => $materialsSummary,
-            'openingBalance' => $openingBalance,
-            'totalIn' => $totalIn,
-            'totalOut' => $totalOut,
-            'finalBalance' => $openingBalance + $totalIn - $totalOut,
-            'selectedMaterial' => $this->material_id ? Material::find($this->material_id) : null
+            'reportData'        => $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(50),
+            'allMaterials'      => Material::orderBy('name', 'asc')->get(),
+            'materialsSummary'  => $materialsSummary,
+            'openingBalance'    => $openingBalance,
+            'totalIn'           => $totalIn,
+            'totalOut'          => $totalOut,
+            'finalBalance'      => $openingBalance + $totalIn - $totalOut,
+            'selectedMaterial'  => $this->material_id ? Material::find($this->material_id) : null,
+            'runningBalanceMap' => $runningBalanceMap,
         ];
 
     }
@@ -346,7 +363,9 @@ new class extends Component {
                             {{ $trx->volume_keluar > 0 ? '- ' . (float)$trx->volume_keluar : '-' }}
                         </td>
                         <td class="px-4 py-3 text-center font-black text-blue-700 bg-blue-50/10 text-base">
-                            {{ (float)$trx->balance_after }}
+                            {{ isset($runningBalanceMap[$trx->id])
+                                ? number_format($runningBalanceMap[$trx->id], 0, ',', '.')
+                                : number_format((float)$trx->balance_after, 0, ',', '.') }}
                         </td>
                         <td class="px-4 py-3 text-center text-gray-500 font-bold text-[10px] uppercase">{{ $trx->material->unit }}</td>
                         <td class="px-4 py-3 font-mono font-black uppercase text-gray-700">
@@ -471,7 +490,11 @@ new class extends Component {
                         </td>
                         <td class="border border-black px-2 py-1.5 text-right font-bold">{{ $trx->volume_masuk > 0 ? number_format($trx->volume_masuk, 0, ',', '.') : '-' }}</td>
                         <td class="border border-black px-2 py-1.5 text-right font-bold">{{ $trx->volume_keluar > 0 ? number_format($trx->volume_keluar, 0, ',', '.') : '-' }}</td>
-                        <td class="border border-black px-2 py-1.5 text-right font-black bg-gray-50">{{ number_format($trx->balance_after, 0, ',', '.') }}</td>
+                        <td class="border border-black px-2 py-1.5 text-right font-black bg-gray-50">
+                            {{ isset($runningBalanceMap[$trx->id])
+                                ? number_format($runningBalanceMap[$trx->id], 0, ',', '.')
+                                : number_format((float)$trx->balance_after, 0, ',', '.') }}
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>
