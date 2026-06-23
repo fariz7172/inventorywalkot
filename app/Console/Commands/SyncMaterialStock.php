@@ -90,25 +90,36 @@ class SyncMaterialStock extends Command
         $totalOk     = 0;
 
         foreach ($materials as $material) {
-            // Hitung total masuk & keluar dari SEMUA transaksi
-            $result = InventoryTransaction::where('material_id', $material->id)
-                ->selectRaw('
-                    COALESCE(SUM(volume_masuk), 0) AS total_in,
-                    COALESCE(SUM(volume_keluar), 0) AS total_out
-                ')
-                ->first();
+            // Ambil semua transaksi secara kronologis untuk dihitung ulang running balance-nya
+            $transactions = InventoryTransaction::where('material_id', $material->id)
+                ->orderBy('created_at', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
 
-            $totalIn   = (float) ($result->total_in  ?? 0);
-            $totalOut  = (float) ($result->total_out ?? 0);
-            $correct   = round($totalIn - $totalOut, 2);
+            $runningBalance = 0;
+            $trxFixedCount  = 0;
+
+            foreach ($transactions as $trx) {
+                $runningBalance += (float) $trx->volume_masuk - (float) $trx->volume_keluar;
+                $runningBalance = round($runningBalance, 2);
+
+                if (round((float) $trx->balance_after, 2) !== $runningBalance) {
+                    if (!$isDryRun) {
+                        $trx->updateQuietly(['balance_after' => $runningBalance]);
+                    }
+                    $trxFixedCount++;
+                }
+            }
+
+            $correct   = $runningBalance;
             $old       = (float) $material->current_volume;
             $diff      = round($correct - $old, 2);
 
-            if ($diff != 0) {
-                $status = $isDryRun ? '⚠ Perlu Update' : '✅ Diperbaiki';
+            if ($diff != 0 || $trxFixedCount > 0) {
+                $status = $isDryRun ? "⚠ Perlu Update ($trxFixedCount trx stale)" : "✅ Diperbaiki ($trxFixedCount trx stale)";
                 $totalFixed++;
 
-                if (!$isDryRun) {
+                if (!$isDryRun && $diff != 0) {
                     // Update tanpa trigger observer (updateQuietly)
                     $material->updateQuietly(['current_volume' => $correct]);
                 }
@@ -118,7 +129,7 @@ class SyncMaterialStock extends Command
             }
 
             // Hanya tampilkan yang perlu diupdate atau semua jika sedikit
-            if ($diff != 0 || $materials->count() <= 20) {
+            if ($diff != 0 || $trxFixedCount > 0 || $materials->count() <= 20) {
                 $rows[] = [
                     $material->id,
                     $material->name,
