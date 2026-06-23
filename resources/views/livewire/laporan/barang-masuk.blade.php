@@ -140,6 +140,13 @@ new class extends Component {
 
         $items = $query->get();
 
+        // Jika sedang melakukan pencarian, saring item di dalam detail
+        if (!empty($this->search)) {
+            $items = $items->filter(function($item) {
+                return stripos($item->material->name, $this->search) !== false;
+            })->values();
+        }
+
         $this->selectedGroup = [
             'reference' => $ref,
             'type' => $type,
