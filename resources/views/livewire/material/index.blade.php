@@ -80,6 +80,7 @@ new class extends Component {
             $this->reset('importFile');
             session()->flash('message', 'Data barang masuk berhasil di-import!');
         } catch (\Exception $e) {
+            $this->showImportModal = false;
             session()->flash('error', 'Gagal import: ' . $e->getMessage());
         }
     }
@@ -152,6 +153,7 @@ new class extends Component {
             $this->reset('importMasterFile');
             session()->flash('message', 'Master barang berhasil di-import!');
         } catch (\Exception $e) {
+            $this->showImportMasterModal = false;
             session()->flash('error', 'Gagal import master: ' . $e->getMessage());
         }
     }

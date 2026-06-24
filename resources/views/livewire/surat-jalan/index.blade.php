@@ -35,6 +35,7 @@ new class extends Component {
             $this->reset('importFile');
             session()->flash('message', 'Data Surat Jalan berhasil di-import!');
         } catch (\Exception $e) {
+            $this->showImportModal = false;
             session()->flash('error', 'Gagal import: ' . $e->getMessage());
         }
     }
