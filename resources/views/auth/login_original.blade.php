@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — <?php echo e(\App\Models\Setting::get('app_name', 'Admin Panel')); ?></title>
-    <link rel="icon" type="image/x-icon" href="<?php echo e(asset('assets/logo.ico')); ?>">
+    <title>Login — {{ \App\Models\Setting::get('app_name', 'Admin Panel') }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/logo.ico') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -83,24 +83,24 @@
 
         <!-- Logo / Brand -->
         <div class="text-center mb-8">
-            <?php
+            @php
                 $appLogo = \App\Models\Setting::get('app_logo');
                 $appName = \App\Models\Setting::get('app_name', 'InventoryPro');
                 $appDesc = \App\Models\Setting::get('app_description', 'Warehouse Management System');
-            ?>
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($appLogo): ?>
+            @endphp
+            @if($appLogo)
                 <div class="inline-flex w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-3xl bg-white items-center justify-center shadow-xl shadow-black/5 mb-6 p-4 border border-gray-100 transition-all hover:scale-105">
-                    <img src="<?php echo e(asset($appLogo)); ?>" alt="Logo" class="w-full h-full object-contain">
+                    <img src="{{ asset($appLogo) }}" alt="Logo" class="w-full h-full object-contain">
                 </div>
-            <?php else: ?>
+            @else
                 <div class="inline-flex w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-accent items-center justify-center shadow-xl shadow-accent/30 mb-6 transition-all hover:scale-105">
                     <svg class="w-10 h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                     </svg>
                 </div>
-            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight"><?php echo e($appName ?: 'InventoryPro'); ?></h1>
-            <p class="text-sm md:text-base text-accent font-extrabold mt-2" style="color: #2F2FE4; font-size: 16px;"><?php echo e($appDesc ?: 'Warehouse Management System'); ?></p>
+            @endif
+            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">{{ $appName ?: 'InventoryPro' }}</h1>
+            <p class="text-sm md:text-base text-accent font-extrabold mt-2" style="color: #2F2FE4; font-size: 16px;">{{ $appDesc ?: 'Warehouse Management System' }}</p>
         </div>
 
         <!-- Card -->
@@ -110,18 +110,18 @@
                 <p class="text-xs text-gray-500 font-medium mt-1">Silakan masuk untuk mengelola stok gudang.</p>
             </div>
 
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($errors->any()): ?>
+            @if ($errors->any())
                 <div class="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 animate-fade-in-up">
                     <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     <div>
                         <h3 class="text-sm font-bold">Login Gagal</h3>
-                        <p class="text-xs mt-1 font-medium"><?php echo e($errors->first()); ?></p>
+                        <p class="text-xs mt-1 font-medium">{{ $errors->first() }}</p>
                     </div>
                 </div>
-            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            @endif
 
-            <form method="POST" action="<?php echo e(route('login')); ?>" class="space-y-5">
-                <?php echo csrf_field(); ?>
+            <form method="POST" action="{{ route('login') }}" class="space-y-5">
+                @csrf
 
                 <!-- Email -->
                 <div>
@@ -180,7 +180,7 @@
 
         <!-- Footer -->
         <p class="text-center text-xs text-gray-400 mt-6">
-            &copy; <?php echo e(date('Y')); ?> <?php echo e(\App\Models\Setting::get('app_name', 'AdminPro')); ?>. All rights reserved.
+            &copy; {{ date('Y') }} {{ \App\Models\Setting::get('app_name', 'AdminPro') }}. All rights reserved.
         </p>
     </div>
 
@@ -192,4 +192,3 @@
     </script>
 </body>
 </html>
-<?php /**PATH D:\program file\Project Kantor\Inventory\resources\views/auth/login.blade.php ENDPATH**/ ?>

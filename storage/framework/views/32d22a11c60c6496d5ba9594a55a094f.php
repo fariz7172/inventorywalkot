@@ -15,10 +15,13 @@ use App\Exports\RabTemplateExport;
             <h1 class="text-2xl font-bold text-gray-900">Rencana Anggaran Biaya (RAB)</h1>
             <p class="text-sm text-gray-500">Kelola data RAB, Lokasi, dan Kuota Material.</p>
         </div>
+        <!-- kecamatan admin tidak bisa membuat RAB -->
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (! (auth()->user()->hasAnyRole([ 'kecamatan_admin']))): ?> 
         <button wire:click="openCreate" class="bg-accent text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20 flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Tambah RAB
         </button>
+        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
     </div>
 
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('message')): ?>
@@ -41,7 +44,7 @@ use App\Exports\RabTemplateExport;
                         </svg>
                     </div>
                     <div class="flex gap-1">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$rab->is_locked || auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang'])): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!auth()->user()->hasRole('gudang') && (!$rab->is_locked || auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang']))): ?>
                         <button wire:click="edit(<?php echo e($rab->id); ?>)" class="p-1.5 text-gray-400 hover:text-accent transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                         </button>
@@ -78,7 +81,7 @@ use App\Exports\RabTemplateExport;
                 
                 <div class="flex items-center gap-2 mt-4">
                     <button wire:click="openManageMaterial(<?php echo e($rab->id); ?>)" class="flex-1 bg-accent/10 text-accent font-bold text-xs py-2 rounded-xl hover:bg-accent hover:text-white transition-colors flex items-center justify-center gap-1">
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang', 'gudang'])): ?>
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang') || ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang']))): ?>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                             Lihat Detail RAB
                         <?php else: ?>
@@ -87,7 +90,7 @@ use App\Exports\RabTemplateExport;
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </button>
 
-                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (\Illuminate\Support\Facades\Blade::check('hasanyrole', 'superadmin|sudin|kepala_gudang|gudang')): ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (\Illuminate\Support\Facades\Blade::check('hasanyrole', 'superadmin|sudin|kepala_gudang')): ?>
                     <button wire:click="toggleLock(<?php echo e($rab->id); ?>)" class="flex-1 <?php echo e($rab->is_locked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-red-50 text-red-600 hover:bg-red-600'); ?> font-bold text-xs py-2 rounded-xl hover:text-white transition-colors flex items-center justify-center gap-1">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($rab->is_locked): ?>
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
@@ -226,12 +229,66 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
 
                                 </div>
                             <?php else: ?>
-                                <select wire:model="rabMaterials.<?php echo e($index); ?>.material_id" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none">
-                                    <option value="">-- Pilih --</option>
-                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $this->allMaterials; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                        <option value="<?php echo e($m->id); ?>"><?php echo e($m->name); ?></option>
-                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                </select>
+                                <?php
+                                    $materialOptions = [];
+                                    foreach($this->allMaterials as $m) {
+                                        $materialOptions[] = ['id' => $m->id, 'label' => $m->name];
+                                    }
+                                ?>
+                                <div x-data="{
+                                        open: false,
+                                        search: '',
+                                        selectedId: <?php if ((object) ('rabMaterials.' . $index . '.material_id') instanceof \Livewire\WireDirective) : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('rabMaterials.' . $index . '.material_id'->value()); ?>')<?php echo e('rabMaterials.' . $index . '.material_id'->hasModifier('live') ? '.live' : ''); ?><?php else : ?>window.Livewire.find('<?php echo e($__livewire->getId()); ?>').entangle('<?php echo e('rabMaterials.' . $index . '.material_id'); ?>')<?php endif; ?>.live,
+                                        options: <?php echo e(json_encode($materialOptions)); ?>,
+                                        get filteredOptions() {
+                                            if (this.search === '') return this.options;
+                                            return this.options.filter(opt => opt.label.toLowerCase().includes(this.search.toLowerCase()));
+                                        },
+                                        get selectedLabel() {
+                                            const selectedOpt = this.options.find(opt => opt.id == this.selectedId);
+                                            return selectedOpt ? selectedOpt.label : '-- Pilih Material --';
+                                        }
+                                    }"
+                                    class="relative w-full"
+                                    @click.away="open = false"
+                                >
+                                    <div @click="open = !open"
+                                         class="w-full bg-white rounded-lg px-3 py-2 text-xs border border-warm/60 focus:ring-1 focus:ring-accent outline-none cursor-pointer flex justify-between items-center gap-2 <?php $__errorArgs = ['rabMaterials.'.$index.'.material_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+                                        <span x-text="selectedLabel" :class="selectedId ? 'text-gray-700 font-medium' : 'text-gray-500'" class="truncate flex-1 text-left block"></span>
+                                        <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                    </div>
+
+                                    <div x-show="open" 
+                                         x-transition.opacity
+                                         style="display: none;"
+                                         class="absolute z-50 w-full mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                                         
+                                         <div x-show="options.length > 10" class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm z-10">
+                                             <input type="text" x-model="search" placeholder="Cari material..." 
+                                                    class="w-full bg-gray-50 rounded-md px-3 py-1.5 text-xs border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
+                                                    @click.stop>
+                                         </div>
+
+                                         <ul class="py-1">
+                                             <template x-for="option in filteredOptions" :key="option.id">
+                                                 <li @click="selectedId = option.id; open = false; search = ''"
+                                                     class="px-3 py-2 text-xs text-gray-700 hover:bg-accent hover:text-white cursor-pointer transition-colors"
+                                                     x-text="option.label">
+                                                 </li>
+                                             </template>
+                                             <li x-show="filteredOptions.length === 0" class="px-3 py-2 text-xs text-gray-400 italic">
+                                                 Material tidak ditemukan...
+                                             </li>
+                                         </ul>
+                                    </div>
+                                </div>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['rabMaterials.'.$index.'.material_id'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :

@@ -186,7 +186,9 @@ use Carbon\Carbon;
 
                         </td>
                         <td class="px-4 py-3 text-center font-black text-blue-700 bg-blue-50/10 text-base">
-                            <?php echo e((float)$trx->balance_after); ?>
+                            <?php echo e(isset($runningBalanceMap[$trx->id])
+                                ? number_format($runningBalanceMap[$trx->id], 0, ',', '.')
+                                : number_format((float)$trx->balance_after, 0, ',', '.')); ?>
 
                         </td>
                         <td class="px-4 py-3 text-center text-gray-500 font-bold text-[10px] uppercase"><?php echo e($trx->material->unit); ?></td>
@@ -316,7 +318,12 @@ use Carbon\Carbon;
                         </td>
                         <td class="border border-black px-2 py-1.5 text-right font-bold"><?php echo e($trx->volume_masuk > 0 ? number_format($trx->volume_masuk, 0, ',', '.') : '-'); ?></td>
                         <td class="border border-black px-2 py-1.5 text-right font-bold"><?php echo e($trx->volume_keluar > 0 ? number_format($trx->volume_keluar, 0, ',', '.') : '-'); ?></td>
-                        <td class="border border-black px-2 py-1.5 text-right font-black bg-gray-50"><?php echo e(number_format($trx->balance_after, 0, ',', '.')); ?></td>
+                        <td class="border border-black px-2 py-1.5 text-right font-black bg-gray-50">
+                            <?php echo e(isset($runningBalanceMap[$trx->id])
+                                ? number_format($runningBalanceMap[$trx->id], 0, ',', '.')
+                                : number_format((float)$trx->balance_after, 0, ',', '.')); ?>
+
+                        </td>
                     </tr>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </tbody>

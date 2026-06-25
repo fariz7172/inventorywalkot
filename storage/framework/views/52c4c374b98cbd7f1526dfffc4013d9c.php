@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title><?php echo $__env->yieldContent('title', 'Dashboard'); ?> — <?php echo e(\App\Models\Setting::get('app_name', 'AdminPro')); ?></title>
+    <link rel="icon" type="image/x-icon" href="<?php echo e(asset('assets/logo.ico')); ?>">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,8 +61,9 @@
         #sidebar.collapsed .nav-label,
         #sidebar.collapsed .logo-text,
         #sidebar.collapsed .user-info,
-        #sidebar.collapsed .nav-badge {
-            display: none;
+        #sidebar.collapsed .nav-badge,
+        #sidebar.collapsed .nav-children {
+            display: none !important;
         }
 
         #sidebar.collapsed .nav-item {
@@ -197,7 +199,7 @@
                         </svg>
                     </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                <div class="flex-1 min-w-0">
+                <div class="logo-text flex-1 min-w-0">
                     <p class="text-sm font-bold text-gray-900 leading-tight break-words"><?php echo e($appName); ?></p>
                     <p class="text-[10px] text-gray-500 font-bold truncate mt-0.5"><?php echo e($appDesc); ?></p>
                 </div>
@@ -220,7 +222,7 @@
                             'icon' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10',
                             'children' => [
                                 ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin|sudin'],
-                                ['label' => 'Stok Barang', 'route' => 'material.index', 'role' => 'superadmin|sudin'],
+                                ['label' => 'Stok Barang', 'route' => 'material.index', 'role' => 'superadmin|sudin|kepala_gudang'],
                                 ['label' => 'Data RAB', 'route' => 'rab.index'],
                                 ['label' => 'BAP Barang', 'route' => 'surat-jalan.index'],
                             ]
@@ -272,15 +274,15 @@
                             ?>
                             <div x-data="{ open: <?php echo e($isExpanded ? 'true' : 'false'); ?> }" class="space-y-1">
                                 <button @click="open = !open"
-                                    class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 text-gray-600 hover:bg-white/50">
+                                    class="nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 text-gray-600 hover:bg-white/50">
                                     <div class="flex items-center gap-3">
                                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                                                 d="<?php echo e($item['icon']); ?>" />
                                         </svg>
-                                        <span class="font-medium text-sm"><?php echo e($item['label']); ?></span>
+                                        <span class="nav-label font-medium text-sm"><?php echo e($item['label']); ?></span>
                                     </div>
-                                    <svg class="w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }"
+                                    <svg class="nav-label w-4 h-4 transition-transform duration-200" :class="{ 'rotate-180': open }"
                                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                                     </svg>
@@ -288,7 +290,7 @@
 
                                 <div x-show="open" x-transition:enter="transition ease-out duration-100"
                                     x-transition:enter-start="opacity-0 transform -translate-y-2"
-                                    x-transition:enter-end="opacity-100 transform translate-y-0" class="pl-10 space-y-1">
+                                    x-transition:enter-end="opacity-100 transform translate-y-0" class="nav-children pl-10 space-y-1">
                                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $item['children']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $child): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!isset($child['role']) || auth()->user()->hasAnyRole(explode('|', $child['role']))): ?>
                                             <a href="<?php echo e(route($child['route'])); ?>"
@@ -308,7 +310,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"
                                         d="<?php echo e($item['icon']); ?>" />
                                 </svg>
-                                <span class="font-medium text-sm"><?php echo e($item['label']); ?></span>
+                                <span class="nav-label font-medium text-sm"><?php echo e($item['label']); ?></span>
                             </a>
                         <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -381,15 +383,15 @@
                 <div class="flex items-center justify-between px-4 lg:px-6 h-16 gap-4">
 
                     <!-- Left: Hamburger + Breadcrumb -->
-                    <div class="flex items-center gap-3">
-                        <button id="sidebarToggle" onclick="toggleSidebar()"
-                            class="w-9 h-9 rounded-xl bg-warm hover:bg-warm/70 flex items-center justify-center transition-colors">
+                    <div class="flex items-center gap-3 cursor-pointer group" onclick="toggleSidebar()">
+                        <button id="sidebarToggle"
+                            class="w-9 h-9 rounded-xl bg-warm group-hover:bg-warm/70 flex items-center justify-center transition-colors pointer-events-none">
                             <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-                        <div class="hidden md:flex items-center gap-2 text-sm">
+                        <div class="hidden md:flex items-center gap-2 text-sm group-hover:opacity-80 transition-opacity">
                             <span class="text-gray-400">Panel</span>
                             <svg class="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -611,15 +613,14 @@ if (isset($__slots)) unset($__slots);
     </div>
 
     <script>
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        let isDesktopCollapsed = false;
-
         function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            if (!sidebar || !overlay) return;
+
             const isLg = window.innerWidth >= 1024;
             if (isLg) {
-                isDesktopCollapsed = !isDesktopCollapsed;
-                sidebar.classList.toggle('collapsed', isDesktopCollapsed);
+                sidebar.classList.toggle('collapsed');
             } else {
                 const isOpen = !sidebar.classList.contains('-translate-x-full');
                 if (isOpen) { closeSidebar(); } else { openSidebar(); }
@@ -627,14 +628,22 @@ if (isset($__slots)) unset($__slots);
         }
 
         function openSidebar() {
-            sidebar.classList.remove('-translate-x-full');
-            overlay.classList.remove('hidden');
+            document.getElementById('sidebar')?.classList.remove('-translate-x-full');
+            document.getElementById('overlay')?.classList.remove('hidden');
         }
 
         function closeSidebar() {
-            sidebar.classList.add('-translate-x-full');
-            overlay.classList.add('hidden');
+            document.getElementById('sidebar')?.classList.add('-translate-x-full');
+            document.getElementById('overlay')?.classList.add('hidden');
         }
+
+        // Handle resize events to prevent broken layout
+        window.addEventListener('resize', () => {
+            const sidebar = document.getElementById('sidebar');
+            if (window.innerWidth < 1024 && sidebar && sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+            }
+        });
     </script>
 
     <?php echo $__env->yieldPushContent('scripts'); ?>
