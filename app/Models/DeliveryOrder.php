@@ -11,7 +11,8 @@ class DeliveryOrder extends Model
 
     protected $fillable = [
         'surat_jalan_no', 'tanggal', 'lokasi', 'pemohon', 'petugas', 
-        'penerima', 'no_polisi', 'pelaksana_kecamatan', 'keterangan', 'status'
+        'penerima', 'no_polisi', 'pelaksana_kecamatan', 'keterangan', 'status',
+        'nota_dinas_photo'
     ];
 
     protected $casts = [

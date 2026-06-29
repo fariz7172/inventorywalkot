@@ -4,9 +4,10 @@ use App\Models\DeliveryOrder;
 use App\Models\Material;
 use App\Models\Category;
 use App\Models\Rab;
-use function Livewire\Volt\{state, rules, computed, layout, mount};
+use function Livewire\Volt\{state, rules, computed, layout, mount, usesFileUploads};
 
 layout('layouts.admin');
+usesFileUploads();
 
 // State Form
 state([
@@ -20,6 +21,7 @@ state([
     'no_polisi' => '',
     'pelaksana_kecamatan' => '',
     'keterangan' => '',
+    'nota_dinas_photo' => null,
     'selected_materials' => [['material_id' => '', 'requested_volume' => 0]]
 ]);
 
@@ -80,6 +82,11 @@ $addMaterial = function () {
     $this->selected_materials[] = ['material_id' => '', 'requested_volume' => 0];
 };
 
+// Action: Hapus Foto Nota Dinas
+$removePhoto = function () {
+    $this->nota_dinas_photo = null;
+};
+
 // Action: Hapus Baris Material
 $removeMaterial = function ($index) {
     unset($this->selected_materials[$index]);
@@ -97,11 +104,14 @@ $save = function () {
         'penerima' => 'required',
         'selected_materials.*.material_id' => 'required|exists:materials,id',
         'selected_materials.*.requested_volume' => 'required|numeric|min:0.01',
+        'nota_dinas_photo' => 'nullable|image|max:2048',
     ], [
         'required' => 'Kolom ini wajib diisi.',
         'unique' => 'Nomor ini sudah terdaftar.',
         'numeric' => 'Harus berupa angka.',
         'min' => 'Jumlah minimal adalah 0.01.',
+        'image' => 'File harus berupa gambar.',
+        'max' => 'Ukuran gambar maksimal 2MB.',
     ]);
 
     // Validasi Stok & RAB
@@ -126,6 +136,16 @@ $save = function () {
         }
     }
 
+    $photoPath = null;
+    if ($this->nota_dinas_photo) {
+        $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+        $image = $manager->read($this->nota_dinas_photo->getRealPath());
+        $encoded = $image->toWebp(75);
+        $filename = 'nota_dinas/' . uniqid('nd_') . '.webp';
+        \Illuminate\Support\Facades\Storage::disk('public')->put($filename, (string) $encoded);
+        $photoPath = $filename;
+    }
+
     $order = DeliveryOrder::create([
         'surat_jalan_no' => $this->surat_jalan_no,
         'tanggal' => $this->tanggal,
@@ -136,7 +156,8 @@ $save = function () {
         'no_polisi' => $this->no_polisi,
         'pelaksana_kecamatan' => $this->pelaksana_kecamatan,
         'keterangan' => $this->keterangan,
-        'status' => 'draft'
+        'status' => 'draft',
+        'nota_dinas_photo' => $photoPath
     ]);
 
     // Simpan Daftar Material ke Tabel Pivot
@@ -211,7 +232,25 @@ $save = function () {
                     </div>
                     
                     @if($is_manual_lokasi)
-                        <textarea wire:model="lokasi" rows="2" placeholder="Masukkan detail lokasi manual..." class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror"></textarea>
+                        <div class="bg-accent/5 border border-accent/20 rounded-xl p-4 mb-3">
+                            <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload Surat Permintaan Barang NOTA DINAS</label>
+                            
+                            @if (!$nota_dinas_photo)
+                                <input type="file" wire:model="nota_dinas_photo" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
+                                @error('nota_dinas_photo') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                                <div wire:loading wire:target="nota_dinas_photo" class="text-xs text-accent font-bold">Uploading...</div>
+                            @else
+                                <div class="mt-2 relative inline-block group">
+                                    <img src="{{ $nota_dinas_photo->temporaryUrl() }}" class="h-24 rounded-lg object-cover border border-warm/40">
+                                    <button type="button" wire:click="removePhoto" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-all z-10" title="Hapus Foto">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            @endif
+                        </div>
+                        @if ($nota_dinas_photo)
+                            <textarea wire:model="lokasi" rows="2" placeholder="Masukkan detail lokasi manual..." class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror"></textarea>
+                        @endif
                     @else
                         <div x-data="{
                                 open: false,

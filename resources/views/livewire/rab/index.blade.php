@@ -92,8 +92,9 @@ $save = function() {
         Rab::create([
             'lokasi' => $this->lokasi,
             'kecamatan_id' => $finalKecamatanId,
+            'is_locked' => true,
         ]);
-        session()->flash('message', 'Data RAB baru berhasil ditambahkan!');
+        session()->flash('message', 'Data RAB baru berhasil ditambahkan dan berstatus terkunci!');
     }
 
     $this->showModal = false;
