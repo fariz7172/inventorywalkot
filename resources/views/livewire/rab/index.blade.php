@@ -172,9 +172,21 @@ $importExcel = function() {
                     if (count($this->rabMaterials) === 1 && empty($this->rabMaterials[0]['material_id'])) {
                         $this->rabMaterials = [];
                     }
+                    
+                    $usedVolume = 0;
+                    if ($this->managingRab) {
+                        $usedVolume = \Illuminate\Support\Facades\DB::table('delivery_order_materials')
+                            ->join('delivery_orders', 'delivery_order_materials.delivery_order_id', '=', 'delivery_orders.id')
+                            ->where('delivery_orders.lokasi', $this->managingRab->lokasi)
+                            ->where('delivery_order_materials.material_id', $material->id)
+                            ->sum('delivery_order_materials.requested_volume');
+                    }
+                    
                     $this->rabMaterials[] = [
                         'material_id' => $material->id,
-                        'target_volume' => (float)$targetVolume
+                        'target_volume' => (float)$targetVolume,
+                        'used_volume' => (float)$usedVolume,
+                        'remaining_volume' => max(0, (float)$targetVolume - (float)$usedVolume)
                     ];
                 }
             }
@@ -196,21 +208,31 @@ $openManageMaterial = function(Rab $rab) {
     $this->managingRab = $rab;
     $this->rabMaterials = [];
     foreach ($rab->materials as $m) {
+        $targetVolume = (float)$m->pivot->target_volume;
+        $usedVolume = \Illuminate\Support\Facades\DB::table('delivery_order_materials')
+            ->join('delivery_orders', 'delivery_order_materials.delivery_order_id', '=', 'delivery_orders.id')
+            ->where('delivery_orders.lokasi', $rab->lokasi)
+            ->where('delivery_order_materials.material_id', $m->id)
+            ->sum('delivery_order_materials.requested_volume');
+        $remainingVolume = max(0, $targetVolume - (float)$usedVolume);
+
         $this->rabMaterials[] = [
             'material_id' => $m->id,
             'material_name' => $m->name,
             'material_unit' => $m->unit,
-            'target_volume' => (float)$m->pivot->target_volume
+            'target_volume' => $targetVolume,
+            'used_volume' => (float)$usedVolume,
+            'remaining_volume' => $remainingVolume
         ];
     }
     if (empty($this->rabMaterials) && !$this->isViewOnly) {
-        $this->rabMaterials[] = ['material_id' => '', 'target_volume' => 0];
+        $this->rabMaterials[] = ['material_id' => '', 'target_volume' => 0, 'used_volume' => 0, 'remaining_volume' => 0];
     }
     $this->showMaterialModal = true;
 };
 
 $addRabMaterial = function() {
-    $this->rabMaterials[] = ['material_id' => '', 'target_volume' => 0];
+    $this->rabMaterials[] = ['material_id' => '', 'target_volume' => 0, 'used_volume' => 0, 'remaining_volume' => 0];
 };
 
 $removeRabMaterial = function($index) {
@@ -495,7 +517,7 @@ $saveMaterials = function() {
                                 @error('rabMaterials.'.$index.'.material_id') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                             @endif
                         </div>
-                        <div class="w-full sm:w-32">
+                        <div class="w-full sm:w-28">
                             <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Target Kuota</label>
                             @if($isViewOnly)
                                 <div class="w-full bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-700 font-bold border border-warm/60">
@@ -505,6 +527,18 @@ $saveMaterials = function() {
                                 <input type="number" step="any" wire:model="rabMaterials.{{ $index }}.target_volume" class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none">
                                 @error('rabMaterials.'.$index.'.target_volume') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                             @endif
+                        </div>
+                        <div class="w-full sm:w-24">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1" title="Sudah Dipakai (Terkirim via Surat Jalan)">Terpakai</label>
+                            <div class="w-full bg-red-50/50 rounded-lg px-3 py-2 text-xs text-red-600 font-bold border border-red-100/50">
+                                {{ $item['used_volume'] ?? 0 }}
+                            </div>
+                        </div>
+                        <div class="w-full sm:w-24">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1" title="Sisa Kuota RAB">Sisa RAB</label>
+                            <div class="w-full bg-emerald-50/50 rounded-lg px-3 py-2 text-xs text-emerald-600 font-bold border border-emerald-100/50">
+                                {{ $item['remaining_volume'] ?? 0 }}
+                            </div>
                         </div>
                         @if(!$isViewOnly)
                         <button type="button" wire:click="removeRabMaterial({{ $index }})" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all mb-0.5">
