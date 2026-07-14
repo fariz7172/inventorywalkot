@@ -163,7 +163,8 @@ new class extends Component {
             'supplier' => $firstItem->supplier,
             'lokasi' => $firstItem->deliveryOrder->lokasi ?? null,
             'pemohon' => $firstItem->deliveryOrder->pemohon ?? null,
-            'image' => $firstItem->image
+            'image' => $firstItem->image,
+            'nota_dinas_photo' => $firstItem->deliveryOrder->nota_dinas_photo ?? null
         ];
 
         $this->showDetailModal = true;
@@ -394,9 +395,23 @@ new class extends Component {
                             @endif
                         </td>
                         <td class="px-6 py-5 text-center">
-                            @if($t->latest_image)
-                                <div class="flex justify-center">
-                                    <img src="{{ Storage::url($t->latest_image) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                            @php
+                                $thumbImages = [];
+                                if ($t->latest_image) $thumbImages = array_merge($thumbImages, explode(',', $t->latest_image));
+                                if (isset($t->deliveryOrder->nota_dinas_photo) && $t->deliveryOrder->nota_dinas_photo) {
+                                    $thumbImages[] = $t->deliveryOrder->nota_dinas_photo;
+                                }
+                                $firstImg = !empty($thumbImages) ? $thumbImages[0] : null;
+                            @endphp
+                            
+                            @if($firstImg)
+                                <div class="flex justify-center relative">
+                                    <img src="{{ Storage::url(trim($firstImg)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                    @if(count($thumbImages) > 1)
+                                    <div class="absolute -top-2 -right-2 bg-accent text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ring-2 ring-white shadow-sm">
+                                        +{{ count($thumbImages) - 1 }}
+                                    </div>
+                                    @endif
                                 </div>
                             @else
                                 <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
@@ -511,10 +526,25 @@ new class extends Component {
                 </table>
             </div>
 
-            @if($selectedGroup['image'])
+            @php
+                $allImages = [];
+                if ($selectedGroup['image']) {
+                    $allImages = array_merge($allImages, explode(',', $selectedGroup['image']));
+                }
+                if (isset($selectedGroup['nota_dinas_photo']) && $selectedGroup['nota_dinas_photo']) {
+                    $allImages[] = $selectedGroup['nota_dinas_photo'];
+                }
+            @endphp
+            @if(!empty($allImages))
             <div class="mb-8">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Foto Bukti Fisik</p>
-                <img src="{{ Storage::url($selectedGroup['image']) }}" class="w-full h-48 object-cover rounded-3xl ring-4 ring-base shadow-inner">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Foto Bukti Fisik / Nota Dinas</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    @foreach($allImages as $img)
+                        <img src="{{ Storage::url(trim($img)) }}" 
+                             @click="$dispatch('open-lightbox', '{{ Storage::url(trim($img)) }}')"
+                             class="w-full h-48 object-cover rounded-3xl ring-4 ring-base shadow-inner cursor-pointer hover:opacity-90 transition-opacity">
+                    @endforeach
+                </div>
             </div>
             @endif
 
@@ -705,6 +735,26 @@ new class extends Component {
     </div>
 
     @endif
+
+    {{-- Image Lightbox Modal --}}
+    <div x-data="{ open: false, src: '' }" 
+         @open-lightbox.window="src = $event.detail; open = true" 
+         x-show="open" 
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+         style="display: none;">
+        
+        <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        
+        <img :src="src" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain">
+    </div>
 
     {{-- Edit Modal --}}
     @if($showEditModal)

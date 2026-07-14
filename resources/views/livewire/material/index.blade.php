@@ -37,7 +37,7 @@ new class extends Component {
     // Incoming Goods Details
     public $reference_number = '';
     public $supplier = '';
-    public $photo;
+    public $photos = [];
 
     public function mount()
     {
@@ -214,7 +214,7 @@ new class extends Component {
     {
         abort_if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'), 403);
 
-        $this->reset(['items', 'reference_number', 'supplier', 'photo']);
+        $this->reset(['items', 'reference_number', 'supplier', 'photos']);
 
         if ($id) {
             $this->items = [
@@ -276,24 +276,29 @@ new class extends Component {
             'items.*.volume' => 'required|numeric|min:0.01',
             'reference_number' => 'nullable|string|max:255',
             'supplier' => 'nullable|string|max:255',
-            'photo' => 'nullable|image|max:5120',
+            'photos.*' => 'nullable|image|max:5120',
         ]);
 
-        $imagePath = null;
-        if ($this->photo) {
+        $imagePaths = [];
+        if (!empty($this->photos)) {
             $manager = new ImageManager(new Driver());
-            $image = $manager->read($this->photo->getRealPath());
+            foreach ($this->photos as $pic) {
+                $image = $manager->read($pic->getRealPath());
 
-            if ($image->width() > 1200) {
-                $image->scale(width: 1200);
+                if ($image->width() > 1200) {
+                    $image->scale(width: 1200);
+                }
+
+                $filename = pathinfo($pic->hashName(), PATHINFO_FILENAME) . '.webp';
+                $path = 'transactions/' . $filename;
+
+                $encoded = $image->toWebp(80);
+                Storage::disk('public')->put($path, (string) $encoded);
+                $imagePaths[] = $path;
             }
-
-            $filename = pathinfo($this->photo->hashName(), PATHINFO_FILENAME) . '.webp';
-            $imagePath = 'transactions/' . $filename;
-
-            $encoded = $image->toWebp(80);
-            Storage::disk('public')->put($imagePath, (string) $encoded);
         }
+        
+        $imagePathStr = !empty($imagePaths) ? implode(',', $imagePaths) : null;
 
         foreach ($this->items as $item) {
             $service->processIncoming(
@@ -302,12 +307,12 @@ new class extends Component {
                 $item['note'],
                 $this->reference_number,
                 $this->supplier,
-                $imagePath
+                $imagePathStr
             );
         }
 
         $this->showModal = false;
-        $this->reset(['items', 'reference_number', 'supplier', 'photo']);
+        $this->reset(['items', 'reference_number', 'supplier', 'photos']);
         $this->addItem();
         session()->flash('message', 'Semua stok berhasil ditambahkan!');
     }
@@ -636,43 +641,42 @@ new class extends Component {
 
                     <div>
                         <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Bukti Foto Fisik
-                            (Opsional)</label>
+                            (Opsional - Bisa Lebih Dari 1)</label>
                         <div class="relative">
-                            <input type="file" wire:model="photo" id="photo-upload" class="hidden" accept="image/*">
+                            <input type="file" wire:model="photos" id="photo-upload" class="hidden" accept="image/*" multiple>
                             <label for="photo-upload"
-                                class="w-full bg-base border-2 border-dashed border-warm rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-accent/50 transition-all @error('photo') border-red-500/50 bg-red-50 @enderror">
-                                @if ($photo)
-                                    @php
-                                        $previewUrl = null;
-                                        try {
-                                            $previewUrl = $photo->temporaryUrl();
-                                        } catch (\Exception $e) {
+                                class="w-full bg-base border-2 border-dashed border-warm rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer hover:border-accent/50 transition-all @error('photos.*') border-red-500/50 bg-red-50 @enderror">
+                                @if (!empty($photos))
+                                    <div class="flex flex-wrap gap-2 mb-2 justify-center">
+                                    @foreach($photos as $pic)
+                                        @php
                                             $previewUrl = null;
-                                        }
-                                    @endphp
-
-                                    @if($previewUrl)
-                                        <img src="{{ $previewUrl }}" class="w-full h-32 object-cover rounded-xl mb-2">
-                                    @else
-                                        <div
-                                            class="w-full h-32 bg-gray-100 flex items-center justify-center rounded-xl mb-2 text-[10px] text-gray-400 font-bold uppercase">
-                                            Preview Tidak Tersedia</div>
-                                    @endif
-                                    <span class="text-[10px] font-bold text-accent uppercase">Ganti Foto</span>
+                                            try {
+                                                $previewUrl = $pic->temporaryUrl();
+                                            } catch (\Exception $e) {
+                                                $previewUrl = null;
+                                            }
+                                        @endphp
+                                        @if($previewUrl)
+                                            <img src="{{ $previewUrl }}" class="h-24 w-24 object-cover rounded-xl border border-gray-200">
+                                        @endif
+                                    @endforeach
+                                    </div>
+                                    <span class="text-[10px] font-bold text-accent uppercase mt-2">Tambah/Ganti Foto</span>
                                 @else
                                     <svg class="w-8 h-8 text-gray-300 mb-2" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
-                                    <span class="text-[10px] font-bold text-gray-400 uppercase">Klik untuk ambil foto</span>
+                                    <span class="text-[10px] font-bold text-gray-400 uppercase">Klik untuk pilih beberapa foto</span>
                                 @endif
                             </label>
                         </div>
-                        @error('photo') <span class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</span>
+                        @error('photos.*') <span class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</span>
                         @enderror
-                        <div wire:loading wire:target="photo" class="text-[10px] text-accent font-bold mt-1 animate-pulse">
-                            Sedang mengunggah...</div>
+                        <div wire:loading wire:target="photos" class="text-[10px] text-accent font-bold mt-1 animate-pulse">
+                            Sedang memuat gambar...</div>
                     </div>
 
                     <div class="pt-4 flex gap-3">

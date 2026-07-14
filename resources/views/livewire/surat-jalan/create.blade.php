@@ -233,7 +233,7 @@ $save = function () {
                     
                     @if($is_manual_lokasi)
                         <div class="bg-accent/5 border border-accent/20 rounded-xl p-4 mb-3">
-                            <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload Surat Permintaan Barang NOTA DINAS</label>
+                            <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload(Photo Bukti) Surat Permintaan Barang NOTA DINAS</label>
                             
                             @if (!$nota_dinas_photo)
                                 <input type="file" wire:model="nota_dinas_photo" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
