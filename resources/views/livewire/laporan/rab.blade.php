@@ -131,10 +131,17 @@ $reportData = computed(function() {
         $row['sisa'] = $row['target'] - $row['total'];
     }
     
+    // Ambil semua Surat Jalan untuk riwayat pengeluaran
+    $allDosForLocation = DeliveryOrder::where('lokasi', $rab->lokasi)
+        ->with('materials')
+        ->orderBy('tanggal', 'desc')
+        ->get();
+    
     return [
         'rab' => $rab,
         'rows' => $data,
-        'daysInMonth' => $daysInMonth
+        'daysInMonth' => $daysInMonth,
+        'history_dos' => $allDosForLocation
     ];
 });
 
@@ -353,6 +360,75 @@ $exportExcel = function() {
                         @endforeach
                     </tbody>
                 </table>
+
+                {{-- Delivery Order History Table --}}
+                <div class="mt-12 mb-6">
+                    <h3 class="text-[11pt] font-black text-gray-800 uppercase tracking-widest mb-4 border-b-2 border-warm/60 pb-2">Bukti Pengeluaran (Riwayat Surat Jalan)</h3>
+                    @if(count($this->reportData['history_dos']) > 0)
+                        <div class="bg-white rounded-[2.5rem] shadow-sm ring-1 ring-accent/5 overflow-hidden border border-gray-100">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-base/50">
+                                            <th class="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Tanggal</th>
+                                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Jenis / Ref</th>
+                                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Rincian Barang</th>
+                                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Petugas</th>
+                                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Bukti Nota</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-50">
+                                        @foreach($this->reportData['history_dos'] as $do)
+                                            <tr class="hover:bg-base/30 transition-colors">
+                                                <td class="px-8 py-5">
+                                                    <span class="text-xs font-bold text-gray-700 block">{{ \Carbon\Carbon::parse($do->tanggal)->format('d/m/Y') }}</span>
+                                                    <span class="text-[10px] text-gray-400">{{ \Carbon\Carbon::parse($do->created_at)->format('H:i') }} WIB</span>
+                                                </td>
+                                                <td class="px-6 py-5">
+                                                    <div class="flex flex-col">
+                                                        <span class="text-[10px] font-black uppercase tracking-widest mb-1 text-red-500">
+                                                            Keluar
+                                                        </span>
+                                                        <span class="text-sm font-black text-gray-800">{{ $do->surat_jalan_no }}</span>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-5">
+                                                    <div class="flex flex-col">
+                                                        <span class="text-sm font-bold text-gray-800 mb-1">{{ count($do->materials) }} Item Barang:</span>
+                                                        <ul class="list-disc list-inside text-xs text-gray-600 space-y-0.5">
+                                                        @foreach($do->materials as $mat)
+                                                            <li><span class="font-bold">{{ $mat->name }}</span> : <span class="text-red-500">{{ (float)$mat->pivot->requested_volume }} {{ $mat->unit }}</span></li>
+                                                        @endforeach
+                                                        </ul>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-5">
+                                                    <span class="text-xs font-bold text-gray-700">{{ $do->petugas ?? 'System' }}</span>
+                                                </td>
+                                                <td class="px-6 py-5 text-center">
+                                                    @if($do->nota_dinas_photo)
+                                                        <div class="flex justify-center">
+                                                            <a href="{{ Storage::url(trim($do->nota_dinas_photo)) }}" target="_blank" class="block hover:opacity-80 transition-opacity">
+                                                                <img src="{{ Storage::url(trim($do->nota_dinas_photo)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                                            </a>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @else
+                        <div class="bg-gray-50 rounded-2xl p-8 text-center border border-dashed border-gray-300">
+                            <p class="text-sm font-semibold text-gray-400 italic">Belum ada data pengeluaran (Surat Jalan) untuk lokasi ini.</p>
+                        </div>
+                    @endif
+                </div>
+
             </div>
         </div>
     </div>
