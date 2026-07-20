@@ -22,6 +22,7 @@ state([
     'pelaksana_kecamatan' => '',
     'keterangan' => '',
     'nota_dinas_photo' => null,
+    'progress_photo' => [],
     'selected_materials' => [['material_id' => '', 'requested_volume' => 0]]
 ]);
 
@@ -71,8 +72,15 @@ $rabs = computed(function() {
     return $query->get();
 });
 
+$hasPreviousHistory = computed(function() {
+    if (!$this->lokasi || $this->is_manual_lokasi) {
+        return false;
+    }
+    return \App\Models\DeliveryOrder::where('lokasi', $this->lokasi)->exists();
+});
+
 mount(function() {
-    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin') && !auth()->user()->hasRole('kecamatan_admin')) {
+    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin') && !auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
         abort(403, 'Akses Ditolak. Hanya Superadmin, Sudin, dan Admin Kecamatan yang dapat membuat Surat Jalan.');
     }
 });
@@ -87,15 +95,22 @@ $removePhoto = function () {
     $this->nota_dinas_photo = null;
 };
 
+// Action: Hapus Foto Progress
+$removeProgressPhoto = function ($index) {
+    if (isset($this->progress_photo[$index])) {
+        unset($this->progress_photo[$index]);
+        $this->progress_photo = array_values($this->progress_photo);
+    }
+};
+
 // Action: Hapus Baris Material
 $removeMaterial = function ($index) {
     unset($this->selected_materials[$index]);
     $this->selected_materials = array_values($this->selected_materials);
 };
 
-// Action: Simpan
 $save = function () {
-    $this->validate([
+    $rules = [
         'surat_jalan_no' => 'required|unique:delivery_orders,surat_jalan_no',
         'tanggal' => 'required|date',
         'lokasi' => 'required',
@@ -105,14 +120,32 @@ $save = function () {
         'selected_materials.*.material_id' => 'required|exists:materials,id',
         'selected_materials.*.requested_volume' => 'required|numeric|min:0.01',
         'nota_dinas_photo' => 'nullable|image|max:2048',
-    ], [
+    ];
+    $messages = [
         'required' => 'Kolom ini wajib diisi.',
         'unique' => 'Nomor ini sudah terdaftar.',
         'numeric' => 'Harus berupa angka.',
         'min' => 'Jumlah minimal adalah 0.01.',
         'image' => 'File harus berupa gambar.',
         'max' => 'Ukuran gambar maksimal 2MB.',
-    ]);
+    ];
+
+    if (!$this->is_manual_lokasi) {
+        if ($this->hasPreviousHistory) {
+            $rules['progress_photo'] = 'required|array|min:1';
+            $rules['progress_photo.*'] = 'image|max:2048';
+            $messages['progress_photo.required'] = 'Silahkan upload Foto Progress untuk lokasi ini.';
+            $messages['progress_photo.*.image'] = 'Semua file progress harus berupa gambar.';
+            $messages['progress_photo.*.max'] = 'Ukuran gambar progress maksimal 2MB per file.';
+        } else {
+            $rules['progress_photo'] = 'nullable|array';
+            $rules['progress_photo.*'] = 'image|max:2048';
+            $messages['progress_photo.*.image'] = 'Semua file progress harus berupa gambar.';
+            $messages['progress_photo.*.max'] = 'Ukuran gambar progress maksimal 2MB per file.';
+        }
+    }
+
+    $this->validate($rules, $messages);
 
     // Validasi Stok & RAB
     foreach ($this->selected_materials as $index => $item) {
@@ -146,6 +179,20 @@ $save = function () {
         $photoPath = $filename;
     }
 
+    $progressPhotoPath = null;
+    if (!empty($this->progress_photo)) {
+        $paths = [];
+        $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+        foreach ($this->progress_photo as $photo) {
+            $image = $manager->read($photo->getRealPath());
+            $encoded = $image->toWebp(75);
+            $filename = 'progress_photos/' . uniqid('pp_') . '.webp';
+            \Illuminate\Support\Facades\Storage::disk('public')->put($filename, (string) $encoded);
+            $paths[] = $filename;
+        }
+        $progressPhotoPath = implode(',', $paths);
+    }
+
     $order = DeliveryOrder::create([
         'surat_jalan_no' => $this->surat_jalan_no,
         'tanggal' => $this->tanggal,
@@ -157,7 +204,8 @@ $save = function () {
         'pelaksana_kecamatan' => $this->pelaksana_kecamatan,
         'keterangan' => $this->keterangan,
         'status' => 'draft',
-        'nota_dinas_photo' => $photoPath
+        'nota_dinas_photo' => $photoPath,
+        'progress_photo' => $progressPhotoPath
     ]);
 
     // Simpan Daftar Material ke Tabel Pivot
@@ -299,6 +347,37 @@ $save = function () {
                         </div>
                     @endif
                     @error('lokasi') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                    
+                    @if(!$is_manual_lokasi && $this->hasPreviousHistory)
+                        <div class="bg-accent/5 border border-accent/20 rounded-xl p-4 mt-3 mb-3">
+                            <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload Photo Progress Yang Sudah Dikerjakan (Bisa lebih dari 1)</label>
+                            
+                            @if (empty($progress_photo))
+                                <input type="file" wire:model="progress_photo" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
+                                @error('progress_photo') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                                @error('progress_photo.*') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                                <div wire:loading wire:target="progress_photo" class="text-xs text-accent font-bold">Uploading...</div>
+                            @else
+                                <div class="mt-2 flex flex-wrap gap-3">
+                                    @foreach($progress_photo as $index => $photo)
+                                    <div class="relative inline-block group">
+                                        <img src="{{ $photo->temporaryUrl() }}" class="h-24 w-24 rounded-lg object-cover border border-warm/40">
+                                        <button type="button" wire:click="removeProgressPhoto({{ $index }})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-all z-10" title="Hapus Foto">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-3">
+                                    <label class="block text-[10px] font-bold text-gray-400 mb-1">Pilih Ulang Foto (Ganti Semua Foto)</label>
+                                    <input type="file" wire:model="progress_photo" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-gray-100 file:text-gray-600 hover:file:bg-gray-200">
+                                </div>
+                                @error('progress_photo') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                                @error('progress_photo.*') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                                <div wire:loading wire:target="progress_photo" class="text-xs text-accent font-bold mt-2">Uploading...</div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Kecamatan / Pelaksana</label>

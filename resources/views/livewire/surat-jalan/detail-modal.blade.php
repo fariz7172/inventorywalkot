@@ -111,6 +111,40 @@ new class extends Component {
                         </div>
                     </div>
 
+                    {{-- Photos --}}
+                    @if($order->nota_dinas_photo || $order->progress_photo)
+                    <div>
+                        <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Bukti Foto
+                        </h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            @if($order->nota_dinas_photo)
+                            <div class="bg-base/40 p-3 rounded-2xl border border-warm/60">
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Nota Dinas</p>
+                                <a href="{{ Storage::url(trim($order->nota_dinas_photo)) }}" target="_blank" class="block">
+                                    <img src="{{ Storage::url(trim($order->nota_dinas_photo)) }}" class="w-full h-32 object-cover rounded-xl hover:opacity-80 transition-opacity">
+                                </a>
+                            </div>
+                            @endif
+                            @if($order->progress_photo)
+                            <div class="bg-base/40 p-3 rounded-2xl border border-warm/60 {{ $order->nota_dinas_photo ? '' : 'col-span-2' }}">
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Progress Pekerjaan</p>
+                                <div class="grid {{ count(explode(',', $order->progress_photo)) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-2">
+                                    @foreach(explode(',', $order->progress_photo) as $pp)
+                                    <a href="{{ Storage::url(trim($pp)) }}" target="_blank" class="block">
+                                        <img src="{{ Storage::url(trim($pp)) }}" class="w-full h-32 object-cover rounded-xl hover:opacity-80 transition-opacity">
+                                    </a>
+                                    @endforeach
+                                </div>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- Footer Info --}}
                     <div class="pt-6 border-t border-gray-50 flex items-center justify-between">
                         <div class="flex items-center gap-2">

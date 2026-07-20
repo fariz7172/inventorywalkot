@@ -164,7 +164,8 @@ new class extends Component {
             'lokasi' => $firstItem->deliveryOrder->lokasi ?? null,
             'pemohon' => $firstItem->deliveryOrder->pemohon ?? null,
             'image' => $firstItem->image,
-            'nota_dinas_photo' => $firstItem->deliveryOrder->nota_dinas_photo ?? null
+            'nota_dinas_photo' => $firstItem->deliveryOrder->nota_dinas_photo ?? null,
+            'progress_photo' => $firstItem->deliveryOrder->progress_photo ?? null
         ];
 
         $this->showDetailModal = true;
@@ -395,11 +396,14 @@ new class extends Component {
                             @endif
                         </td>
                         <td class="px-6 py-5 text-center">
-                            @php
+                                @php
                                 $thumbImages = [];
                                 if ($t->latest_image) $thumbImages = array_merge($thumbImages, explode(',', $t->latest_image));
                                 if (isset($t->deliveryOrder->nota_dinas_photo) && $t->deliveryOrder->nota_dinas_photo) {
                                     $thumbImages[] = $t->deliveryOrder->nota_dinas_photo;
+                                }
+                                if (isset($t->deliveryOrder->progress_photo) && $t->deliveryOrder->progress_photo) {
+                                    $thumbImages = array_merge($thumbImages, explode(',', $t->deliveryOrder->progress_photo));
                                 }
                                 $firstImg = !empty($thumbImages) ? $thumbImages[0] : null;
                             @endphp
@@ -533,6 +537,9 @@ new class extends Component {
                 }
                 if (isset($selectedGroup['nota_dinas_photo']) && $selectedGroup['nota_dinas_photo']) {
                     $allImages[] = $selectedGroup['nota_dinas_photo'];
+                }
+                if (isset($selectedGroup['progress_photo']) && $selectedGroup['progress_photo']) {
+                    $allImages = array_merge($allImages, explode(',', $selectedGroup['progress_photo']));
                 }
             @endphp
             @if(!empty($allImages))

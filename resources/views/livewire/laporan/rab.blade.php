@@ -374,7 +374,7 @@ $exportExcel = function() {
                                             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Jenis / Ref</th>
                                             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Rincian Barang</th>
                                             <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Petugas</th>
-                                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Bukti Nota</th>
+                                            <th class="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Bukti Nota / Progress</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-50">
@@ -406,15 +406,23 @@ $exportExcel = function() {
                                                     <span class="text-xs font-bold text-gray-700">{{ $do->petugas ?? 'System' }}</span>
                                                 </td>
                                                 <td class="px-6 py-5 text-center">
-                                                    @if($do->nota_dinas_photo)
-                                                        <div class="flex justify-center">
-                                                            <a href="{{ Storage::url(trim($do->nota_dinas_photo)) }}" target="_blank" class="block hover:opacity-80 transition-opacity">
+                                                    <div class="flex justify-center gap-2">
+                                                        @if($do->nota_dinas_photo)
+                                                            <a href="{{ Storage::url(trim($do->nota_dinas_photo)) }}" target="_blank" class="block hover:opacity-80 transition-opacity" title="Nota Dinas">
                                                                 <img src="{{ Storage::url(trim($do->nota_dinas_photo)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
                                                             </a>
-                                                        </div>
-                                                    @else
-                                                        <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
-                                                    @endif
+                                                        @endif
+                                                        @if($do->progress_photo)
+                                                            @foreach(explode(',', $do->progress_photo) as $pp)
+                                                            <a href="{{ Storage::url(trim($pp)) }}" target="_blank" class="block hover:opacity-80 transition-opacity" title="Progress Pekerjaan">
+                                                                <img src="{{ Storage::url(trim($pp)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-accent/30 shadow-sm">
+                                                            </a>
+                                                            @endforeach
+                                                        @endif
+                                                        @if(!$do->nota_dinas_photo && !$do->progress_photo)
+                                                            <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                             </tr>
                                         @endforeach
