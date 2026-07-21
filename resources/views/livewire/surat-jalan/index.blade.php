@@ -63,7 +63,7 @@ new class extends Component {
     {
         return [
             'deliveryOrders' => DeliveryOrder::query()
-                ->when(auth()->user()->hasRole('kecamatan_admin'), function($q) {
+                ->when(auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel'), function($q) {
                     $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', auth()->user()->kecamatan_id)->pluck('lokasi');
                     $q->whereIn('lokasi', $lokasiKecamatan);
                 })

@@ -33,7 +33,7 @@ $remainingQuotas = computed(function() {
     }
 
     $query = Rab::with('materials')->where('lokasi', $this->lokasi);
-    if (auth()->user()->hasRole('kecamatan_admin')) {
+    if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
         $query->where('kecamatan_id', auth()->user()->kecamatan_id);
     }
     
@@ -60,7 +60,7 @@ $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 $rabs = computed(function() {
     $query = Rab::has('materials')->orderBy('lokasi', 'asc');
     
-    if (auth()->user()->hasRole('kecamatan_admin')) {
+    if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
         if (auth()->user()->kecamatan_id) {
             $query->where('kecamatan_id', auth()->user()->kecamatan_id);
         } else {
