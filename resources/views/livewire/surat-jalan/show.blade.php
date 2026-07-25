@@ -123,6 +123,51 @@ new class extends Component {
                     @endforelse
                 </div>
             </div>
+
+            <div class="bg-white rounded-2xl shadow-card ring-1 ring-accent/10 p-6">
+                <h2 class="text-sm font-bold text-accent uppercase tracking-wider mb-4 border-b border-warm/60 pb-2">Bukti Dokumen & Foto Progress</h2>
+                @if($order->nota_dinas_photo || $order->progress_photo)
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    @if($order->nota_dinas_photo)
+                    <div class="bg-base/40 p-4 rounded-2xl border border-warm/60">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Nota Dinas</p>
+                        <div @click="$dispatch('open-lightbox', '{{ Storage::url(trim($order->nota_dinas_photo)) }}')" class="block group relative overflow-hidden rounded-xl cursor-pointer">
+                            <img src="{{ Storage::url(trim($order->nota_dinas_photo)) }}" class="w-full h-48 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-sm">
+                            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+                                <span class="text-white text-xs font-bold">Perbesar</span>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($order->progress_photo)
+                    <div class="bg-base/40 p-4 rounded-2xl border border-warm/60 {{ $order->nota_dinas_photo ? '' : 'sm:col-span-2' }}">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Progress Pekerjaan</p>
+                        <div class="grid {{ count(explode(',', $order->progress_photo)) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-3">
+                            @foreach(explode(',', $order->progress_photo) as $pp)
+                            <div @click="$dispatch('open-lightbox', '{{ Storage::url(trim($pp)) }}')" class="block group relative overflow-hidden rounded-xl cursor-pointer">
+                                <img src="{{ Storage::url(trim($pp)) }}" class="w-full h-48 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-sm">
+                                <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
+                                    <span class="text-white text-xs font-bold">Perbesar</span>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                </div>
+                @else
+                <div class="text-center py-8 bg-base/20 rounded-xl border border-dashed border-warm/60">
+                    <svg class="w-10 h-10 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">Belum Ada Bukti Foto</p>
+                    <p class="text-[10px] text-gray-400 mt-1 italic">Surat jalan ini tidak dilengkapi foto nota dinas ataupun foto progress.</p>
+                </div>
+                @endif
+            </div>
         </div>
 
         <div class="space-y-6">
@@ -365,5 +410,25 @@ new class extends Component {
             window.print();
         }
     </script>
+
+    {{-- Image Lightbox Modal --}}
+    <div x-data="{ open: false, src: '' }" 
+         @open-lightbox.window="src = $event.detail; open = true" 
+         x-show="open" 
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+         style="display: none;">
+        
+        <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        
+        <img :src="src" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain">
+    </div>
 </div>
 
