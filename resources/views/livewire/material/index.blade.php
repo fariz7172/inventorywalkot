@@ -37,10 +37,12 @@ new class extends Component {
     // Incoming Goods Details
     public $reference_number = '';
     public $supplier = '';
+    public $transaction_date = '';
     public $photos = [];
 
     public function mount()
     {
+        $this->transaction_date = date('Y-m-d');
         $this->addItem();
     }
 
@@ -215,6 +217,7 @@ new class extends Component {
         abort_if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang'), 403);
 
         $this->reset(['items', 'reference_number', 'supplier', 'photos']);
+        $this->transaction_date = date('Y-m-d');
 
         if ($id) {
             $this->items = [
@@ -276,6 +279,7 @@ new class extends Component {
             'items.*.volume' => 'required|numeric|min:0.01',
             'reference_number' => 'nullable|string|max:255',
             'supplier' => 'nullable|string|max:255',
+            'transaction_date' => 'required|date',
             'photos.*' => 'nullable|image|max:5120',
         ]);
 
@@ -307,12 +311,14 @@ new class extends Component {
                 $item['note'],
                 $this->reference_number,
                 $this->supplier,
-                $imagePathStr
+                $imagePathStr,
+                $this->transaction_date
             );
         }
 
         $this->showModal = false;
-        $this->reset(['items', 'reference_number', 'supplier', 'photos']);
+        $this->reset(['items', 'reference_number', 'supplier', 'photos', 'transaction_date']);
+        $this->transaction_date = date('Y-m-d');
         $this->addItem();
         session()->flash('message', 'Semua stok berhasil ditambahkan!');
     }
@@ -563,7 +569,7 @@ new class extends Component {
                         </div>
                     @endif
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">No. Surat
                                 Masuk</label>
@@ -577,6 +583,13 @@ new class extends Component {
                             <input type="text" wire:model="supplier" placeholder="PT. Maju Jaya"
                                 class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none @error('supplier') ring-2 ring-red-500/50 @enderror">
                             @error('supplier') <span
+                            class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Tanggal Masuk</label>
+                            <input type="date" wire:model="transaction_date"
+                                class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none @error('transaction_date') ring-2 ring-red-500/50 @enderror">
+                            @error('transaction_date') <span
                             class="text-[10px] text-red-500 font-bold mt-1 ml-1">{{ $message }}</span> @enderror
                         </div>
                     </div>
