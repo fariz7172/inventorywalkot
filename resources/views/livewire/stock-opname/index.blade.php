@@ -555,8 +555,8 @@ $rejectOpname = function($id) {
                 <p>Pada Hari ini <b>{{ $dayName }}</b> Tanggal <b>{{ $carbonDate->day }}</b> Bulan <b>{{ $monthName }}</b> Tahun <b>{{ $carbonDate->year }}</b> yang bertanda tangan dibawah ini:</p>
                 
                 <table style="margin-left: 40px; border: none;">
-                    <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>{{ $namaSuperAdmin }}</u></b></td></tr>
-                    <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">……………………………</td></tr>
+                    <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>M. Suherman Eka Putra</u></b></td></tr>
+                    <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">197710942009041003</td></tr>
                 </table>
 
                 <p style="margin-top: 8px;">Sesuai Dengan Peraturan Dalam Negeri No 19 Tahun 2016 Tentang Pedoman Pengolahan Barang Milik Daerah, Kami Melakukan Pemeriksaan Setempat atas Sisa Barang Persediaan (stock Opname) Yang Dikelola Oleh :</p>
@@ -603,7 +603,7 @@ $rejectOpname = function($id) {
                 <tr>
                     <td style="border: none; width: 50%; vertical-align: top;">
                         <p style="margin: 0;">Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
-                        <p style="margin: 4px 0; font-weight: bold;">Yang Memeriksa Barang,</p>
+                        <p style="margin: 4px 0; font-weight: bold;">Kepala Gudang,</p>
                         <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">({{ ($selectedOpname->approver && $selectedOpname->approver->hasRole('sudin')) ? 'SUDIN' : 'Super Admin' }})</p>
                         <div style="height: 80px;"></div>
                         <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">{{ $namaSuperAdmin }}</p>
@@ -619,6 +619,15 @@ $rejectOpname = function($id) {
                     </td>
                 </tr>
             </table>
+
+            <br>
+            <div style="text-align: center; font-size: 11pt; margin-top: 15px;">
+                <p style="margin: 0; font-weight: bold;">Mengetahui,</p>
+                <p style="margin: 4px 0; font-weight: bold;">Kepala Sub Bagian Tata Usaha</p>
+                <div style="height: 80px;"></div>
+                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">Deny Tri Hendarto</p>
+                <p style="margin: 0; font-size: 9pt;">NIP. 198111092010011017</p>
+            </div>
         </div>
     </div>
     @endif

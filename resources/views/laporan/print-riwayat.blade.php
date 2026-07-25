@@ -189,21 +189,24 @@
             <tr>
                 <td>
                     Dibuat Oleh,<br>
-                    <strong>Admin Gudang</strong>
+                    <strong>Kepala Gudang</strong>
                     <div class="sign-space"></div>
-                    ( ................................ )
+                    (Sanjaya )
+                    <br>NIP. 198008022009041005
                 </td>
                 <td>
                     Diperiksa Oleh,<br>
-                    <strong>Staff Kantor</strong>
+                    <strong>Pengurus Barang</strong>
                     <div class="sign-space"></div>
-                    ( ................................ )
+                    ( M. Suherman Eka Putra )
+                    <br>NIP. 197710942009041003
                 </td>
                 <td>
                     Mengetahui,<br>
-                    <strong>Pimpinan</strong>
+                    <strong>Kepala Sub Bagian Tata Usaha</strong>
                     <div class="sign-space"></div>
-                    ( ................................ )
+                    ( Deny Tri Hendarto )
+                    <br>NIP. 198111092010011017
                 </td>
             </tr>
         </table>
