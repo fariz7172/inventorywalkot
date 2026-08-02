@@ -79,6 +79,27 @@ $hasPreviousHistory = computed(function() {
     return \App\Models\DeliveryOrder::where('lokasi', $this->lokasi)->exists();
 });
 
+$nextSuratJalanNo = computed(function() {
+    $year = date('Y', strtotime($this->tanggal ?: now()));
+    $month = date('n', strtotime($this->tanggal ?: now()));
+    $months = [
+        1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
+        7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
+    ];
+    $monthRoman = $months[$month];
+
+    $latest = \App\Models\DeliveryOrder::whereYear('tanggal', $year)
+                ->orderBy('id', 'desc')
+                ->first();
+
+    $nextNumber = 1;
+    if ($latest && preg_match('/^(\d+)\/GKU\//', $latest->surat_jalan_no, $matches)) {
+        $nextNumber = (int)$matches[1] + 1;
+    }
+
+    return $nextNumber . '/GKU/' . $monthRoman . '/' . $year;
+});
+
 mount(function() {
     if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin') && !auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
         abort(403, 'Akses Ditolak. Hanya Superadmin, Sudin, dan Admin Kecamatan yang dapat membuat Surat Jalan.');
@@ -111,7 +132,6 @@ $removeMaterial = function ($index) {
 
 $save = function () {
     $rules = [
-        'surat_jalan_no' => 'required|unique:delivery_orders,surat_jalan_no',
         'tanggal' => 'required|date',
         'lokasi' => 'required',
         'pemohon' => 'required',
@@ -193,20 +213,43 @@ $save = function () {
         $progressPhotoPath = implode(',', $paths);
     }
 
-    $order = DeliveryOrder::create([
-        'surat_jalan_no' => $this->surat_jalan_no,
-        'tanggal' => $this->tanggal,
-        'lokasi' => $this->lokasi,
-        'pemohon' => $this->pemohon,
-        'petugas' => $this->petugas,
-        'penerima' => $this->penerima,
-        'no_polisi' => $this->no_polisi,
-        'pelaksana_kecamatan' => $this->pelaksana_kecamatan,
-        'keterangan' => $this->keterangan,
-        'status' => 'draft',
-        'nota_dinas_photo' => $photoPath,
-        'progress_photo' => $progressPhotoPath
-    ]);
+    $order = \Illuminate\Support\Facades\DB::transaction(function () use ($photoPath, $progressPhotoPath) {
+        $year = date('Y', strtotime($this->tanggal));
+        $month = date('n', strtotime($this->tanggal));
+        $months = [
+            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
+            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII'
+        ];
+        $monthRoman = $months[$month];
+
+        // Retrieve latest SJ Number for current year
+        $latest = DeliveryOrder::whereYear('tanggal', $year)
+                    ->lockForUpdate()
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+        $nextNumber = 1;
+        if ($latest && preg_match('/^(\d+)\/GKU\//', $latest->surat_jalan_no, $matches)) {
+            $nextNumber = (int)$matches[1] + 1;
+        }
+
+        $generatedNo = $nextNumber . '/GKU/' . $monthRoman . '/' . $year;
+
+        return DeliveryOrder::create([
+            'surat_jalan_no' => $generatedNo,
+            'tanggal' => $this->tanggal,
+            'lokasi' => $this->lokasi,
+            'pemohon' => $this->pemohon,
+            'petugas' => $this->petugas,
+            'penerima' => $this->penerima,
+            'no_polisi' => $this->no_polisi,
+            'pelaksana_kecamatan' => $this->pelaksana_kecamatan,
+            'keterangan' => $this->keterangan,
+            'status' => 'draft',
+            'nota_dinas_photo' => $photoPath,
+            'progress_photo' => $progressPhotoPath
+        ]);
+    });
 
     // Simpan Daftar Material ke Tabel Pivot
     foreach ($this->selected_materials as $item) {
@@ -262,8 +305,10 @@ $save = function () {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">No. Surat Jalan</label>
-                    <input type="text" wire:model="surat_jalan_no" placeholder="Masukkan No. Surat Jalan" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 font-mono font-bold border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('surat_jalan_no') border-red-500 @enderror">
-                    @error('surat_jalan_no') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                    <div class="w-full bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-600 font-mono font-bold border border-warm/60 cursor-not-allowed flex items-center justify-between">
+                        <span>{{ $this->nextSuratJalanNo }} <span class="text-[10px] font-normal text-gray-400 ml-1">(Preview)</span></span>
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    </div>
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tanggal</label>

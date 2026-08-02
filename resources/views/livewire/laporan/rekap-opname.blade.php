@@ -290,8 +290,9 @@ new #[Layout('layouts.admin')] class extends Component {
         <img src="{{ asset('assets/kop.png') }}" class="w-full h-auto mb-6">
         
         <div class="text-center mb-6">
-            <h1 class="text-xl font-bold uppercase leading-tight">(BERITA ACARA STOCK OPNAME)</h1>
+            <h1 class="text-xl font-bold uppercase leading-tight">(LAMPIRAN BERITA ACARA STOCK OPNAME)</h1>
             <p class="text-md font-bold mt-1">Periode: {{ $this->periodLabel }}</p>
+            <p class="text-md font-bold mt-1">Nomer : ......................</p>
         </div>
 
         <table class="w-full border-collapse border border-black text-[9px]">
@@ -323,12 +324,29 @@ new #[Layout('layouts.admin')] class extends Component {
             </tbody>
         </table>
 
-        <div class="mt-8 flex justify-end pr-8">
-            <div class="text-center w-64">
-                <p class="text-xs">Jakarta, {{ Carbon::now()->translatedFormat('d F Y') }}</p>
-                <p class="text-xs font-bold mt-1">Petugas Gudang / Admin,</p>
-                <div class="h-20"></div>
-                <p class="text-xs font-bold underline uppercase">{{ auth()->user()->name }}</p>
+        <div class="mt-8">
+            <table class="signature-table" style="width: 100%; border: none; text-align: center;">
+                <tr>
+                    <td style="border: none; width: 50%; vertical-align: top;">
+                        <p style="margin: 0; visibility: hidden;">Jakarta, ...</p>
+                        <p style="margin: 4px 0; font-weight: bold;">Pengurus Gudang,</p>
+                        <div style="height: 60px;"></div>
+                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">M. Suherman Eka Putra</p>
+                    </td>
+                    <td style="border: none; width: 50%; vertical-align: top;">
+                        <p style="margin: 0;">Jakarta, {{ \Carbon\Carbon::now()->translatedFormat('d F Y') }}</p>
+                        <p style="margin: 4px 0; font-weight: bold;">Kepala Gudang,</p>
+                        <div style="height: 60px;"></div>
+                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">Sanjaya</p>
+                    </td>
+                </tr>
+            </table>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <p style="margin: 0; font-weight: bold;">Mengetahui</p>
+                <p style="margin: 4px 0; font-weight: bold;">Kasubag TU</p>
+                <div style="height: 60px;"></div>
+                <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">Deny Tri Hendrato</p>
             </div>
         </div>
     </div>
@@ -379,6 +397,7 @@ new #[Layout('layouts.admin')] class extends Component {
             
             table { border-collapse: collapse !important; }
             th, td { border: 1px solid black !important; }
+            .signature-table, .signature-table th, .signature-table td { border: none !important; }
         }
     </style>
 </div>

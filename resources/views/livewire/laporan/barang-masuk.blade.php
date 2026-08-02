@@ -615,7 +615,7 @@ new class extends Component {
             <p>yang bertanda tangan dibawah ini:</p>
             
             <div class="mt-3 ml-8 space-y-0.5">
-                <p>Nama : <span class="font-bold">{{ $selectedGroup['user'] }}</span></p>
+                <p>Nama : <span class="font-bold">M. Suherman Eka Putra</span></p>
                 <p>Jabatan : <span class="font-bold text-[11px]">{{ $isOut ? $labelPihakSatu : $labelPihakDua }}</span></p>
             </div>
 
@@ -666,12 +666,12 @@ new class extends Component {
                 
                 <div class="h-20"></div>
                 
-                <p class="font-bold underline uppercase">{{ $isOut ? $selectedGroup['user'] : $sumberTujuan }}</p>
+                <p class="font-bold underline uppercase">M. Suherman Eka Putra</p>
             </div>
             <div>
                 <p class="invisible">Jakarta, ...</p>
                 <p class="mt-1">Yang menerima Barang,</p>
-                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1">{{ $labelPihakDua }}</p>
+                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1">{{ $labelPihakDua }} /Penguna Barang</p>
                 
                 <div class="h-20"></div>
                 
@@ -715,28 +715,28 @@ new class extends Component {
 
         <div class="grid grid-cols-2 text-center text-[13px] mt-12">
             <div>
-                <p class="invisible">Jakarta, ...</p>
+               <br>
                 <p class="mt-1">Mengetahui,</p>
                 <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">
-                    {{ $selectedGroup['type'] === 'out' ? 'Unit / Kabag / Kabid' : 'Pimpinan / PPK' }}
+                   Kepala Gudang
                 </p>
                 
                 <div class="h-24"></div>
                 
-                <p class="font-bold underline uppercase">______________________</p>
-                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+                <p class="font-bold  uppercase">SANJAYA</p>
+               
             </div>
             <div>
                 <p>Jakarta, {{ $carbonDate->day ?? \Carbon\Carbon::now()->day }} {{ $monthName ?? \Carbon\Carbon::now()->translatedFormat('F') }} {{ $carbonDate->year ?? \Carbon\Carbon::now()->year }}</p>
                 <p class="mt-1">Yang Meminta Barang,</p>
                 <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">
-                    Petugas / Pemohon
+                    Penerima Barang
                 </p>
                 
                 <div class="h-24"></div>
                 
-                <p class="font-bold underline uppercase">{{ $selectedGroup['type'] === 'out' ? ($selectedGroup['pemohon'] ?: '______________________') : ($selectedGroup['user'] ?? '______________________') }}</p>
-                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+                <p class="font-bold  uppercase">{{ $selectedGroup['type'] === 'out' ? ($selectedGroup['pemohon'] ?: '______________________') : ($selectedGroup['user'] ?? '______________________') }}</p>
+                
             </div>
         </div>
     </div>

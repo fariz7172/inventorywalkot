@@ -543,30 +543,34 @@ $rejectOpname = function($id) {
                     $carbonDate = \Carbon\Carbon::parse($selectedOpname->opname_date);
                     $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
                     $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    $romanMonths = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
                     $dayName = $days[$carbonDate->dayOfWeek];
                     $monthName = $months[$carbonDate->month];
+                    $romanMonth = $romanMonths[$carbonDate->month];
                     $namaSuperAdmin = $selectedOpname->approver->name ?? '………………………………';
                     $namaGudang = $selectedOpname->user->name ?? '………………………………';
                 @endphp
-                <p style="font-size: 11pt; font-weight: bold; margin-top: 4px;">Nomor: {{ $selectedOpname->notes ?: '……………………………' }}</p>
+                <p style="font-size: 11pt; font-weight: bold; margin-top: 4px;">Nomor: {{ $selectedOpname->notes ?: '.........' }}/SO/{{ $romanMonth }}/{{ $carbonDate->year }}</p>
             </div>
 
             <div style="font-size: 11pt; text-align: justify; margin-bottom: 12px; line-height: 1.8;">
                 <p>Pada Hari ini <b>{{ $dayName }}</b> Tanggal <b>{{ $carbonDate->day }}</b> Bulan <b>{{ $monthName }}</b> Tahun <b>{{ $carbonDate->year }}</b> yang bertanda tangan dibawah ini:</p>
+          
+
+                 <table style="margin-left: 40px; border: none;">
+                    <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>Deny Tri Hendarto</u></b></td></tr>
+                    <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">198111092010011017</td></tr>
+                </table>
+
+                <p style="margin-top: 8px;">Sesuai Dengan Peraturan Dalam Negeri No 19 Tahun 2016 Tentang Pedoman Pengolahan Barang Milik Daerah, Kami Melakukan Pemeriksaan Setempat atas Sisa Barang Persediaan (stock Opname) Yang Dikelola Oleh :</p>
                 
+                      
                 <table style="margin-left: 40px; border: none;">
                     <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>M. Suherman Eka Putra</u></b></td></tr>
                     <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">197710942009041003</td></tr>
                 </table>
 
-                <p style="margin-top: 8px;">Sesuai Dengan Peraturan Dalam Negeri No 19 Tahun 2016 Tentang Pedoman Pengolahan Barang Milik Daerah, Kami Melakukan Pemeriksaan Setempat atas Sisa Barang Persediaan (stock Opname) Yang Dikelola Oleh :</p>
-                
-                <table style="margin-left: 40px; border: none;">
-                    <tr><td style="border:none; padding: 2px 8px 2px 0; width: 80px;">Nama</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;"><b><u>{{ $namaGudang }}</u></b></td></tr>
-                    <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">……………………………</td></tr>
-                </table>
-
-                <p style="margin-top: 8px;">Berdasarkan Keputusan Gurbernur ……… Nomor ……………… Tahun……….. Tanggal………. Ditugaskan Untuk Mengurus Barang, Berdasarkan Hasil Pemeriksaan Fisik Barang (Stok Opname), Kami Mendapatkan Hasil Sebagai Berikut:</p>
+                <p style="margin-top: 8px;">Berdasarkan Keputusan Gubernur Provinsi DKI Jakarta Nomor 133 Tahun {{ $carbonDate->year }} Tanggal {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }} Ditugaskan Untuk Mengurus Barang, Berdasarkan Hasil Pemeriksaan Fisik Barang (Stok Opname), Kami Mendapatkan Hasil Sebagai Berikut:</p>
             </div>
 
             <table style="width:100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 16px;">
@@ -604,18 +608,18 @@ $rejectOpname = function($id) {
                     <td style="border: none; width: 50%; vertical-align: top;">
                         <p style="margin: 0;">Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
                         <p style="margin: 4px 0; font-weight: bold;">Kepala Gudang,</p>
-                        <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">({{ ($selectedOpname->approver && $selectedOpname->approver->hasRole('sudin')) ? 'SUDIN' : 'Super Admin' }})</p>
-                        <div style="height: 80px;"></div>
-                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">{{ $namaSuperAdmin }}</p>
+                                    <div style="height: 80px;"></div>
+                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">SANJAYA</p>
+
+            
                         <p style="margin: 0; font-size: 9pt;">NIP: ……………………………</p>
                     </td>
                     <td style="border: none; width: 50%; vertical-align: top;">
                         <p style="margin: 0; visibility: hidden;">Jakarta, ...</p>
                         <p style="margin: 4px 0; font-weight: bold;">Pengurus Barang/Pengurus Barang Pembantu,</p>
-                        <p style="margin: 0; font-weight: bold; font-size: 9pt; text-transform: uppercase;">(Gudang)</p>
                         <div style="height: 80px;"></div>
-                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">{{ $namaGudang }}</p>
-                        <p style="margin: 0; font-size: 9pt;">NIP: ……………………………</p>
+                        <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">M. Suherman Eka Putra</p>
+                        <p style="margin: 0; font-size: 9pt;">NIP: 197710942009041003</p>
                     </td>
                 </tr>
             </table>
