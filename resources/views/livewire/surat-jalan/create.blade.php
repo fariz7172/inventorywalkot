@@ -21,7 +21,7 @@ state([
     'no_polisi' => '',
     'pelaksana_kecamatan' => '',
     'keterangan' => '',
-    'nota_dinas_photo' => null,
+    'nota_dinas_photo' => [],
     'progress_photo' => [],
     'selected_materials' => [['material_id' => '', 'requested_volume' => 0]]
 ]);
@@ -112,8 +112,11 @@ $addMaterial = function () {
 };
 
 // Action: Hapus Foto Nota Dinas
-$removePhoto = function () {
-    $this->nota_dinas_photo = null;
+$removePhoto = function ($index) {
+    if (isset($this->nota_dinas_photo[$index])) {
+        unset($this->nota_dinas_photo[$index]);
+        $this->nota_dinas_photo = array_values($this->nota_dinas_photo);
+    }
 };
 
 // Action: Hapus Foto Progress
@@ -139,7 +142,8 @@ $save = function () {
         'penerima' => 'required',
         'selected_materials.*.material_id' => 'required|exists:materials,id',
         'selected_materials.*.requested_volume' => 'required|numeric|min:0.01',
-        'nota_dinas_photo' => 'nullable|image|max:2048',
+        'nota_dinas_photo' => 'nullable|array',
+        'nota_dinas_photo.*' => 'image|max:2048',
     ];
     $messages = [
         'required' => 'Kolom ini wajib diisi.',
@@ -190,13 +194,17 @@ $save = function () {
     }
 
     $photoPath = null;
-    if ($this->nota_dinas_photo) {
+    if (!empty($this->nota_dinas_photo)) {
+        $paths = [];
         $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-        $image = $manager->read($this->nota_dinas_photo->getRealPath());
-        $encoded = $image->toWebp(75);
-        $filename = 'nota_dinas/' . uniqid('nd_') . '.webp';
-        \Illuminate\Support\Facades\Storage::disk('public')->put($filename, (string) $encoded);
-        $photoPath = $filename;
+        foreach ($this->nota_dinas_photo as $photo) {
+            $image = $manager->read($photo->getRealPath());
+            $encoded = $image->toWebp(75);
+            $filename = 'nota_dinas/' . uniqid('nd_') . '.webp';
+            \Illuminate\Support\Facades\Storage::disk('public')->put($filename, (string) $encoded);
+            $paths[] = $filename;
+        }
+        $photoPath = implode(',', $paths);
     }
 
     $progressPhotoPath = null;
@@ -328,16 +336,20 @@ $save = function () {
                         <div class="bg-accent/5 border border-accent/20 rounded-xl p-4 mb-3">
                             <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload(Photo Bukti) Surat Permintaan Barang NOTA DINAS</label>
                             
-                            @if (!$nota_dinas_photo)
-                                <input type="file" wire:model="nota_dinas_photo" accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
-                                @error('nota_dinas_photo') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
-                                <div wire:loading wire:target="nota_dinas_photo" class="text-xs text-accent font-bold">Uploading...</div>
-                            @else
-                                <div class="mt-2 relative inline-block group">
-                                    <img src="{{ $nota_dinas_photo->temporaryUrl() }}" class="h-24 rounded-lg object-cover border border-warm/40">
-                                    <button type="button" wire:click="removePhoto" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-all z-10" title="Hapus Foto">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
-                                    </button>
+                            <input type="file" wire:model="nota_dinas_photo" accept="image/*" multiple class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
+                            @error('nota_dinas_photo.*') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                            <div wire:loading wire:target="nota_dinas_photo" class="text-xs text-accent font-bold">Uploading...</div>
+
+                            @if (!empty($nota_dinas_photo))
+                                <div class="mt-3 flex flex-wrap gap-3">
+                                    @foreach($nota_dinas_photo as $index => $photo)
+                                    <div class="relative inline-block group">
+                                        <img src="{{ $photo->temporaryUrl() }}" class="h-24 w-24 rounded-lg object-cover border border-warm/40">
+                                        <button type="button" wire:click="removePhoto({{ $index }})" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-all z-10" title="Hapus Foto">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/></svg>
+                                        </button>
+                                    </div>
+                                    @endforeach
                                 </div>
                             @endif
                         </div>

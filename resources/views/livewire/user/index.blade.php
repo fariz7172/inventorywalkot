@@ -132,8 +132,16 @@ $deleteUser = function(User $user) {
                         <td class="px-6 py-4 text-gray-600">{{ $u->email }}</td>
                         <td class="px-6 py-4 text-center">
                             @foreach($u->roles as $role)
+                                @php
+                                    $displayRoles = [
+                                        'superadmin' => 'Pengurus Barang',
+                                        'kecamatan_admin' => 'Kasubag',
+                                        'sudin' => 'Kasudin'
+                                    ];
+                                    $displayRoleName = $displayRoles[$role->name] ?? $role->name;
+                                @endphp
                                 <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {{ $role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : ($role->name === 'sudin' ? 'bg-purple-100 text-purple-600' : ($role->name === 'kepala_gudang' ? 'bg-blue-100 text-blue-600' : ($role->name === 'pemel' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'))) }}">
-                                    {{ $role->name }}
+                                    {{ $displayRoleName }}
                                 </span>
                             @endforeach
                         </td>
@@ -183,10 +191,18 @@ $deleteUser = function(User $user) {
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Role / Peran</label>
                     <div class="grid grid-cols-2 gap-3">
                         @foreach($this->roles as $role)
+                            @php
+                                $displayRoles = [
+                                    'superadmin' => 'Pengurus Barang',
+                                    'kecamatan_admin' => 'Kasubag',
+                                    'sudin' => 'Kasudin'
+                                ];
+                                $displayRoleName = $displayRoles[$role->name] ?? $role->name;
+                            @endphp
                         <label class="relative flex items-center justify-center p-3 rounded-2xl bg-base cursor-pointer hover:bg-accent/5 transition-all border-2 {{ $selected_role === $role->name ? 'border-accent bg-accent/5' : 'border-transparent' }}">
                             <input type="radio" wire:model="selected_role" value="{{ $role->name }}" class="hidden">
                             <span class="text-xs font-bold uppercase tracking-wider {{ $selected_role === $role->name ? 'text-accent' : 'text-gray-400' }}">
-                                {{ $role->name }}
+                                {{ $displayRoleName }}
                             </span>
                         </label>
                         @endforeach

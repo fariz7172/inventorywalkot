@@ -359,7 +359,16 @@
                     <div class="user-info flex-1 min-w-0">
                         <p class="text-sm font-bold text-gray-900 truncate">{{ auth()->user()->name }}</p>
                         <p class="text-[10px] font-black text-accent uppercase tracking-widest truncate">
-                            {{ auth()->user()->getRoleNames()->first() ?? 'User' }}
+                            @php
+                                $roleName = auth()->user()->getRoleNames()->first() ?? 'User';
+                                $displayRoles = [
+                                    'superadmin' => 'Pengurus Barang',
+                                    'kecamatan_admin' => 'Kasubag',
+                                    'sudin' => 'Kasudin'
+                                ];
+                                $displayRoleName = $displayRoles[$roleName] ?? $roleName;
+                            @endphp
+                            {{ strtoupper($displayRoleName) }}
                         </p>
                     </div>
                     <button
