@@ -180,7 +180,7 @@
 
         <!-- Footer -->
         <p class="text-center text-xs text-gray-400 mt-6">
-            &copy; {{ date('Y') }} {{ \App\Models\Setting::get('app_name', 'AdminPro') }}. All rights reserved.
+            &copy; {{ date('Y') }} {{ \App\Models\Setting::get('app_name', 'AdminPro') }}. By Tata Usaha SDA Jakarta Utara.
         </p>
     </div>
 
