@@ -436,14 +436,24 @@
                                 $notifItems = \App\Models\DeliveryOrder::where('status', 'draft')
                                                 ->orderBy('created_at', 'desc')->take(5)->get();
                             } 
-                            // Jika superadmin/sudin: Hitung yang sudah dikonfirmasi (shipped) hari ini
+                            // Jika superadmin/sudin: Hitung yang sudah dikonfirmasi (shipped) atau ditolak hari ini
                             elseif (auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) {
-                                $notifCount = \App\Models\DeliveryOrder::where('status', 'shipped')
+                                $notifCount = \App\Models\DeliveryOrder::whereIn('status', ['shipped', 'rejected'])
                                                 ->whereDate('updated_at', \Carbon\Carbon::today())
                                                 ->count();
-                                $notifItems = \App\Models\DeliveryOrder::where('status', 'shipped')
+                                $notifItems = \App\Models\DeliveryOrder::whereIn('status', ['shipped', 'rejected'])
                                                 ->whereDate('updated_at', \Carbon\Carbon::today())
                                                 ->orderBy('updated_at', 'desc')->take(5)->get();
+                            }
+                            // Jika pemel/kecamatan admin: Hitung yang ditolak
+                            elseif (auth()->user()->hasRole('pemel') || auth()->user()->hasRole('kecamatan_admin')) {
+                                $query = \App\Models\DeliveryOrder::where('status', 'rejected');
+                                if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
+                                    $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', auth()->user()->kecamatan_id)->pluck('lokasi');
+                                    $query->whereIn('lokasi', $lokasiKecamatan);
+                                }
+                                $notifCount = $query->count();
+                                $notifItems = $query->orderBy('updated_at', 'desc')->take(5)->get();
                             }
                         @endphp
                         <div class="relative" x-data="{ openNotif: false }">
@@ -493,7 +503,9 @@
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-800">{{ $item->surat_jalan_no }}</p>
                                                         <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                                                            @if(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin'))
+                                                            @if($item->status === 'rejected')
+                                                                <span class="text-red-500 font-bold">Ditolak!</span> Silahkan edit kembali data Anda.
+                                                            @elseif(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin'))
                                                                 Telah dikonfirmasi dan dikirim oleh pihak Gudang.
                                                             @else
                                                                 Surat Jalan baru (Draft) menunggu konfirmasi Anda.

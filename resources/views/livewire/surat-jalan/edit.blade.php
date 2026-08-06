@@ -61,8 +61,17 @@ $remainingQuotas = computed(function() {
 });
 
 mount(function(DeliveryOrder $order) {
-    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) {
-        abort(403, 'Akses Ditolak. Hanya Superadmin dan Sudin yang dapat mengedit Surat Jalan.');
+    $user = auth()->user();
+    $canEdit = $user->hasRole('superadmin') || $user->hasRole('sudin');
+    
+    if (!$canEdit && ($user->hasRole('pemel') || $user->hasRole('kecamatan_admin'))) {
+        if ($order->status === 'draft' || $order->status === 'rejected') {
+            $canEdit = true;
+        }
+    }
+    
+    if (!$canEdit) {
+        abort(403, 'Akses Ditolak. Anda tidak memiliki izin untuk mengedit Surat Jalan ini.');
     }
 
     $this->order = $order->load('materials');
@@ -86,13 +95,13 @@ mount(function(DeliveryOrder $order) {
 
 // Action: Tambah Baris Material
 $addMaterial = function () {
-    if ($this->order->status === 'shipped') return;
+    if ($this->order->status === 'shipped' || $this->order->status === 'processing') return;
     $this->selected_materials[] = ['material_id' => '', 'requested_volume' => 0];
 };
 
 // Action: Hapus Baris Material
 $removeMaterial = function ($index) {
-    if ($this->order->status === 'shipped') return;
+    if ($this->order->status === 'shipped' || $this->order->status === 'processing') return;
     unset($this->selected_materials[$index]);
     $this->selected_materials = array_values($this->selected_materials);
 };
@@ -148,8 +157,8 @@ $save = function () {
         'keterangan' => $this->keterangan,
     ]);
 
-    // Update Materials ONLY if not shipped
-    if ($this->order->status !== 'shipped') {
+    // Update Materials ONLY if not shipped or processing
+    if ($this->order->status !== 'shipped' && $this->order->status !== 'processing') {
         $syncData = [];
         $rabSync = [];
         foreach ($this->selected_materials as $item) {
@@ -268,7 +277,7 @@ $save = function () {
                     </div>
                     <h2 class="text-lg font-bold text-gray-800">Daftar Barang</h2>
                 </div>
-                @if($order->status !== 'shipped')
+                @if($order->status !== 'shipped' && $order->status !== 'processing')
                 <button type="button" wire:click="addMaterial" class="text-xs font-bold text-accent hover:text-accent-dark flex items-center gap-1.5 bg-accent/5 px-4 py-2 rounded-xl transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Tambah Barang
@@ -278,11 +287,11 @@ $save = function () {
 
             <div class="space-y-4">
                 @foreach($selected_materials as $index => $item)
-                <div class="flex flex-col sm:flex-row gap-3 bg-base/40 p-3 rounded-xl border border-warm/40 items-end @if($order->status === 'shipped') opacity-60 grayscale @endif">
+                <div class="flex flex-col sm:flex-row gap-3 bg-base/40 p-3 rounded-xl border border-warm/40 items-end @if($order->status === 'shipped' || $order->status === 'processing') opacity-60 grayscale @endif">
                     <div class="flex-1">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Pilih Material</label>
                         <select wire:model="selected_materials.{{ $index }}.material_id" 
-                            @if($order->status === 'shipped') disabled @endif
+                            @if($order->status === 'shipped' || $order->status === 'processing') disabled @endif
                             class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.material_id') border-red-500 @enderror">
                             <option value="">-- Pilih --</option>
                             @foreach($this->allMaterials as $m)
@@ -297,14 +306,15 @@ $save = function () {
                     <div class="w-full sm:w-32">
                         <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Jumlah Keluar</label>
                         <input type="number" step="any" wire:model="selected_materials.{{ $index }}.requested_volume" 
+                            @if($order->status === 'shipped' || $order->status === 'processing') disabled @endif
                             @if($order->status === 'shipped') disabled @endif
                             class="w-full bg-white rounded-lg px-3 py-2 text-xs text-gray-700 border border-warm/60 focus:ring-1 focus:ring-accent outline-none @error('selected_materials.'.$index.'.requested_volume') border-red-500 @enderror">
                         @error('selected_materials.'.$index.'.requested_volume')
                             <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p>
                         @enderror
                     </div>
-                    @if(count($selected_materials) > 1 && $order->status !== 'shipped')
-                    <button type="button" wire:click="removeMaterial({{ $index }})" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all mb-0.5">
+                    @if($order->status !== 'shipped' && $order->status !== 'processing')
+                    <button type="button" wire:click="removeMaterial({{ $index }})" class="w-full sm:w-10 h-10 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                     </button>
                     @endif

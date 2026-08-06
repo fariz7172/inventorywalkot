@@ -142,8 +142,6 @@ $save = function () {
         'penerima' => 'required',
         'selected_materials.*.material_id' => 'required|exists:materials,id',
         'selected_materials.*.requested_volume' => 'required|numeric|min:0.01',
-        'nota_dinas_photo' => 'nullable|array',
-        'nota_dinas_photo.*' => 'image|max:2048',
     ];
     $messages = [
         'required' => 'Kolom ini wajib diisi.',
@@ -152,21 +150,18 @@ $save = function () {
         'min' => 'Jumlah minimal adalah 0.01.',
         'image' => 'File harus berupa gambar.',
         'max' => 'Ukuran gambar maksimal 2MB.',
+        'nota_dinas_photo.required' => 'Wajib mengunggah minimal 3 foto Nota Dinas.',
+        'nota_dinas_photo.min' => 'Minimal harus mengunggah 3 foto Nota Dinas.',
+        'progress_photo.required' => 'Wajib mengunggah minimal 3 foto Progress.',
+        'progress_photo.min' => 'Minimal harus mengunggah 3 foto Progress.',
     ];
 
-    if (!$this->is_manual_lokasi) {
-        if ($this->hasPreviousHistory) {
-            $rules['progress_photo'] = 'required|array|min:1';
-            $rules['progress_photo.*'] = 'image|max:2048';
-            $messages['progress_photo.required'] = 'Silahkan upload Foto Progress untuk lokasi ini.';
-            $messages['progress_photo.*.image'] = 'Semua file progress harus berupa gambar.';
-            $messages['progress_photo.*.max'] = 'Ukuran gambar progress maksimal 2MB per file.';
-        } else {
-            $rules['progress_photo'] = 'nullable|array';
-            $rules['progress_photo.*'] = 'image|max:2048';
-            $messages['progress_photo.*.image'] = 'Semua file progress harus berupa gambar.';
-            $messages['progress_photo.*.max'] = 'Ukuran gambar progress maksimal 2MB per file.';
-        }
+    if ($this->is_manual_lokasi) {
+        $rules['nota_dinas_photo'] = 'required|array|min:3';
+        $rules['nota_dinas_photo.*'] = 'image|max:2048';
+    } else {
+        $rules['progress_photo'] = 'required|array|min:3';
+        $rules['progress_photo.*'] = 'image|max:2048';
     }
 
     $this->validate($rules, $messages);
@@ -337,6 +332,7 @@ $save = function () {
                             <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload(Photo Bukti) Surat Permintaan Barang NOTA DINAS</label>
                             
                             <input type="file" wire:model="nota_dinas_photo" accept="image/*" multiple class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
+                            @error('nota_dinas_photo') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                             @error('nota_dinas_photo.*') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                             <div wire:loading wire:target="nota_dinas_photo" class="text-xs text-accent font-bold">Uploading...</div>
 

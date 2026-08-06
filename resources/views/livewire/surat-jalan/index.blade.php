@@ -135,6 +135,7 @@ new class extends Component {
                 <option value="draft">Draft (Ordered)</option>
                 <option value="processing">Processing</option>
                 <option value="shipped">Shipped (Sent)</option>
+                <option value="rejected">Ditolak (Rejected)</option>
             </select>
         </div>
         <div class="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-gray-100">
@@ -182,10 +183,11 @@ new class extends Component {
                                     'draft' => 'bg-amber-50 text-amber-600',
                                     'processing' => 'bg-blue-50 text-blue-600',
                                     'shipped' => 'bg-emerald-50 text-emerald-600',
+                                    'rejected' => 'bg-red-50 text-red-600',
                                 ];
                             @endphp
-                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg {{ $statusClasses[$order->status] }}">
-                                {{ ucfirst($order->status) }}
+                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg {{ $statusClasses[$order->status] ?? 'bg-gray-50 text-gray-600' }}">
+                                {{ $order->status === 'rejected' ? 'Ditolak' : ucfirst($order->status) }}
                             </span>
                         </td>
                         <td class="px-5 py-4">
@@ -195,14 +197,18 @@ new class extends Component {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                     </svg>
                                 </a>
-                                @if(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin'))
+                                @php
+                                    $canEdit = auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin') || 
+                                              ((auth()->user()->hasRole('pemel') || auth()->user()->hasRole('kecamatan_admin')) && in_array($order->status, ['draft', 'rejected']));
+                                @endphp
+                                @if($canEdit)
                                 <a href="/dashboard/surat-jalan/{{ $order->id }}/edit" wire:navigate class="w-8 h-8 rounded-lg hover:bg-amber-50 flex items-center justify-center transition-colors group" title="Edit Data">
                                     <svg class="w-4 h-4 text-gray-400 group-hover:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </a>
                                 @endif
-                                @if($order->status === 'draft')
+                                @if(in_array($order->status, ['draft', 'rejected']))
                                 <button wire:click="deleteOrder({{ $order->id }})" wire:confirm="Yakin ingin menghapus data ini?" class="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors group">
                                     <svg class="w-4 h-4 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>

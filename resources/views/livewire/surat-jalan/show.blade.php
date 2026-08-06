@@ -41,6 +41,19 @@ new class extends Component {
             $this->addError('process', $e->getMessage());
         }
     }
+    public function rejectOrder()
+    {
+        try {
+            if ($this->order->status !== 'draft') {
+                throw new \Exception("Hanya Surat Jalan berstatus draft yang bisa ditolak.");
+            }
+            $this->order->update(['status' => 'rejected']);
+            session()->flash('message', 'Data Surat Jalan telah ditolak. Pemohon dapat mengedit kembali data ini.');
+            return $this->redirect('/dashboard/surat-jalan', navigate: true);
+        } catch (\Exception $e) {
+            $this->addError('process', $e->getMessage());
+        }
+    }
 }
 
 ?>
@@ -183,6 +196,11 @@ new class extends Component {
                             <span class="w-2 h-2 bg-amber-500 rounded-full mr-2"></span>
                             Menunggu Gudang
                         </span>
+                    @elseif($order->status === 'rejected')
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-600">
+                            <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                            Ditolak
+                        </span>
                     @else
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-600">
                             <span class="w-2 h-2 bg-emerald-500 rounded-full mr-2"></span>
@@ -209,11 +227,20 @@ new class extends Component {
                         <span wire:loading.remove>Konfirmasi Kirim</span>
                         <span wire:loading>Memproses...</span>
                     </button>
-                    <p class="text-[10px] text-gray-400 text-center mt-3 italic font-medium px-2">Klik tombol di atas saat barang benar-benar keluar dari gudang.</p>
+                    <button wire:click="rejectOrder" wire:confirm="Yakin ingin menolak data Surat Jalan ini? Pemohon akan diminta untuk memperbaiki/mengedit data." wire:loading.attr="disabled" class="w-full mt-3 bg-red-50 text-red-600 border border-red-200 py-3.5 rounded-xl font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Tolak Permintaan (Kembalikan)
+                    </button>
+                    <p class="text-[10px] text-gray-400 text-center mt-4 italic font-medium px-2">Klik "Konfirmasi Kirim" jika barang dikirim, atau "Tolak" jika data salah.</p>
                 @elseif($order->status === 'draft')
                     <div class="p-4 bg-warm/30 rounded-xl border border-warm/60 text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Menunggu Konfirmasi</p>
                         <p class="text-[10px] text-gray-400 mt-1 italic">Hanya petugas gudang, kepala gudang, superadmin, atau SUDIN yang dapat melakukan konfirmasi pengiriman.</p>
+                    </div>
+                @elseif($order->status === 'rejected')
+                    <div class="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
+                        <p class="text-[10px] font-bold text-red-500 uppercase tracking-widest">Data Ditolak</p>
+                        <p class="text-[10px] text-red-400 mt-1 italic">Silahkan kembali ke Daftar Surat Jalan dan edit data yang salah, lalu simpan ulang.</p>
                     </div>
                 @endif
             </div>
