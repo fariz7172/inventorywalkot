@@ -401,9 +401,9 @@ $save = function () {
                     @endif
                     @error('lokasi') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                     
-                    @if(!$is_manual_lokasi && $this->hasPreviousHistory)
+                    @if(!$is_manual_lokasi)
                         <div class="bg-accent/5 border border-accent/20 rounded-xl p-4 mt-3 mb-3">
-                            <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload Photo Progress Yang Sudah Dikerjakan (Bisa lebih dari 1)</label>
+                            <label class="block text-xs font-bold text-accent mb-2">Silahkan Upload Photo Progress Yang Sudah Dikerjakan (Minimal 3 Foto)</label>
                             
                             @if (empty($progress_photo))
                                 <input type="file" wire:model="progress_photo" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 mb-2">
