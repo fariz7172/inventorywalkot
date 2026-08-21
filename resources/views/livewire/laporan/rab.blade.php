@@ -408,8 +408,9 @@ $exportExcel = function() {
                                                 <td class="px-6 py-5 text-center">
                                                     <div class="flex justify-center gap-2">
                                                         @if($do->nota_dinas_photo)
-                                                            <a href="{{ Storage::url(trim($do->nota_dinas_photo)) }}" target="_blank" class="block hover:opacity-80 transition-opacity" title="Nota Dinas">
-                                                                <img src="{{ Storage::url(trim($do->nota_dinas_photo)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                                            @php $firstND = explode(',', $do->nota_dinas_photo)[0]; @endphp
+                                                            <a href="{{ Storage::url(trim($firstND)) }}" target="_blank" class="block hover:opacity-80 transition-opacity" title="Nota Dinas">
+                                                                <img src="{{ Storage::url(trim($firstND)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
                                                             </a>
                                                         @endif
                                                         @if($do->progress_photo)

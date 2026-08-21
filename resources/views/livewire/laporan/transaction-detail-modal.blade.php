@@ -129,7 +129,10 @@ new class extends Component {
                         $allImages = array_merge($allImages, explode(',', $trx->image));
                     }
                     if ($trx->deliveryOrder && $trx->deliveryOrder->nota_dinas_photo) {
-                        $allImages[] = $trx->deliveryOrder->nota_dinas_photo;
+                        $allImages = array_merge($allImages, explode(',', $trx->deliveryOrder->nota_dinas_photo));
+                    }
+                    if ($trx->deliveryOrder && $trx->deliveryOrder->progress_photo) {
+                        $allImages = array_merge($allImages, explode(',', $trx->deliveryOrder->progress_photo));
                     }
                 @endphp
                 @if(!empty($allImages))

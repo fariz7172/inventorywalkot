@@ -122,11 +122,13 @@ new class extends Component {
                         </h4>
                         <div class="grid grid-cols-2 gap-4">
                             @if($order->nota_dinas_photo)
-                            <div class="bg-base/40 p-3 rounded-2xl border border-warm/60">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Nota Dinas</p>
-                                <a href="{{ Storage::url(trim($order->nota_dinas_photo)) }}" target="_blank" class="block">
-                                    <img src="{{ Storage::url(trim($order->nota_dinas_photo)) }}" class="w-full h-32 object-cover rounded-xl hover:opacity-80 transition-opacity">
+                            <div class="space-y-2">
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nota Dinas</p>
+                                @foreach(explode(',', $order->nota_dinas_photo) as $nd)
+                                <a href="{{ Storage::url(trim($nd)) }}" target="_blank" class="block mb-2">
+                                    <img src="{{ Storage::url(trim($nd)) }}" class="w-full h-32 object-cover rounded-xl hover:opacity-80 transition-opacity">
                                 </a>
+                                @endforeach
                             </div>
                             @endif
                             @if($order->progress_photo)

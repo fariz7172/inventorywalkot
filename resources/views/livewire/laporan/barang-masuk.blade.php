@@ -536,7 +536,7 @@ new class extends Component {
                     $allImages = array_merge($allImages, explode(',', $selectedGroup['image']));
                 }
                 if (isset($selectedGroup['nota_dinas_photo']) && $selectedGroup['nota_dinas_photo']) {
-                    $allImages[] = $selectedGroup['nota_dinas_photo'];
+                    $allImages = array_merge($allImages, explode(',', $selectedGroup['nota_dinas_photo']));
                 }
                 if (isset($selectedGroup['progress_photo']) && $selectedGroup['progress_photo']) {
                     $allImages = array_merge($allImages, explode(',', $selectedGroup['progress_photo']));
