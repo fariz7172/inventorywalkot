@@ -179,26 +179,27 @@ endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 <?php
-                    $isAdmin = auth()->user()->hasRole(['gudang', 'kepala_gudang', 'superadmin', 'sudin']);
-                    $isUploader = auth()->user()->hasRole(['kasubag', 'pemel', 'kecamatan_admin']);
+                    $isAdmin = auth()->user()->hasRole(['gudang', 'kepala_gudang', 'superadmin', 'sudin', 'pemel']);
+                    $isUploader = auth()->user()->hasRole(['kasubag', 'kecamatan_admin']);
                 ?>
 
                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->status === 'draft' && ($isAdmin || $isUploader)): ?>
                     
-                    <div class="mb-4 p-4 border border-dashed border-gray-300 rounded-xl bg-gray-50">
-                        <label class="block text-xs font-bold text-gray-700 mb-2">Dokumen SPB <span class="text-red-500">*</span></label>
-                        
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->spb_document): ?>
-                            <div class="mb-3 flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                <span class="font-bold text-xs">SPB Sudah Diunggah</span>
-                                <a href="<?php echo e(Storage::url($order->spb_document)); ?>" target="_blank" class="ml-auto text-xs underline hover:text-emerald-800">Lihat File</a>
-                            </div>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isUploader && !$isAdmin): ?>
+                        <div class="mb-4 p-4 border border-dashed border-gray-300 rounded-xl bg-gray-50">
+                            <label class="block text-xs font-bold text-gray-700 mb-2">Dokumen SPB <span class="text-red-500">*</span></label>
+                            
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->spb_document): ?>
+                                <div class="mb-3 flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span class="font-bold text-xs">SPB Sudah Diunggah</span>
+                                    <a href="<?php echo e(Storage::url($order->spb_document)); ?>" target="_blank" class="ml-auto text-xs underline hover:text-emerald-800">Lihat File</a>
+                                </div>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                        <input type="file" wire:model="spbFile" accept=".png,.jpg,.jpeg,.webp,.pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 transition-all">
-                        <p class="text-[10px] text-gray-400 mt-2">Format: JPG, PNG, WEBP, PDF. Max: 10MB.</p>
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['spbFile'];
+                            <input type="file" wire:model="spbFile" accept=".png,.jpg,.jpeg,.webp,.pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 transition-all">
+                            <p class="text-[10px] text-gray-400 mt-2">Format: JPG, PNG, WEBP, PDF. Max: 10MB.</p>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['spbFile'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -206,21 +207,38 @@ $message = $__bag->first($__errorArgs[0]); ?> <p class="text-xs text-red-500 fon
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                        
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('message_spb')): ?>
-                            <p class="text-xs text-emerald-500 font-bold mt-1"><?php echo e(session('message_spb')); ?></p>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('message_spb')): ?>
+                                <p class="text-xs text-emerald-500 font-bold mt-1"><?php echo e(session('message_spb')); ?></p>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isUploader && !$isAdmin): ?>
                             <button wire:click="saveSPB" <?php echo e(!$spbFile ? 'disabled' : ''); ?> wire:loading.attr="disabled" class="w-full mt-3 bg-gray-800 text-white py-3 rounded-xl font-bold shadow-lg shadow-gray-800/30 hover:bg-gray-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span wire:loading.remove>Upload SPB Sekarang</span>
                                 <span wire:loading>Mengupload...</span>
                             </button>
-                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                    </div>
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isAdmin): ?>
-                        <button wire:click="processShipment" <?php echo e((!$spbFile && !$order->spb_document) ? 'disabled' : ''); ?> wire:loading.attr="disabled" class="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent/30 hover:bg-accent-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->spb_document): ?>
+                            <div class="mb-4 p-4 border border-emerald-200 rounded-xl bg-emerald-50/50">
+                                <label class="block text-xs font-bold text-gray-700 mb-2">Dokumen SPB</label>
+                                <div class="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <span class="font-bold text-xs">SPB Sudah Diunggah</span>
+                                    <a href="<?php echo e(Storage::url($order->spb_document)); ?>" target="_blank" class="ml-auto text-xs underline hover:text-emerald-800">Lihat File</a>
+                                </div>
+                            </div>
+                        <?php else: ?>
+                            <div class="mb-4 p-4 bg-warm/30 rounded-xl border border-warm/60 text-center">
+                                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Menunggu Upload Form SPB</p>
+                                <p class="text-[10px] text-gray-400 mt-1 italic">Menunggu pihak Kecamatan untuk mengunggah dokumen SPB.</p>
+                            </div>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isAdmin): ?>
+                        <button wire:click="processShipment" <?php echo e((!$order->spb_document) ? 'disabled' : ''); ?> wire:loading.attr="disabled" class="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent/30 hover:bg-accent-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg wire:loading.remove class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>
@@ -240,7 +258,7 @@ unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendB
                 <?php elseif($order->status === 'draft'): ?>
                     <div class="p-4 bg-warm/30 rounded-xl border border-warm/60 text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Menunggu Konfirmasi</p>
-                        <p class="text-[10px] text-gray-400 mt-1 italic">Hanya petugas gudang, kepala gudang, superadmin, SUDIN, Admin Kecamatan (Kasubag), atau Pemel yang dapat melakukan konfirmasi pengiriman.</p>
+                        <p class="text-[10px] text-gray-400 mt-1 italic">Hanya petugas gudang, kepala gudang, superadmin, SUDIN, atau Pemel yang dapat melakukan konfirmasi pengiriman.</p>
                     </div>
                 <?php elseif($order->status === 'rejected'): ?>
                     <div class="p-4 bg-red-50 rounded-xl border border-red-200 text-center">
