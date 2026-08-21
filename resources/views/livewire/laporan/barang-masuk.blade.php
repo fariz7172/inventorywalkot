@@ -202,7 +202,9 @@ new class extends Component {
             });
         }
             
-        $query->orderBy('latest_created_at', 'desc')
+        $query->orderBy('date', 'desc')
+            ->orderBy('delivery_order_id', 'desc')
+            ->orderBy('reference_number', 'desc')
             ->orderBy('max_id', 'desc');
 
         if ($this->filterType !== 'all') {
