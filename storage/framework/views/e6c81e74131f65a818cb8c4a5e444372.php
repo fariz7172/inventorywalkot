@@ -180,7 +180,7 @@
 
         <!-- Footer -->
         <p class="text-center text-xs text-gray-400 mt-6">
-            &copy; <?php echo e(date('Y')); ?> <?php echo e(\App\Models\Setting::get('app_name', 'AdminPro')); ?>. All rights reserved.
+            &copy; <?php echo e(date('Y')); ?> <?php echo e(\App\Models\Setting::get('app_name', 'AdminPro')); ?>. By Tata Usaha SDA Jakarta Utara.
         </p>
     </div>
 

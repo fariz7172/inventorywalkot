@@ -1,6 +1,5 @@
 <?php
 
-use function Livewire\Volt\{state, computed, layout, mount, uses, on};
 use Livewire\WithFileUploads;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
@@ -9,271 +8,6 @@ use App\Models\StockOpnameItem;
 use App\Models\Material;
 use App\Models\InventoryTransaction;
 use Illuminate\Support\Facades\DB;
-
-layout('layouts.admin');
-
-uses(WithFileUploads::class);
-
-state([
-    'showCreateModal' => false,
-    'showDetailModal' => false,
-    'isEditing' => false,
-    'selectedOpnameId' => null,
-    'opnames' => [],
-    'materials' => [],
-    'opname_date' => date('Y-m-d'),
-    'notes' => '',
-    'approverNotes' => '',
-    'opnameItems' => [], // physical volume
-    'itemNotes' => [], // individual item notes
-    'selectedOpname' => null,
-    'hasPendingOpname' => false,
-    'needsDifferenceConfirmation' => false,
-    'filterPeriod' => 'all', // all, this_week, this_month, this_year, custom
-    'startDate' => '',
-    'endDate' => '',
-    'itemPhotos' => [],
-    'existingItemPhotos' => [],
-]);
-
-mount(function() {
-    $this->loadData();
-});
-
-$loadData = function() {
-    $this->materials = Material::all();
-    foreach($this->materials as $m) {
-        if(!isset($this->opnameItems[$m->id]) && !$this->isEditing) {
-            $this->opnameItems[$m->id] = (float)$m->current_volume;
-            $this->itemNotes[$m->id] = '';
-        }
-    }
-    
-    $query = StockOpname::with(['user', 'approver'])->latest();
-    
-    if ($this->filterPeriod === 'this_week') {
-        $query->whereBetween('opname_date', [now()->startOfWeek()->format('Y-m-d'), now()->endOfWeek()->format('Y-m-d')]);
-    } elseif ($this->filterPeriod === 'this_month') {
-        $query->whereMonth('opname_date', now()->month)
-              ->whereYear('opname_date', now()->year);
-    } elseif ($this->filterPeriod === 'this_year') {
-        $query->whereYear('opname_date', now()->year);
-    } elseif ($this->filterPeriod === 'custom' && $this->startDate && $this->endDate) {
-        $query->whereBetween('opname_date', [$this->startDate, $this->endDate]);
-    }
-    
-    if (auth()->check() && auth()->user()->kecamatan_id) {
-        $query->whereHas('user', function($uq) {
-            $uq->where('kecamatan_id', auth()->user()->kecamatan_id);
-        });
-    }
-    
-    $this->opnames = $query->get();
-    $this->hasPendingOpname = StockOpname::where('status', 'pending')->exists();
-};
-
-$openCreate = function() {
-    $this->isEditing = false;
-    $this->selectedOpnameId = null;
-    $this->opname_date = date('Y-m-d');
-    $this->notes = '';
-    $this->needsDifferenceConfirmation = false;
-    foreach($this->materials as $m) {
-        $this->opnameItems[$m->id] = (float)$m->current_volume;
-        $this->itemNotes[$m->id] = '';
-    }
-    $this->itemPhotos = [];
-    $this->existingItemPhotos = [];
-    foreach($this->materials as $m) {
-        $this->itemPhotos[$m->id] = [];
-        $this->existingItemPhotos[$m->id] = [];
-    }
-    $this->showCreateModal = true;
-};
-
-$editOpname = function($id) {
-    $opname = StockOpname::with('items')->findOrFail($id);
-    if ($opname->status !== 'pending' || $opname->user_id !== auth()->id()) return;
-
-    $this->selectedOpnameId = $opname->id;
-    $this->opname_date = \Carbon\Carbon::parse($opname->opname_date)->format('Y-m-d');
-    $this->notes = $opname->notes;
-    $this->needsDifferenceConfirmation = false;
-    
-    foreach($opname->items as $item) {
-        $this->opnameItems[$item->material_id] = (float)$item->physical_volume;
-        $this->itemNotes[$item->material_id] = $item->notes ?? '';
-        $this->existingItemPhotos[$item->material_id] = $item->photos ?? [];
-        $this->itemPhotos[$item->material_id] = [];
-    }
-    
-    $this->isEditing = true;
-    $this->showCreateModal = true;
-};
-
-$deleteOpname = function($id) {
-    $opname = StockOpname::findOrFail($id);
-    if ($opname->status === 'pending' && $opname->user_id === auth()->id()) {
-        $opname->delete();
-    }
-    $this->loadData();
-};
-
-$saveOpname = function($force = false) {
-    $this->validate([
-        'opname_date' => 'required|date',
-        'notes' => 'nullable|string',
-    ]);
-
-    if (!$this->isEditing && $this->hasPendingOpname) {
-        session()->flash('error', 'Masih ada Opname yang berstatus Pending. Harap tunggu di-ACC atau batalkan terlebih dahulu.');
-        return;
-    }
-
-    if (!$force) {
-        $hasDifference = false;
-        foreach($this->materials as $m) {
-            $physical = isset($this->opnameItems[$m->id]) ? (float)$this->opnameItems[$m->id] : (float)$m->current_volume;
-            if ($physical != (float)$m->current_volume) {
-                $hasDifference = true;
-                break;
-            }
-        }
-        
-        if ($hasDifference) {
-            $this->needsDifferenceConfirmation = true;
-            return;
-        }
-    }
-
-    DB::transaction(function() {
-
-
-        if ($this->isEditing && $this->selectedOpnameId) {
-            $opname = StockOpname::findOrFail($this->selectedOpnameId);
-            $opname->update([
-                'opname_date' => $this->opname_date,
-                'notes' => $this->notes,
-            ]);
-            $opname->items()->delete();
-        } else {
-            $opname = StockOpname::create([
-                'user_id' => auth()->id(),
-                'opname_date' => $this->opname_date,
-                'notes' => $this->notes,
-                'status' => 'pending'
-            ]);
-        }
-
-        foreach($this->materials as $m) {
-            $physical = isset($this->opnameItems[$m->id]) ? (float)$this->opnameItems[$m->id] : (float)$m->current_volume;
-            $diff = $physical - (float)$m->current_volume;
-            $iNote = $this->itemNotes[$m->id] ?? null;
-            
-            $itemPhotoPaths = $this->isEditing && isset($this->existingItemPhotos[$m->id]) ? $this->existingItemPhotos[$m->id] : [];
-            
-            if (isset($this->itemPhotos[$m->id]) && !empty($this->itemPhotos[$m->id])) {
-                $manager = new ImageManager(new Driver());
-                foreach ($this->itemPhotos[$m->id] as $photo) {
-                    $image = $manager->read($photo->getRealPath());
-                    $webp = $image->toWebp(80);
-                    $fileName = 'item_' . $m->id . '_' . uniqid() . '.webp';
-                    \Illuminate\Support\Facades\Storage::put('public/stock_opnames/' . $fileName, $webp->toString());
-                    $itemPhotoPaths[] = 'storage/stock_opnames/' . $fileName;
-                }
-            }
-
-            StockOpnameItem::create([
-                'stock_opname_id' => $opname->id,
-                'material_id' => $m->id,
-                'system_volume' => $m->current_volume,
-                'physical_volume' => $physical,
-                'difference' => $diff,
-                'notes' => $iNote,
-                'photos' => $itemPhotoPaths
-            ]);
-        }
-    });
-
-    $this->showCreateModal = false;
-    $this->isEditing = false;
-    $this->needsDifferenceConfirmation = false;
-    $this->notes = '';
-    $this->itemPhotos = [];
-    $this->loadData();
-};
-
-$openDetail = function($id) {
-    $this->selectedOpname = StockOpname::with(['items.material', 'user', 'approver'])->findOrFail($id);
-    $this->approverNotes = '';
-    $this->showDetailModal = true;
-};
-
-$closeDetail = function() {
-    $this->showDetailModal = false;
-    $this->selectedOpname = null;
-    $this->approverNotes = '';
-};
-
-$approveOpname = function($id) {
-    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) return;
-
-    DB::transaction(function() use ($id) {
-        $opname = StockOpname::with('items')->findOrFail($id);
-        
-        if ($opname->status !== 'pending') return;
-
-        $opname->update([
-            'status' => 'approved',
-            'approved_by' => auth()->id(),
-            'approver_notes' => $this->approverNotes
-        ]);
-
-        foreach($opname->items as $item) {
-            if ($item->difference != 0) {
-                InventoryTransaction::create([
-                    'material_id' => $item->material_id,
-                    'type' => $item->difference > 0 ? 'in' : 'out',
-                    'volume_masuk' => $item->difference > 0 ? abs($item->difference) : 0,
-                    'volume_keluar' => $item->difference < 0 ? abs($item->difference) : 0,
-                    'reference_number' => 'OPN-' . $opname->id,
-                    'note' => 'Penyesuaian Opname (Fisik: ' . $item->physical_volume . ', Sistem: ' . $item->system_volume . ')',
-                    'user_id' => auth()->id()
-                ]);
-            }
-        }
-    });
-
-    $this->showDetailModal = false;
-    $this->loadData();
-};
-
-$rejectOpname = function($id) {
-    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin')) return;
-
-    $this->validate([
-        'approverNotes' => 'required|string|min:3'
-    ], [
-        'approverNotes.required' => 'Catatan penolakan harus diisi agar Gudang tahu alasannya.'
-    ]);
-
-    $opname = StockOpname::findOrFail($id);
-    if ($opname->status === 'pending') {
-        $opname->update([
-            'status' => 'rejected',
-            'approved_by' => auth()->id(),
-            'approver_notes' => $this->approverNotes
-        ]);
-    }
-
-    $this->showDetailModal = false;
-    $this->loadData();
-};
-
-
-on(['riwayat-saldo-closed' => function () {
-    $this->showDetailModal = false;
-}]);
 
 ?>
 
@@ -284,32 +18,32 @@ on(['riwayat-saldo-closed' => function () {
             <p class="text-sm text-gray-500 mt-1">Pencocokan fisik barang dan persetujuan penyesuaian saldo.</p>
         </div>
         <div class="flex items-center gap-3">
-            <a href="{{ route('laporan.stock-opname') }}" class="bg-white border border-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:bg-gray-50 flex items-center gap-2">
+            <a href="<?php echo e(route('laporan.stock-opname')); ?>" class="bg-white border border-gray-300 text-gray-700 px-5 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:bg-gray-50 flex items-center gap-2">
                 <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                 Lihat Analisa Selisih
             </a>
             
-            @if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang') || auth()->user()->hasRole('sudin'))
-                @if($hasPendingOpname)
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('gudang') || auth()->user()->hasRole('kepala_gudang') || auth()->user()->hasRole('sudin')): ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($hasPendingOpname): ?>
                     <div class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-xl text-sm font-bold border border-yellow-200">
                         Selesaikan Opname yang masih Pending
                     </div>
-                @else
+                <?php else: ?>
                     <button wire:click="openCreate" class="bg-accent hover:bg-accent-light text-white px-5 py-2.5 rounded-xl font-bold transition-all shadow-md flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                         Buat Opname
                     </button>
-                @endif
-            @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </div>
 
-    @if (session()->has('error'))
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('error')): ?>
         <div class="mb-4 bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded-xl relative" role="alert">
             <strong class="font-bold">Error!</strong>
-            <span class="block sm:inline">{{ session('error') }}</span>
+            <span class="block sm:inline"><?php echo e(session('error')); ?></span>
         </div>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
         <div class="flex flex-wrap items-end gap-4 mb-6">
             <div class="w-64">
@@ -328,7 +62,7 @@ on(['riwayat-saldo-closed' => function () {
                 </div>
             </div>
 
-            @if($filterPeriod === 'custom')
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($filterPeriod === 'custom'): ?>
                 <div class="flex items-center gap-2 animate-fade-in">
                     <div>
                         <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">Dari</label>
@@ -340,7 +74,7 @@ on(['riwayat-saldo-closed' => function () {
                         <input type="date" wire:model.live="endDate" wire:change="loadData" class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm font-medium shadow-sm">
                     </div>
                 </div>
-            @endif
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
 
     <!-- Table List Opname -->
@@ -355,46 +89,46 @@ on(['riwayat-saldo-closed' => function () {
                 </tr>
             </thead>
             <tbody class="divide-y divide-warm/30">
-                @forelse($opnames as $op)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__empty_1 = true; $__currentLoopData = $opnames; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $op): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                 <tr class="hover:bg-base/50 transition-colors">
-                    <td class="px-6 py-4 font-medium text-gray-900">{{ \Carbon\Carbon::parse($op->opname_date)->format('d M Y') }}</td>
-                    <td class="px-6 py-4">{{ $op->user->name }}</td>
+                    <td class="px-6 py-4 font-medium text-gray-900"><?php echo e(\Carbon\Carbon::parse($op->opname_date)->format('d M Y')); ?></td>
+                    <td class="px-6 py-4"><?php echo e($op->user->name); ?></td>
                     <td class="px-6 py-4">
-                        @if($op->status === 'pending')
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($op->status === 'pending'): ?>
                             <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold uppercase">Menunggu ACC</span>
-                        @elseif($op->status === 'approved')
+                        <?php elseif($op->status === 'approved'): ?>
                             <span class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold uppercase">Disetujui</span>
-                        @else
+                        <?php else: ?>
                             <span class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-xs font-bold uppercase">Ditolak</span>
-                        @endif
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </td>
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
-                            <button wire:click="openDetail({{ $op->id }})" class="text-accent hover:text-accent-dark font-semibold">Lihat Detail</button>
+                            <button wire:click="openDetail(<?php echo e($op->id); ?>)" class="text-accent hover:text-accent-dark font-semibold">Lihat Detail</button>
                             
-                            @if($op->status === 'pending' && $op->user_id === auth()->id())
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($op->status === 'pending' && $op->user_id === auth()->id()): ?>
                                 <span class="text-gray-300">|</span>
-                                <button wire:click="editOpname({{ $op->id }})" class="text-blue-600 hover:text-blue-800 font-semibold">Edit</button>
-                                <button wire:click="deleteOpname({{ $op->id }})" class="text-red-600 hover:text-red-800 font-semibold" onclick="return confirm('Yakin ingin membatalkan opname ini?')">Batalkan</button>
-                            @endif
+                                <button wire:click="editOpname(<?php echo e($op->id); ?>)" class="text-blue-600 hover:text-blue-800 font-semibold">Edit</button>
+                                <button wire:click="deleteOpname(<?php echo e($op->id); ?>)" class="text-red-600 hover:text-red-800 font-semibold" onclick="return confirm('Yakin ingin membatalkan opname ini?')">Batalkan</button>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                     </td>
                 </tr>
-                @empty
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <tr>
                     <td colspan="4" class="px-6 py-8 text-center text-gray-500">Belum ada riwayat Stock Opname.</td>
                 </tr>
-                @endforelse
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </tbody>
         </table>
     </div>
 
     <!-- CREATE MODAL (Hanya Gudang) -->
-    @if($showCreateModal)
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showCreateModal): ?>
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-warm/30">
-                <h3 class="text-xl font-bold text-gray-800">{{ $isEditing ? 'Edit Stock Opname' : 'Buat Laporan Stock Opname' }}</h3>
+                <h3 class="text-xl font-bold text-gray-800"><?php echo e($isEditing ? 'Edit Stock Opname' : 'Buat Laporan Stock Opname'); ?></h3>
                 <button wire:click="$set('showCreateModal', false)" class="text-gray-400 hover:text-red-500 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
@@ -424,42 +158,42 @@ on(['riwayat-saldo-closed' => function () {
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            @foreach($materials as $m)
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $materials; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3 font-medium text-gray-900">{{ $m->name }} <span class="text-xs text-gray-500">({{ $m->unit }})</span></td>
-                                <td class="px-4 py-3 text-center font-bold text-gray-500">{{ (float)$m->current_volume }}</td>
+                                <td class="px-4 py-3 font-medium text-gray-900"><?php echo e($m->name); ?> <span class="text-xs text-gray-500">(<?php echo e($m->unit); ?>)</span></td>
+                                <td class="px-4 py-3 text-center font-bold text-gray-500"><?php echo e((float)$m->current_volume); ?></td>
                                 <td class="px-4 py-2">
-                                    <input type="number" step="0.01" wire:model="opnameItems.{{ $m->id }}" class="w-full text-center rounded-lg border-gray-300 focus:ring-accent focus:border-accent">
+                                    <input type="number" step="0.01" wire:model="opnameItems.<?php echo e($m->id); ?>" class="w-full text-center rounded-lg border-gray-300 focus:ring-accent focus:border-accent">
                                 </td>
                                 <td class="px-4 py-2">
-                                    <input type="text" wire:model="itemNotes.{{ $m->id }}" placeholder="Opsional (rusak, hilang...)" class="w-full text-sm rounded-lg border-gray-300 focus:ring-accent focus:border-accent">
+                                    <input type="text" wire:model="itemNotes.<?php echo e($m->id); ?>" placeholder="Opsional (rusak, hilang...)" class="w-full text-sm rounded-lg border-gray-300 focus:ring-accent focus:border-accent">
                                 </td>
                                 <td class="px-4 py-2">
                                     <div class="flex flex-col gap-2">
-                                        <input type="file" wire:model="itemPhotos.{{ $m->id }}" multiple accept="image/*" class="text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 cursor-pointer w-48">
-                                        <div wire:loading wire:target="itemPhotos.{{ $m->id }}" class="text-[10px] text-accent font-bold">Sedang memproses...</div>
-                                        @if((isset($existingItemPhotos[$m->id]) && count($existingItemPhotos[$m->id]) > 0) || (isset($itemPhotos[$m->id]) && is_array($itemPhotos[$m->id]) && count($itemPhotos[$m->id]) > 0))
+                                        <input type="file" wire:model="itemPhotos.<?php echo e($m->id); ?>" multiple accept="image/*" class="text-[10px] text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 cursor-pointer w-48">
+                                        <div wire:loading wire:target="itemPhotos.<?php echo e($m->id); ?>" class="text-[10px] text-accent font-bold">Sedang memproses...</div>
+                                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((isset($existingItemPhotos[$m->id]) && count($existingItemPhotos[$m->id]) > 0) || (isset($itemPhotos[$m->id]) && is_array($itemPhotos[$m->id]) && count($itemPhotos[$m->id]) > 0)): ?>
                                         <div class="flex flex-wrap gap-1 mt-1">
-                                            @if(isset($existingItemPhotos[$m->id]))
-                                                @foreach($existingItemPhotos[$m->id] as $photo)
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($existingItemPhotos[$m->id])): ?>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $existingItemPhotos[$m->id]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $photo): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                                     <div class="w-8 h-8 rounded border border-gray-200 overflow-hidden shadow-sm">
-                                                        <img src="{{ asset($photo) }}" class="w-full h-full object-cover">
+                                                        <img src="<?php echo e(asset($photo)); ?>" class="w-full h-full object-cover">
                                                     </div>
-                                                @endforeach
-                                            @endif
-                                            @if(isset($itemPhotos[$m->id]) && is_array($itemPhotos[$m->id]))
-                                                @foreach($itemPhotos[$m->id] as $photo)
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(isset($itemPhotos[$m->id]) && is_array($itemPhotos[$m->id])): ?>
+                                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $itemPhotos[$m->id]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $photo): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                                     <div class="w-8 h-8 rounded border-2 border-dashed border-accent/50 overflow-hidden shadow-sm">
-                                                        <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                                                        <img src="<?php echo e($photo->temporaryUrl()); ?>" class="w-full h-full object-cover">
                                                     </div>
-                                                @endforeach
-                                            @endif
+                                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         </div>
-                                        @endif
+                                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -467,13 +201,13 @@ on(['riwayat-saldo-closed' => function () {
             </div>
             <div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
                 <button wire:click="$set('showCreateModal', false)" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors">Batal</button>
-                <button wire:click="saveOpname(false)" class="px-5 py-2.5 rounded-xl font-bold bg-accent hover:bg-accent-light text-white transition-colors">{{ $isEditing ? 'Simpan Perubahan' : 'Kirim Ajuan Opname' }}</button>
+                <button wire:click="saveOpname(false)" class="px-5 py-2.5 rounded-xl font-bold bg-accent hover:bg-accent-light text-white transition-colors"><?php echo e($isEditing ? 'Simpan Perubahan' : 'Kirim Ajuan Opname'); ?></button>
             </div>
         </div>
     </div>
 
     <!-- Peringatan Selisih Stok (Difference Confirmation) -->
-    @if($needsDifferenceConfirmation)
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($needsDifferenceConfirmation): ?>
     <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-md flex flex-col rounded-3xl shadow-2xl overflow-hidden p-6 text-center animate-fade-in-up">
             <div class="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -490,28 +224,29 @@ on(['riwayat-saldo-closed' => function () {
             </div>
         </div>
     </div>
-    @endif
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
     <!-- DETAIL MODAL -->
-    @if($showDetailModal && $selectedOpname)
+    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showDetailModal && $selectedOpname): ?>
     <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
         <div class="bg-white w-full max-w-5xl max-h-[90vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden">
             <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-warm/30">
                 <div>
                     <h3 class="text-xl font-bold text-gray-800">Detail Stock Opname</h3>
-                    <p class="text-xs text-gray-500">Dibuat oleh {{ $selectedOpname->user->name }} pada {{ \Carbon\Carbon::parse($selectedOpname->opname_date)->format('d M Y') }}</p>
+                    <p class="text-xs text-gray-500">Dibuat oleh <?php echo e($selectedOpname->user->name); ?> pada <?php echo e(\Carbon\Carbon::parse($selectedOpname->opname_date)->format('d M Y')); ?></p>
                 </div>
                 <button wire:click="closeDetail" class="text-gray-400 hover:text-red-500 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
             <div class="p-6 overflow-y-auto flex-1">
-                @if($selectedOpname->notes)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($selectedOpname->notes): ?>
                     <div class="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <span class="font-bold text-sm text-gray-700">Catatan:</span> {{ $selectedOpname->notes }}
+                        <span class="font-bold text-sm text-gray-700">Catatan:</span> <?php echo e($selectedOpname->notes); ?>
+
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 
                 <div class="border rounded-xl overflow-hidden">
                     <table class="w-full text-sm text-left">
@@ -527,36 +262,37 @@ on(['riwayat-saldo-closed' => function () {
                             </tr>
                         </thead>
                         <tbody class="divide-y">
-                            @foreach($selectedOpname->items as $item)
-                            <tr class="hover:bg-gray-50 {{ $item->difference != 0 ? 'bg-orange-50/30' : '' }}">
-                                <td class="px-4 py-3 font-medium text-gray-900">{{ $item->material->name }} <span class="text-xs text-gray-500">({{ $item->material->unit }})</span></td>
-                                <td class="px-4 py-3 text-center font-bold text-gray-500">{{ (float)$item->system_volume }}</td>
-                                <td class="px-4 py-3 text-center font-bold text-gray-800">{{ (float)$item->physical_volume }}</td>
-                                <td class="px-4 py-3 text-center font-bold {{ $item->difference > 0 ? 'text-emerald-600' : ($item->difference < 0 ? 'text-red-600' : 'text-gray-400') }}">
-                                    {{ $item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference) }}
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $selectedOpname->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <tr class="hover:bg-gray-50 <?php echo e($item->difference != 0 ? 'bg-orange-50/30' : ''); ?>">
+                                <td class="px-4 py-3 font-medium text-gray-900"><?php echo e($item->material->name); ?> <span class="text-xs text-gray-500">(<?php echo e($item->material->unit); ?>)</span></td>
+                                <td class="px-4 py-3 text-center font-bold text-gray-500"><?php echo e((float)$item->system_volume); ?></td>
+                                <td class="px-4 py-3 text-center font-bold text-gray-800"><?php echo e((float)$item->physical_volume); ?></td>
+                                <td class="px-4 py-3 text-center font-bold <?php echo e($item->difference > 0 ? 'text-emerald-600' : ($item->difference < 0 ? 'text-red-600' : 'text-gray-400')); ?>">
+                                    <?php echo e($item->difference > 0 ? '+'.(float)$item->difference : ($item->difference == 0 ? '-' : (float)$item->difference)); ?>
+
                                 </td>
-                                <td class="px-4 py-3 text-gray-600 italic text-xs">{{ $item->notes ?? '-' }}</td>
+                                <td class="px-4 py-3 text-gray-600 italic text-xs"><?php echo e($item->notes ?? '-'); ?></td>
                                 <td class="px-4 py-3">
-                                    @if($item->photos && is_array($item->photos) && count($item->photos) > 0)
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($item->photos && is_array($item->photos) && count($item->photos) > 0): ?>
                                         <div class="flex flex-wrap gap-1">
-                                            @foreach($item->photos as $photo)
-                                                <a href="{{ asset($photo) }}" target="_blank" class="w-8 h-8 rounded border border-gray-200 overflow-hidden relative shadow-sm hover:ring-2 hover:ring-accent transition-all inline-block">
-                                                    <img src="{{ asset($photo) }}" class="w-full h-full object-cover">
+                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $item->photos; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $photo): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                                <a href="<?php echo e(asset($photo)); ?>" target="_blank" class="w-8 h-8 rounded border border-gray-200 overflow-hidden relative shadow-sm hover:ring-2 hover:ring-accent transition-all inline-block">
+                                                    <img src="<?php echo e(asset($photo)); ?>" class="w-full h-full object-cover">
                                                 </a>
-                                            @endforeach
+                                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                         </div>
-                                    @else
+                                    <?php else: ?>
                                         <span class="text-[10px] text-gray-400">-</span>
-                                    @endif
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </td>
                                 <td class="px-4 py-3 text-center">
-                                    <button wire:click="$dispatch('show-riwayat-saldo', [{{ $item->material->id }}, '{{ \Carbon\Carbon::parse($selectedOpname->opname_date)->startOfMonth()->format('Y-m-d') }}', '{{ \Carbon\Carbon::parse($selectedOpname->opname_date)->format('Y-m-d') }}'])" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm">
+                                    <button wire:click="$dispatch('show-riwayat-saldo', [<?php echo e($item->material->id); ?>, '<?php echo e(\Carbon\Carbon::parse($selectedOpname->opname_date)->startOfMonth()->format('Y-m-d')); ?>', '<?php echo e(\Carbon\Carbon::parse($selectedOpname->opname_date)->format('Y-m-d')); ?>'])" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-[10px] font-black uppercase transition-all shadow-sm">
                                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         Lihat & Cetak Kartu
                                     </button>
                                 </td>
                             </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -566,31 +302,38 @@ on(['riwayat-saldo-closed' => function () {
             
             <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col gap-4">
                 <!-- Jika ada Catatan dari Pemeriksa (History) -->
-                @if($selectedOpname->approver_notes)
-                    <div class="p-3 {{ $selectedOpname->status === 'approved' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200' }} border rounded-xl">
-                        <span class="font-bold text-sm {{ $selectedOpname->status === 'approved' ? 'text-emerald-700' : 'text-red-700' }}">Catatan Pemeriksa:</span>
-                        <p class="text-sm text-gray-700 mt-1">{{ $selectedOpname->approver_notes }}</p>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($selectedOpname->approver_notes): ?>
+                    <div class="p-3 <?php echo e($selectedOpname->status === 'approved' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'); ?> border rounded-xl">
+                        <span class="font-bold text-sm <?php echo e($selectedOpname->status === 'approved' ? 'text-emerald-700' : 'text-red-700'); ?>">Catatan Pemeriksa:</span>
+                        <p class="text-sm text-gray-700 mt-1"><?php echo e($selectedOpname->approver_notes); ?></p>
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 <!-- Input Catatan Pemeriksa (Saat Pending) -->
-                @if((auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) && $selectedOpname->status === 'pending')
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) && $selectedOpname->status === 'pending'): ?>
                     <div class="w-full">
                         <label class="block text-sm font-bold text-gray-700 mb-1">Catatan Pemeriksa <span class="text-xs font-normal text-gray-500">(Wajib jika menolak)</span></label>
                         <textarea wire:model="approverNotes" rows="2" class="w-full rounded-xl border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-accent/50 outline-none" placeholder="Tuliskan alasan penolakan atau catatan tambahan persetujuan..."></textarea>
-                        @error('approverNotes') <span class="text-red-500 text-xs font-bold mt-1 block">{{ $message }}</span> @enderror
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['approverNotes'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs font-bold mt-1 block"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 <div class="flex justify-between items-center w-full">
                     <div>
-                        @if($selectedOpname->status === 'approved')
-                            <span class="text-sm font-bold text-emerald-600">Disetujui oleh {{ $selectedOpname->approver->name ?? '-' }}</span>
-                        @elseif($selectedOpname->status === 'rejected')
-                            <span class="text-sm font-bold text-red-600">Ditolak oleh {{ $selectedOpname->approver->name ?? '-' }}</span>
-                        @else
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($selectedOpname->status === 'approved'): ?>
+                            <span class="text-sm font-bold text-emerald-600">Disetujui oleh <?php echo e($selectedOpname->approver->name ?? '-'); ?></span>
+                        <?php elseif($selectedOpname->status === 'rejected'): ?>
+                            <span class="text-sm font-bold text-red-600">Ditolak oleh <?php echo e($selectedOpname->approver->name ?? '-'); ?></span>
+                        <?php else: ?>
                             <span class="text-sm font-bold text-yellow-600">Menunggu Persetujuan</span>
-                        @endif
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
                     <div class="flex gap-3">
@@ -600,26 +343,26 @@ on(['riwayat-saldo-closed' => function () {
                         </button>
                         <button wire:click="closeDetail" class="px-5 py-2.5 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors">Tutup</button>
                         
-                        @if((auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) && $selectedOpname->status === 'pending')
-                            <button wire:click="rejectOpname({{ $selectedOpname->id }})" class="px-5 py-2.5 rounded-xl font-bold bg-red-100 text-red-600 hover:bg-red-200 transition-colors">Tolak</button>
-                            <button wire:click="approveOpname({{ $selectedOpname->id }})" class="px-5 py-2.5 rounded-xl font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md">Setujui & Sesuaikan Stok</button>
-                        @endif
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if((auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) && $selectedOpname->status === 'pending'): ?>
+                            <button wire:click="rejectOpname(<?php echo e($selectedOpname->id); ?>)" class="px-5 py-2.5 rounded-xl font-bold bg-red-100 text-red-600 hover:bg-red-200 transition-colors">Tolak</button>
+                            <button wire:click="approveOpname(<?php echo e($selectedOpname->id); ?>)" class="px-5 py-2.5 rounded-xl font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-md">Setujui & Sesuaikan Stok</button>
+                        <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Hidden Print Section --}}
+        
         <div id="print-area-opname" class="hidden bg-white text-black" style="font-family: 'Times New Roman', serif; padding: 20px;">
-            {{-- Kop Surat --}}
-            <img src="{{ asset('assets/kop.png') }}" style="width:100%; height:auto; margin-bottom: 20px;">
+            
+            <img src="<?php echo e(asset('assets/kop.png')); ?>" style="width:100%; height:auto; margin-bottom: 20px;">
 
             <div style="text-align:center; margin-bottom: 16px;">
                 <h1 style="font-size: 14pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; line-height: 1.4; margin: 0;">
                     BERITA ACARA PEMERIKSAAN FISIK<br>
                     (BERITA ACARA STOCK OPNAME/BASO)
                 </h1>
-                @php
+                <?php
                     $carbonDate = \Carbon\Carbon::parse($selectedOpname->opname_date);
                     $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
                     $months = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -629,12 +372,12 @@ on(['riwayat-saldo-closed' => function () {
                     $romanMonth = $romanMonths[$carbonDate->month];
                     $namaSuperAdmin = $selectedOpname->approver->name ?? '………………………………';
                     $namaGudang = $selectedOpname->user->name ?? '………………………………';
-                @endphp
-                <p style="font-size: 11pt; font-weight: bold; margin-top: 4px;">Nomor: {{ $selectedOpname->notes ?: '.........' }}/SO/{{ $romanMonth }}/{{ $carbonDate->year }}</p>
+                ?>
+                <p style="font-size: 11pt; font-weight: bold; margin-top: 4px;">Nomor: <?php echo e($selectedOpname->notes ?: '.........'); ?>/SO/<?php echo e($romanMonth); ?>/<?php echo e($carbonDate->year); ?></p>
             </div>
 
             <div style="font-size: 11pt; text-align: justify; margin-bottom: 12px; line-height: 1.8;">
-                <p>Pada Hari ini <b>{{ $dayName }}</b> Tanggal <b>{{ $carbonDate->day }}</b> Bulan <b>{{ $monthName }}</b> Tahun <b>{{ $carbonDate->year }}</b> yang bertanda tangan dibawah ini:</p>
+                <p>Pada Hari ini <b><?php echo e($dayName); ?></b> Tanggal <b><?php echo e($carbonDate->day); ?></b> Bulan <b><?php echo e($monthName); ?></b> Tahun <b><?php echo e($carbonDate->year); ?></b> yang bertanda tangan dibawah ini:</p>
           
 
                  <table style="margin-left: 40px; border: none;">
@@ -650,7 +393,7 @@ on(['riwayat-saldo-closed' => function () {
                     <tr><td style="border:none; padding: 2px 8px 2px 0;">NIP</td><td style="border:none; padding: 2px 4px;">:</td><td style="border:none; padding: 2px 0;">197710942009041003</td></tr>
                 </table>
 
-                <p style="margin-top: 8px;">Berdasarkan Keputusan Gubernur Provinsi DKI Jakarta Nomor 133 Tahun {{ $carbonDate->year }} Tanggal {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }} Ditugaskan Untuk Mengurus Barang, Berdasarkan Hasil Pemeriksaan Fisik Barang (Stok Opname), Kami Mendapatkan Hasil Sebagai Berikut:</p>
+                <p style="margin-top: 8px;">Berdasarkan Keputusan Gubernur Provinsi DKI Jakarta Nomor 133 Tahun <?php echo e($carbonDate->year); ?> Tanggal <?php echo e($carbonDate->day); ?> <?php echo e($monthName); ?> <?php echo e($carbonDate->year); ?> Ditugaskan Untuk Mengurus Barang, Berdasarkan Hasil Pemeriksaan Fisik Barang (Stok Opname), Kami Mendapatkan Hasil Sebagai Berikut:</p>
             </div>
 
             <table style="width:100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 16px;">
@@ -665,16 +408,16 @@ on(['riwayat-saldo-closed' => function () {
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($selectedOpname->items as $index => $item)
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $selectedOpname->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $index => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <tr>
-                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center;">{{ $index + 1 }}</td>
-                        <td style="border: 1px solid black; padding: 5px 8px; font-weight: bold; text-transform: uppercase;">{{ $item->material->name }}</td>
-                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; text-transform: uppercase;">{{ $item->material->unit }}</td>
-                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; font-weight: bold;">{{ (float)$item->physical_volume }}</td>
-                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; font-weight: bold;">{{ (float)$item->physical_volume }}</td>
-                        <td style="border: 1px solid black; padding: 5px 8px; font-style: italic;">{{ $item->notes ?: '-' }}</td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center;"><?php echo e($index + 1); ?></td>
+                        <td style="border: 1px solid black; padding: 5px 8px; font-weight: bold; text-transform: uppercase;"><?php echo e($item->material->name); ?></td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; text-transform: uppercase;"><?php echo e($item->material->unit); ?></td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; font-weight: bold;"><?php echo e((float)$item->physical_volume); ?></td>
+                        <td style="border: 1px solid black; padding: 5px 4px; text-align: center; font-weight: bold;"><?php echo e((float)$item->physical_volume); ?></td>
+                        <td style="border: 1px solid black; padding: 5px 8px; font-style: italic;"><?php echo e($item->notes ?: '-'); ?></td>
                     </tr>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     <tr>
                         <td colspan="6" style="border: 1px solid black; padding: 5px 8px; font-weight: bold;">Jumlah</td>
                     </tr>
@@ -686,7 +429,7 @@ on(['riwayat-saldo-closed' => function () {
             <table style="width: 100%; border: none; font-size: 11pt; text-align: center;">
                 <tr>
                     <td style="border: none; width: 50%; vertical-align: top;">
-                        <p style="margin: 0;">Jakarta, {{ $carbonDate->day }} {{ $monthName }} {{ $carbonDate->year }}</p>
+                        <p style="margin: 0;">Jakarta, <?php echo e($carbonDate->day); ?> <?php echo e($monthName); ?> <?php echo e($carbonDate->year); ?></p>
                         <p style="margin: 4px 0; font-weight: bold;">Kepala Gudang,</p>
                                     <div style="height: 80px;"></div>
                         <p style="margin: 0; font-weight: bold; text-decoration: underline; text-transform: uppercase;">SANJAYA</p>
@@ -714,9 +457,29 @@ on(['riwayat-saldo-closed' => function () {
             </div>
         </div>
     </div>
-    @endif
+    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-    <script src="{{ asset('js/print-stock-opname.js') }}"></script>
+    <script src="<?php echo e(asset('js/print-stock-opname.js')); ?>"></script>
     
-    @livewire('laporan.riwayat-saldo-modal')
-</div>
+    <?php
+$__split = function ($name, $params = []) {
+    return [$name, $params];
+};
+[$__name, $__params] = $__split('laporan.riwayat-saldo-modal');
+
+$__key = null;
+
+$__key ??= \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::generateKey('lw-1783172695-0', $__key);
+
+$__html = app('livewire')->mount($__name, $__params, $__key);
+
+echo $__html;
+
+unset($__html);
+unset($__key);
+unset($__name);
+unset($__params);
+unset($__split);
+if (isset($__slots)) unset($__slots);
+?>
+</div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/stock-opname/index.blade.php ENDPATH**/ ?>

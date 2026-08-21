@@ -9,7 +9,11 @@ class StockOpnameItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['stock_opname_id', 'material_id', 'system_volume', 'physical_volume', 'difference', 'notes'];
+    protected $fillable = ['stock_opname_id', 'material_id', 'system_volume', 'physical_volume', 'difference', 'notes', 'photos'];
+
+    protected $casts = [
+        'photos' => 'array',
+    ];
 
     public function opname()
     {

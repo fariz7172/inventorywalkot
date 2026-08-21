@@ -170,8 +170,13 @@ new class extends Component {
                     <tr class="hover:bg-base/60 transition-colors">
                         <td class="px-5 py-4">
                             <p class="font-bold text-accent font-mono text-xs">{{ $order->surat_jalan_no }}</p>
+                            @if($order->user)
+                                <span class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mt-1 inline-block">
+                                    Diinput oleh: <span class="font-semibold">{{ $order->user->name }}</span>
+                                </span>
+                            @endif
                         </td>
-                        <td class="px-5 py-4 text-gray-600">{{ $order->tanggal }}</td>
+                        <td class="px-5 py-4 text-gray-600">{{ \Carbon\Carbon::parse($order->tanggal)->locale('id')->isoFormat('D MMMM Y, HH:mm') }}</td>
                         <td class="px-5 py-4">
                             <p class="font-semibold text-gray-800 text-xs">{{ $order->lokasi }}</p>
                             <p class="text-[10px] text-gray-400">{{ $order->pelaksana_kecamatan }}</p>
@@ -186,9 +191,20 @@ new class extends Component {
                                     'rejected' => 'bg-red-50 text-red-600',
                                 ];
                             @endphp
-                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg {{ $statusClasses[$order->status] ?? 'bg-gray-50 text-gray-600' }}">
+                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg {{ $statusClasses[$order->status] ?? 'bg-gray-50 text-gray-600' }} block w-max">
                                 {{ $order->status === 'rejected' ? 'Ditolak' : ucfirst($order->status) }}
                             </span>
+                            @if($order->status === 'draft')
+                                @if(empty($order->spb_document))
+                                    <span class="text-[9px] font-black text-red-500 mt-1.5 block leading-tight">
+                                        (Segera Upload Form SPB)
+                                    </span>
+                                @else
+                                    <span class="text-[9px] font-black text-emerald-500 mt-1.5 block leading-tight">
+                                        (Menunggu Konfirmasi Gudang)
+                                    </span>
+                                @endif
+                            @endif
                         </td>
                         <td class="px-5 py-4">
                             <div class="flex items-center justify-end gap-1">

@@ -78,6 +78,8 @@ new class extends Component {
         $this->totalIn        = 0;
         $this->totalOut       = 0;
         $this->finalBalance   = 0;
+
+        $this->dispatch('riwayat-saldo-closed');
     }
 };
 ?>

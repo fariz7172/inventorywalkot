@@ -28,7 +28,7 @@ use Livewire\Volt\Component;
                 </svg>
                 Export Excel
             </button>
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (\Illuminate\Support\Facades\Blade::check('hasanyrole', 'superadmin|sudin|kecamatan_admin|kepala_gudang|gudang')): ?>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (\Illuminate\Support\Facades\Blade::check('hasanyrole', 'superadmin|sudin|kecamatan_admin|pemel|kepala_gudang|gudang')): ?>
             <a href="/dashboard/surat-jalan/create" wire:navigate class="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-dark transition-all shadow-md shadow-accent/30">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -60,6 +60,7 @@ use Livewire\Volt\Component;
                 <option value="draft">Draft (Ordered)</option>
                 <option value="processing">Processing</option>
                 <option value="shipped">Shipped (Sent)</option>
+                <option value="rejected">Ditolak (Rejected)</option>
             </select>
         </div>
         <div class="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-gray-100">
@@ -94,8 +95,13 @@ use Livewire\Volt\Component;
                     <tr class="hover:bg-base/60 transition-colors">
                         <td class="px-5 py-4">
                             <p class="font-bold text-accent font-mono text-xs"><?php echo e($order->surat_jalan_no); ?></p>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->user): ?>
+                                <span class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded mt-1 inline-block">
+                                    Diinput oleh: <span class="font-semibold"><?php echo e($order->user->name); ?></span>
+                                </span>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </td>
-                        <td class="px-5 py-4 text-gray-600"><?php echo e($order->tanggal); ?></td>
+                        <td class="px-5 py-4 text-gray-600"><?php echo e(\Carbon\Carbon::parse($order->tanggal)->locale('id')->isoFormat('D MMMM Y, HH:mm')); ?></td>
                         <td class="px-5 py-4">
                             <p class="font-semibold text-gray-800 text-xs"><?php echo e($order->lokasi); ?></p>
                             <p class="text-[10px] text-gray-400"><?php echo e($order->pelaksana_kecamatan); ?></p>
@@ -107,12 +113,24 @@ use Livewire\Volt\Component;
                                     'draft' => 'bg-amber-50 text-amber-600',
                                     'processing' => 'bg-blue-50 text-blue-600',
                                     'shipped' => 'bg-emerald-50 text-emerald-600',
+                                    'rejected' => 'bg-red-50 text-red-600',
                                 ];
                             ?>
-                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg <?php echo e($statusClasses[$order->status]); ?>">
-                                <?php echo e(ucfirst($order->status)); ?>
+                            <span class="text-[11px] font-semibold px-2.5 py-1 rounded-lg <?php echo e($statusClasses[$order->status] ?? 'bg-gray-50 text-gray-600'); ?> block w-max">
+                                <?php echo e($order->status === 'rejected' ? 'Ditolak' : ucfirst($order->status)); ?>
 
                             </span>
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->status === 'draft'): ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(empty($order->spb_document)): ?>
+                                    <span class="text-[9px] font-black text-red-500 mt-1.5 block leading-tight">
+                                        (Segera Upload Form SPB)
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-[9px] font-black text-emerald-500 mt-1.5 block leading-tight">
+                                        (Menunggu Konfirmasi Gudang)
+                                    </span>
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </td>
                         <td class="px-5 py-4">
                             <div class="flex items-center justify-end gap-1">
@@ -121,14 +139,18 @@ use Livewire\Volt\Component;
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                                     </svg>
                                 </a>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')): ?>
+                                <?php
+                                    $canEdit = auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin') || 
+                                              ((auth()->user()->hasRole('pemel') || auth()->user()->hasRole('kecamatan_admin')) && in_array($order->status, ['draft', 'rejected']));
+                                ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($canEdit): ?>
                                 <a href="/dashboard/surat-jalan/<?php echo e($order->id); ?>/edit" wire:navigate class="w-8 h-8 rounded-lg hover:bg-amber-50 flex items-center justify-center transition-colors group" title="Edit Data">
                                     <svg class="w-4 h-4 text-gray-400 group-hover:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                 </a>
                                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
-                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->status === 'draft'): ?>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(in_array($order->status, ['draft', 'rejected'])): ?>
                                 <button wire:click="deleteOrder(<?php echo e($order->id); ?>)" wire:confirm="Yakin ingin menghapus data ini?" class="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center transition-colors group">
                                     <svg class="w-4 h-4 text-gray-400 group-hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>

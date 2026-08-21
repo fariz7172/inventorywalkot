@@ -1,0 +1,10 @@
+pada view ini
+http://127.0.0.1:8000/dashboard/surat-jalan/create
+
+jika yang login role pemel
+ketika yang dipilih data material = SEMEN 
+
+apabisa buat validasi
+material SEMEN hanya bisa diambil 70 per minggu...?
+
+apa bisa itu dilakukan

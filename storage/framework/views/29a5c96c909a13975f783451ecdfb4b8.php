@@ -152,9 +152,27 @@ use Livewire\Attributes\Url;
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </td>
                         <td class="px-6 py-5 text-center">
-                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($t->latest_image): ?>
-                                <div class="flex justify-center">
-                                    <img src="<?php echo e(Storage::url($t->latest_image)); ?>" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                <?php
+                                $thumbImages = [];
+                                if ($t->latest_image) $thumbImages = array_merge($thumbImages, explode(',', $t->latest_image));
+                                if (isset($t->deliveryOrder->nota_dinas_photo) && $t->deliveryOrder->nota_dinas_photo) {
+                                    $thumbImages[] = $t->deliveryOrder->nota_dinas_photo;
+                                }
+                                if (isset($t->deliveryOrder->progress_photo) && $t->deliveryOrder->progress_photo) {
+                                    $thumbImages = array_merge($thumbImages, explode(',', $t->deliveryOrder->progress_photo));
+                                }
+                                $firstImg = !empty($thumbImages) ? $thumbImages[0] : null;
+                            ?>
+                            
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($firstImg): ?>
+                                <div class="flex justify-center relative">
+                                    <img src="<?php echo e(Storage::url(trim($firstImg))); ?>" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(count($thumbImages) > 1): ?>
+                                    <div class="absolute -top-2 -right-2 bg-accent text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ring-2 ring-white shadow-sm">
+                                        +<?php echo e(count($thumbImages) - 1); ?>
+
+                                    </div>
+                                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                                 </div>
                             <?php else: ?>
                                 <span class="text-[10px] font-bold text-gray-300 italic uppercase">No Photo</span>
@@ -271,10 +289,28 @@ use Livewire\Attributes\Url;
                 </table>
             </div>
 
-            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($selectedGroup['image']): ?>
+            <?php
+                $allImages = [];
+                if ($selectedGroup['image']) {
+                    $allImages = array_merge($allImages, explode(',', $selectedGroup['image']));
+                }
+                if (isset($selectedGroup['nota_dinas_photo']) && $selectedGroup['nota_dinas_photo']) {
+                    $allImages[] = $selectedGroup['nota_dinas_photo'];
+                }
+                if (isset($selectedGroup['progress_photo']) && $selectedGroup['progress_photo']) {
+                    $allImages = array_merge($allImages, explode(',', $selectedGroup['progress_photo']));
+                }
+            ?>
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($allImages)): ?>
             <div class="mb-8">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Foto Bukti Fisik</p>
-                <img src="<?php echo e(Storage::url($selectedGroup['image'])); ?>" class="w-full h-48 object-cover rounded-3xl ring-4 ring-base shadow-inner">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Foto Bukti Fisik / Nota Dinas</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $allImages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $img): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <img src="<?php echo e(Storage::url(trim($img))); ?>" 
+                             @click="$dispatch('open-lightbox', '<?php echo e(Storage::url(trim($img))); ?>')"
+                             class="w-full h-48 object-cover rounded-3xl ring-4 ring-base shadow-inner cursor-pointer hover:opacity-90 transition-opacity">
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                </div>
             </div>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -339,7 +375,7 @@ use Livewire\Attributes\Url;
             <p>yang bertanda tangan dibawah ini:</p>
             
             <div class="mt-3 ml-8 space-y-0.5">
-                <p>Nama : <span class="font-bold"><?php echo e($selectedGroup['user']); ?></span></p>
+                <p>Nama : <span class="font-bold">M. Suherman Eka Putra</span></p>
                 <p>Jabatan : <span class="font-bold text-[11px]"><?php echo e($isOut ? $labelPihakSatu : $labelPihakDua); ?></span></p>
             </div>
 
@@ -391,12 +427,12 @@ use Livewire\Attributes\Url;
                 
                 <div class="h-20"></div>
                 
-                <p class="font-bold underline uppercase"><?php echo e($isOut ? $selectedGroup['user'] : $sumberTujuan); ?></p>
+                <p class="font-bold underline uppercase">M. Suherman Eka Putra</p>
             </div>
             <div>
                 <p class="invisible">Jakarta, ...</p>
                 <p class="mt-1">Yang menerima Barang,</p>
-                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1"><?php echo e($labelPihakDua); ?></p>
+                <p class="font-bold text-[10px] uppercase max-w-[200px] mx-auto leading-tight mt-1"><?php echo e($labelPihakDua); ?> /Penguna Barang</p>
                 
                 <div class="h-20"></div>
                 
@@ -441,34 +477,53 @@ use Livewire\Attributes\Url;
 
         <div class="grid grid-cols-2 text-center text-[13px] mt-12">
             <div>
-                <p class="invisible">Jakarta, ...</p>
+               <br>
                 <p class="mt-1">Mengetahui,</p>
                 <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">
-                    <?php echo e($selectedGroup['type'] === 'out' ? 'Unit / Kabag / Kabid' : 'Pimpinan / PPK'); ?>
-
+                   Kepala Gudang
                 </p>
                 
                 <div class="h-24"></div>
                 
-                <p class="font-bold underline uppercase">______________________</p>
-                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+                <p class="font-bold  uppercase">SANJAYA</p>
+               
             </div>
             <div>
                 <p>Jakarta, <?php echo e($carbonDate->day ?? \Carbon\Carbon::now()->day); ?> <?php echo e($monthName ?? \Carbon\Carbon::now()->translatedFormat('F')); ?> <?php echo e($carbonDate->year ?? \Carbon\Carbon::now()->year); ?></p>
                 <p class="mt-1">Yang Meminta Barang,</p>
                 <p class="font-bold text-[11px] uppercase max-w-[200px] mx-auto leading-tight mt-1">
-                    Petugas / Pemohon
+                    Penerima Barang
                 </p>
                 
                 <div class="h-24"></div>
                 
-                <p class="font-bold underline uppercase"><?php echo e($selectedGroup['type'] === 'out' ? ($selectedGroup['pemohon'] ?: '______________________') : ($selectedGroup['user'] ?? '______________________')); ?></p>
-                <p class="text-[11px] mt-0.5">NIP: ..............................</p>
+                <p class="font-bold  uppercase"><?php echo e($selectedGroup['type'] === 'out' ? ($selectedGroup['pemohon'] ?: '______________________') : ($selectedGroup['user'] ?? '______________________')); ?></p>
+                
             </div>
         </div>
     </div>
 
     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+
+    
+    <div x-data="{ open: false, src: '' }" 
+         @open-lightbox.window="src = $event.detail; open = true" 
+         x-show="open" 
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+         style="display: none;">
+        
+        <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        
+        <img :src="src" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain">
+    </div>
 
     
     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($showEditModal): ?>

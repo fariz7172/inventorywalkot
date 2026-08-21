@@ -9,10 +9,11 @@ class StockOpname extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'approved_by', 'status', 'opname_date', 'notes', 'approver_notes'];
+    protected $fillable = ['user_id', 'approved_by', 'status', 'opname_date', 'notes', 'approver_notes', 'photos'];
 
     protected $casts = [
         'opname_date' => 'date',
+        'photos' => 'array',
     ];
 
     public function user()

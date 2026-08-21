@@ -8,103 +8,6 @@ use Illuminate\Support\Facades\Storage;
 use phpseclib3\Net\SSH2;
 use phpseclib3\Net\SFTP;
 
-new #[Layout('layouts.admin')] class extends Component {
-    use WithFileUploads;
-
-    public $app_name;
-    public $app_description;
-    public $app_address;
-    public $app_contact;
-    public $app_logo;
-    public $new_logo;
-
-    public function mount()
-    {
-        $this->app_name = Setting::get('app_name', 'AdminPro');
-        $this->app_description = Setting::get('app_description', 'Management System');
-        $this->app_address = Setting::get('app_address', '');
-        $this->app_contact = Setting::get('app_contact', '');
-        $this->app_logo = Setting::get('app_logo', null);
-    }
-
-    public function saveProfile()
-    {
-        $this->validate([
-            'app_name' => 'required|string|max:255',
-            'app_description' => 'nullable|string|max:255',
-            'app_address' => 'nullable|string',
-            'app_contact' => 'nullable|string|max:255',
-            'new_logo' => 'nullable|image|max:2048', // Max 2MB
-        ]);
-
-        Setting::set('app_name', $this->app_name);
-        Setting::set('app_description', $this->app_description);
-        Setting::set('app_address', $this->app_address);
-        Setting::set('app_contact', $this->app_contact);
-
-        if ($this->new_logo) {
-            $path = $this->new_logo->store('public/settings');
-            $url = Storage::url($path);
-            Setting::set('app_logo', $url);
-            $this->app_logo = $url;
-        }
-
-        session()->flash('success_profile', 'Profil Perusahaan berhasil disimpan!');
-        
-        // Dispatch event in case we want to refresh UI dynamically
-        $this->dispatch('settings-updated');
-    }
-
-    public function runBackup()
-    {
-        try {
-            $host     = '147.93.78.123';
-            $port     = 65002;
-            $user     = 'u886768284';
-            $password = '180080@Deni';
-            $dbName   = 'u886768284_Inventorysdaju';
-            $dbUser   = 'u886768284_Inventorysdaju';
-            $dbPass   = '180080@Deni';
-            $appPath  = "/home/$user/domains/inventorysdaju.com/public_html";
-
-            $dateStr  = date('Y-m-d_H-i-s');
-            $fileName = "backup_server_{$dateStr}.sql";
-            $remoteFile = "$appPath/$fileName";
-            
-            // Simpan sementara di storage
-            $localFile  = storage_path('app/' . $fileName);
-
-            $ssh = new SSH2($host, $port);
-            if (!$ssh->login($user, $password)) {
-                session()->flash('error_backup', 'Gagal login ke server melalui SSH.');
-                return;
-            }
-
-            $dumpCommand = "mysqldump -u $dbUser -p\"$dbPass\" $dbName > \"$remoteFile\"";
-            $ssh->exec($dumpCommand);
-
-            $sftp = new SFTP($host, $port);
-            if (!$sftp->login($user, $password)) {
-                session()->flash('error_backup', 'Gagal login ke SFTP.');
-                return;
-            }
-
-            if ($sftp->get($remoteFile, $localFile)) {
-                $ssh->exec("rm -f \"$remoteFile\"");
-                
-                // Memicu jendela download di browser pengguna, file akan dihapus dari server lokal setelah didownload
-                return response()->download($localFile, $fileName)->deleteFileAfterSend(true);
-            } else {
-                session()->flash('error_backup', 'Gagal mengunduh file backup dari server.');
-                $ssh->exec("rm -f \"$remoteFile\"");
-            }
-
-        } catch (\Exception $e) {
-            session()->flash('error_backup', 'Terjadi kesalahan: ' . $e->getMessage());
-        }
-    }
-};
-
 ?>
 
 <div>
@@ -127,12 +30,12 @@ new #[Layout('layouts.admin')] class extends Component {
                     </div>
                 </div>
 
-                @if (session()->has('success_profile'))
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('success_profile')): ?>
                     <div class="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span class="text-sm font-bold">{{ session('success_profile') }}</span>
+                        <span class="text-sm font-bold"><?php echo e(session('success_profile')); ?></span>
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 <form wire:submit="saveProfile" class="space-y-5">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -140,14 +43,28 @@ new #[Layout('layouts.admin')] class extends Component {
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1.5">Nama Perusahaan / Aplikasi <span class="text-red-500">*</span></label>
                             <input type="text" wire:model="app_name" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-accent focus:border-accent block px-4 py-2.5 transition-all" required placeholder="Contoh: PT. Maju Bersama">
-                            @error('app_name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['app_name'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1 block"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
 
                         <!-- Deskripsi Pendek -->
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1.5">Deskripsi Singkat / Slogan</label>
                             <input type="text" wire:model="app_description" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-accent focus:border-accent block px-4 py-2.5 transition-all" placeholder="Contoh: Inventory Management System">
-                            @error('app_description') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['app_description'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1 block"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
                     </div>
 
@@ -156,19 +73,26 @@ new #[Layout('layouts.admin')] class extends Component {
                         <label class="block text-sm font-bold text-gray-700 mb-1.5">Logo Perusahaan</label>
                         <div class="flex items-start gap-4">
                             <div class="w-20 h-20 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-inner">
-                                @if ($new_logo)
-                                    <img src="{{ $new_logo->temporaryUrl() }}" class="w-full h-full object-cover rounded-xl">
-                                @elseif ($app_logo)
-                                    <img src="{{ $app_logo }}" class="w-full h-full object-cover rounded-xl">
-                                @else
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($new_logo): ?>
+                                    <img src="<?php echo e($new_logo->temporaryUrl()); ?>" class="w-full h-full object-cover rounded-xl">
+                                <?php elseif($app_logo): ?>
+                                    <img src="<?php echo e($app_logo); ?>" class="w-full h-full object-cover rounded-xl">
+                                <?php else: ?>
                                     <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
                             <div class="flex-1">
                                 <input type="file" wire:model="new_logo" accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 transition-all cursor-pointer">
                                 <p class="text-[10px] text-gray-400 mt-2 font-medium">Format: PNG, JPG, JPEG. Ukuran Maksimal: 2MB.</p>
                                 <div wire:loading wire:target="new_logo" class="text-xs text-accent mt-1 font-bold">Mengunggah logo...</div>
-                                @error('new_logo') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['new_logo'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1 block"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -177,14 +101,28 @@ new #[Layout('layouts.admin')] class extends Component {
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1.5">No. Telp / Kontak</label>
                         <input type="text" wire:model="app_contact" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-accent focus:border-accent block px-4 py-2.5 transition-all" placeholder="Contoh: (021) 1234567">
-                        @error('app_contact') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['app_contact'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1 block"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
                     <!-- Alamat -->
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1.5">Alamat Perusahaan</label>
                         <textarea wire:model="app_address" rows="3" class="w-full bg-gray-50 border border-gray-200 text-gray-800 text-sm rounded-xl focus:ring-accent focus:border-accent block px-4 py-2.5 transition-all" placeholder="Alamat lengkap perusahaan..."></textarea>
-                        @error('app_address') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__errorArgs = ['app_address'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <span class="text-red-500 text-xs mt-1 block"><?php echo e($message); ?></span> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                     </div>
 
                     <div class="pt-2 flex justify-end">
@@ -206,19 +144,19 @@ new #[Layout('layouts.admin')] class extends Component {
                 <h3 class="text-lg font-bold mb-2 relative z-10">Preferensi Sistem Lainnya</h3>
                 <p class="text-sm text-white/80 mb-4 relative z-10 leading-relaxed">Tarik (backup) database terbaru dari server ke direktori lokal Anda untuk pengujian atau pencadangan.</p>
                 
-                @if (session()->has('success_backup'))
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('success_backup')): ?>
                     <div class="mb-4 bg-emerald-500/20 border border-emerald-400/50 text-white px-4 py-3 rounded-xl flex items-start gap-2 relative z-10 text-sm">
                         <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>{{ session('success_backup') }}</span>
+                        <span><?php echo e(session('success_backup')); ?></span>
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-                @if (session()->has('error_backup'))
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session()->has('error_backup')): ?>
                     <div class="mb-4 bg-red-500/20 border border-red-400/50 text-white px-4 py-3 rounded-xl flex items-start gap-2 relative z-10 text-sm">
                         <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                        <span>{{ session('error_backup') }}</span>
+                        <span><?php echo e(session('error_backup')); ?></span>
                     </div>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                 <button wire:click="runBackup" wire:loading.attr="disabled" class="relative z-10 w-full bg-white text-accent hover:bg-gray-50 font-bold py-3 px-4 rounded-xl shadow-md transition-all flex items-center justify-center gap-2">
                     <svg wire:loading.remove wire:target="runBackup" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -232,4 +170,4 @@ new #[Layout('layouts.admin')] class extends Component {
             </div>
         </div>
     </div>
-</div>
+</div><?php /**PATH D:\program file\Project Kantor\Inventory\resources\views\livewire/settings.blade.php ENDPATH**/ ?>

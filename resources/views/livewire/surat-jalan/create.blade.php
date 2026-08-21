@@ -12,7 +12,7 @@ usesFileUploads();
 // State Form
 state([
     'surat_jalan_no' => '',
-    'tanggal' => date('Y-m-d'),
+    'tanggal' => now()->format('Y-m-d\TH:i'),
     'lokasi' => '',
     'is_manual_lokasi' => false,
     'pemohon' => '',
@@ -149,7 +149,7 @@ $save = function () {
         'numeric' => 'Harus berupa angka.',
         'min' => 'Jumlah minimal adalah 0.01.',
         'image' => 'File harus berupa gambar.',
-        'max' => 'Ukuran gambar maksimal 2MB.',
+        'max' => 'Ukuran gambar maksimal 10MB.',
         'nota_dinas_photo.required' => 'Wajib mengunggah minimal 3 foto Nota Dinas.',
         'nota_dinas_photo.min' => 'Minimal harus mengunggah 3 foto Nota Dinas.',
         'progress_photo.required' => 'Wajib mengunggah minimal 3 foto Progress.',
@@ -158,10 +158,10 @@ $save = function () {
 
     if ($this->is_manual_lokasi) {
         $rules['nota_dinas_photo'] = 'required|array|min:3';
-        $rules['nota_dinas_photo.*'] = 'image|max:2048';
+        $rules['nota_dinas_photo.*'] = 'image|max:10240';
     } else {
         $rules['progress_photo'] = 'required|array|min:3';
-        $rules['progress_photo.*'] = 'image|max:2048';
+        $rules['progress_photo.*'] = 'image|max:10240';
     }
 
     $this->validate($rules, $messages);
@@ -250,7 +250,8 @@ $save = function () {
             'keterangan' => $this->keterangan,
             'status' => 'draft',
             'nota_dinas_photo' => $photoPath,
-            'progress_photo' => $progressPhotoPath
+            'progress_photo' => $progressPhotoPath,
+            'user_id' => auth()->id()
         ]);
     });
 
@@ -315,7 +316,7 @@ $save = function () {
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Tanggal</label>
-                    <input type="date" wire:model="tanggal" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('tanggal') border-red-500 @enderror">
+                    <input type="datetime-local" wire:model="tanggal" class="w-full rounded-xl border border-gray-300 px-4 py-2.5 focus:ring-2 focus:ring-accent/50 outline-none transition-all @error('tanggal') border-red-500 @enderror">
                     @error('tanggal') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>

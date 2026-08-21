@@ -103,10 +103,25 @@ use Livewire\Volt\Component;
                 </div>
 
                 
-                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($trx->image): ?>
+                <?php
+                    $allImages = [];
+                    if ($trx->image) {
+                        $allImages = array_merge($allImages, explode(',', $trx->image));
+                    }
+                    if ($trx->deliveryOrder && $trx->deliveryOrder->nota_dinas_photo) {
+                        $allImages[] = $trx->deliveryOrder->nota_dinas_photo;
+                    }
+                ?>
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!empty($allImages)): ?>
                 <div>
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bukti / Nota</p>
-                    <img src="<?php echo e(asset('storage/' . $trx->image)); ?>" alt="Bukti Transaksi" class="w-full rounded-2xl border border-warm/60 object-cover max-h-56">
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bukti / Nota Dinas</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = $allImages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $img): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <img src="<?php echo e(asset('storage/' . trim($img))); ?>" 
+                                 @click="$dispatch('open-lightbox-modal', '<?php echo e(asset('storage/' . trim($img))); ?>')"
+                                 alt="Bukti Transaksi" class="w-full rounded-2xl border border-warm/60 object-cover max-h-56 cursor-pointer hover:opacity-90 transition-opacity">
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    </div>
                 </div>
                 <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
@@ -129,6 +144,26 @@ use Livewire\Volt\Component;
                     Tutup
                 </button>
             </div>
+
+
+<div x-data="{ open: false, src: '' }" 
+     @open-lightbox-modal.window="src = $event.detail; open = true" 
+     x-show="open" 
+     x-transition:enter="ease-out duration-300"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="ease-in duration-200"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+     style="display: none;">
+    
+    <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    
+    <img :src="src" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain">
+</div>
             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
         </div>
     </div>

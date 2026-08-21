@@ -360,7 +360,16 @@
                     <div class="user-info flex-1 min-w-0">
                         <p class="text-sm font-bold text-gray-900 truncate"><?php echo e(auth()->user()->name); ?></p>
                         <p class="text-[10px] font-black text-accent uppercase tracking-widest truncate">
-                            <?php echo e(auth()->user()->getRoleNames()->first() ?? 'User'); ?>
+                            <?php
+                                $roleName = auth()->user()->getRoleNames()->first() ?? 'User';
+                                $displayRoles = [
+                                    'superadmin' => 'Pengurus Barang',
+                                    'kecamatan_admin' => 'Kasubag',
+                                    'sudin' => 'Kasudin'
+                                ];
+                                $displayRoleName = $displayRoles[$roleName] ?? $roleName;
+                            ?>
+                            <?php echo e(strtoupper($displayRoleName)); ?>
 
                         </p>
                     </div>
@@ -429,14 +438,24 @@
                                 $notifItems = \App\Models\DeliveryOrder::where('status', 'draft')
                                                 ->orderBy('created_at', 'desc')->take(5)->get();
                             } 
-                            // Jika superadmin/sudin: Hitung yang sudah dikonfirmasi (shipped) hari ini
+                            // Jika superadmin/sudin: Hitung yang sudah dikonfirmasi (shipped) atau ditolak hari ini
                             elseif (auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')) {
-                                $notifCount = \App\Models\DeliveryOrder::where('status', 'shipped')
+                                $notifCount = \App\Models\DeliveryOrder::whereIn('status', ['shipped', 'rejected'])
                                                 ->whereDate('updated_at', \Carbon\Carbon::today())
                                                 ->count();
-                                $notifItems = \App\Models\DeliveryOrder::where('status', 'shipped')
+                                $notifItems = \App\Models\DeliveryOrder::whereIn('status', ['shipped', 'rejected'])
                                                 ->whereDate('updated_at', \Carbon\Carbon::today())
                                                 ->orderBy('updated_at', 'desc')->take(5)->get();
+                            }
+                            // Jika pemel/kecamatan admin: Hitung yang ditolak
+                            elseif (auth()->user()->hasRole('pemel') || auth()->user()->hasRole('kecamatan_admin')) {
+                                $query = \App\Models\DeliveryOrder::where('status', 'rejected');
+                                if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
+                                    $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', auth()->user()->kecamatan_id)->pluck('lokasi');
+                                    $query->whereIn('lokasi', $lokasiKecamatan);
+                                }
+                                $notifCount = $query->count();
+                                $notifItems = $query->orderBy('updated_at', 'desc')->take(5)->get();
                             }
                         ?>
                         <div class="relative" x-data="{ openNotif: false }">
@@ -487,7 +506,9 @@
                                                     <div>
                                                         <p class="text-sm font-semibold text-gray-800"><?php echo e($item->surat_jalan_no); ?></p>
                                                         <p class="text-[11px] text-gray-500 mt-0.5 leading-snug">
-                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')): ?>
+                                                            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($item->status === 'rejected'): ?>
+                                                                <span class="text-red-500 font-bold">Ditolak!</span> Silahkan edit kembali data Anda.
+                                                            <?php elseif(auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin')): ?>
                                                                 Telah dikonfirmasi dan dikirim oleh pihak Gudang.
                                                             <?php else: ?>
                                                                 Surat Jalan baru (Draft) menunggu konfirmasi Anda.

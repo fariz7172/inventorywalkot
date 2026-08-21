@@ -16,7 +16,7 @@ use App\Exports\RabTemplateExport;
             <p class="text-sm text-gray-500">Kelola data RAB, Lokasi, dan Kuota Material.</p>
         </div>
         <!-- kecamatan admin tidak bisa membuat RAB -->
-        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (! (auth()->user()->hasAnyRole([ 'kecamatan_admin']))): ?> 
+        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if (! (auth()->user()->hasAnyRole(['kecamatan_admin', 'pemel']))): ?> 
         <button wire:click="openCreate" class="bg-accent text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-accent/20 flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Tambah RAB
@@ -299,7 +299,7 @@ endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                         </div>
-                        <div class="w-full sm:w-32">
+                        <div class="w-full sm:w-28">
                             <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Target Kuota</label>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($isViewOnly): ?>
                                 <div class="w-full bg-gray-100 rounded-lg px-3 py-2 text-xs text-gray-700 font-bold border border-warm/60">
@@ -317,6 +317,20 @@ if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                        </div>
+                        <div class="w-full sm:w-24">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1" title="Sudah Dipakai (Terkirim via Surat Jalan)">Terpakai</label>
+                            <div class="w-full bg-red-50/50 rounded-lg px-3 py-2 text-xs text-red-600 font-bold border border-red-100/50">
+                                <?php echo e($item['used_volume'] ?? 0); ?>
+
+                            </div>
+                        </div>
+                        <div class="w-full sm:w-24">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1" title="Sisa Kuota RAB">Sisa RAB</label>
+                            <div class="w-full bg-emerald-50/50 rounded-lg px-3 py-2 text-xs text-emerald-600 font-bold border border-emerald-100/50">
+                                <?php echo e($item['remaining_volume'] ?? 0); ?>
+
+                            </div>
                         </div>
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(!$isViewOnly): ?>
                         <button type="button" wire:click="removeRabMaterial(<?php echo e($index); ?>)" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center hover:bg-red-500 hover:text-white transition-all mb-0.5">
