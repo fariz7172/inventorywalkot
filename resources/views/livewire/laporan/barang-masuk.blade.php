@@ -400,7 +400,7 @@ new class extends Component {
                                 $thumbImages = [];
                                 if ($t->latest_image) $thumbImages = array_merge($thumbImages, explode(',', $t->latest_image));
                                 if (isset($t->deliveryOrder->nota_dinas_photo) && $t->deliveryOrder->nota_dinas_photo) {
-                                    $thumbImages[] = $t->deliveryOrder->nota_dinas_photo;
+                                    $thumbImages = array_merge($thumbImages, explode(',', $t->deliveryOrder->nota_dinas_photo));
                                 }
                                 if (isset($t->deliveryOrder->progress_photo) && $t->deliveryOrder->progress_photo) {
                                     $thumbImages = array_merge($thumbImages, explode(',', $t->deliveryOrder->progress_photo));
