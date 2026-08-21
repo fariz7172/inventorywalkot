@@ -208,10 +208,13 @@ new class extends Component {
                     @if($order->nota_dinas_photo)
                     <div class="bg-base/40 p-4 rounded-2xl border border-warm/60">
                         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Nota Dinas</p>
-                        <div class="grid {{ count(explode(',', $order->nota_dinas_photo)) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-3">
-                            @foreach(explode(',', $order->nota_dinas_photo) as $nd)
-                            <div @click.stop="$dispatch('open-lightbox', '{{ Storage::url(trim($nd)) }}')" class="block group relative overflow-hidden rounded-xl cursor-pointer">
-                                <img src="{{ Storage::url(trim($nd)) }}" class="w-full h-48 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-sm">
+                        @php
+                            $ndImages = array_map(function($img) { return Storage::url(trim($img)); }, explode(',', $order->nota_dinas_photo));
+                        @endphp
+                        <div class="grid {{ count($ndImages) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-3">
+                            @foreach($ndImages as $index => $ndUrl)
+                            <div @click.stop="$dispatch('open-lightbox', { images: {{ Js::from($ndImages) }}, index: {{ $index }} })" class="block group relative overflow-hidden rounded-xl cursor-pointer">
+                                <img src="{{ $ndUrl }}" class="w-full h-48 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-sm">
                                 <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
                                     <span class="text-white text-xs font-bold">Perbesar</span>
@@ -225,10 +228,13 @@ new class extends Component {
                     @if($order->progress_photo)
                     <div class="bg-base/40 p-4 rounded-2xl border border-warm/60 {{ $order->nota_dinas_photo ? '' : 'sm:col-span-2' }}">
                         <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Progress Pekerjaan</p>
-                        <div class="grid {{ count(explode(',', $order->progress_photo)) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-3">
-                            @foreach(explode(',', $order->progress_photo) as $pp)
-                            <div @click.stop="$dispatch('open-lightbox', '{{ Storage::url(trim($pp)) }}')" class="block group relative overflow-hidden rounded-xl cursor-pointer">
-                                <img src="{{ Storage::url(trim($pp)) }}" class="w-full h-48 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-sm">
+                        @php
+                            $ppImages = array_map(function($img) { return Storage::url(trim($img)); }, explode(',', $order->progress_photo));
+                        @endphp
+                        <div class="grid {{ count($ppImages) > 1 ? 'grid-cols-2' : 'grid-cols-1' }} gap-3">
+                            @foreach($ppImages as $index => $ppUrl)
+                            <div @click.stop="$dispatch('open-lightbox', { images: {{ Js::from($ppImages) }}, index: {{ $index }} })" class="block group relative overflow-hidden rounded-xl cursor-pointer">
+                                <img src="{{ $ppUrl }}" class="w-full h-48 object-cover rounded-xl group-hover:scale-105 transition-transform duration-300 shadow-sm">
                                 <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                                     <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"/></svg>
                                     <span class="text-white text-xs font-bold">Perbesar</span>
@@ -560,23 +566,59 @@ new class extends Component {
     </script>
 
     {{-- Image Lightbox Modal --}}
-    <div x-data="{ open: false, src: '' }" 
-         @open-lightbox.window="src = $event.detail; open = true" 
+    <div x-data="{ 
+            open: false, 
+            images: [], 
+            currentIndex: 0,
+            get currentSrc() { return this.images[this.currentIndex] || ''; },
+            next() { if (this.currentIndex < this.images.length - 1) this.currentIndex++; else this.currentIndex = 0; },
+            prev() { if (this.currentIndex > 0) this.currentIndex--; else this.currentIndex = this.images.length - 1; }
+         }" 
+         @open-lightbox.window="
+            if (typeof $event.detail === 'string') {
+                images = [$event.detail];
+                currentIndex = 0;
+            } else {
+                images = $event.detail.images || [];
+                currentIndex = $event.detail.index || 0;
+            }
+            open = true;
+         " 
          x-show="open" 
+         @keydown.escape.window="open = false"
+         @keydown.arrow-right.window="if(open) next()"
+         @keydown.arrow-left.window="if(open) prev()"
          x-transition:enter="ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
+         x-transition:enter-start="opacity-0 scale-90"
+         x-transition:enter-end="opacity-100 scale-100"
          x-transition:leave="ease-in duration-200"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-90"
          class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
          style="display: none;">
         
-        <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors">
+        <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors z-50">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
-        
-        <img :src="src" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain">
+
+        <template x-if="images.length > 1">
+            <button @click.stop="prev()" class="absolute left-4 sm:left-8 text-white/50 hover:text-white p-2 transition-colors z-50">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+        </template>
+
+        <img :src="currentSrc" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain relative z-40">
+
+        <template x-if="images.length > 1">
+            <button @click.stop="next()" class="absolute right-4 sm:right-8 text-white/50 hover:text-white p-2 transition-colors z-50">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </template>
+
+        <template x-if="images.length > 1">
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full text-white text-xs font-bold tracking-widest z-50">
+                <span x-text="currentIndex + 1"></span> / <span x-text="images.length"></span>
+            </div>
+        </template>
     </div>
 </div>
-

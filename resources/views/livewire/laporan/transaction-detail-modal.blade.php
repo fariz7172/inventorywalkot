@@ -138,10 +138,13 @@ new class extends Component {
                 @if(!empty($allImages))
                 <div>
                     <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Bukti / Nota Dinas</p>
+                    @php
+                        $modalThumbUrls = array_map(function($img) { return asset('storage/' . trim($img)); }, $allImages);
+                    @endphp
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        @foreach($allImages as $img)
+                        @foreach($allImages as $index => $img)
                             <img src="{{ asset('storage/' . trim($img)) }}" 
-                                 @click.stop="$dispatch('open-lightbox-modal', '{{ asset('storage/' . trim($img)) }}')"
+                                 @click.stop="$dispatch('open-lightbox-modal', { images: {{ Js::from($modalThumbUrls) }}, index: {{ $index }} })"
                                  alt="Bukti Transaksi" class="w-full rounded-2xl border border-warm/60 object-cover max-h-56 cursor-pointer hover:opacity-90 transition-opacity">
                         @endforeach
                     </div>
@@ -167,27 +170,63 @@ new class extends Component {
                 </button>
             </div>
 
-{{-- Image Lightbox for Modal --}}
-<div x-data="{ open: false, src: '' }" 
-     @open-lightbox-modal.window="src = $event.detail; open = true" 
-     x-show="open" 
-     x-transition:enter="ease-out duration-300"
-     x-transition:enter-start="opacity-0"
-     x-transition:enter-end="opacity-100"
-     x-transition:leave="ease-in duration-200"
-     x-transition:leave-start="opacity-100"
-     x-transition:leave-end="opacity-0"
-     class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-     style="display: none;">
-    
-    <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors">
-        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-    </button>
-    
-    <img :src="src" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain">
-</div>
+    {{-- Image Lightbox Modal --}}
+    <div x-data="{ 
+            open: false, 
+            images: [], 
+            currentIndex: 0,
+            get currentSrc() { return this.images[this.currentIndex] || ''; },
+            next() { if (this.currentIndex < this.images.length - 1) this.currentIndex++; else this.currentIndex = 0; },
+            prev() { if (this.currentIndex > 0) this.currentIndex--; else this.currentIndex = this.images.length - 1; }
+         }" 
+         @open-lightbox-modal.window="
+            if (typeof $event.detail === 'string') {
+                images = [$event.detail];
+                currentIndex = 0;
+            } else {
+                images = $event.detail.images || [];
+                currentIndex = $event.detail.index || 0;
+            }
+            open = true;
+         " 
+         x-show="open" 
+         @keydown.escape.window="open = false"
+         @keydown.arrow-right.window="if(open) next()"
+         @keydown.arrow-left.window="if(open) prev()"
+         x-transition:enter="ease-out duration-300"
+         x-transition:enter-start="opacity-0 scale-90"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="ease-in duration-200"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-90"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+         style="display: none;">
+        
+        <button @click="open = false" class="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors z-50">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        <template x-if="images.length > 1">
+            <button @click.stop="prev()" class="absolute left-4 sm:left-8 text-white/50 hover:text-white p-2 transition-colors z-50">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+        </template>
+
+        <img :src="currentSrc" @click.away="open = false" class="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain relative z-40">
+
+        <template x-if="images.length > 1">
+            <button @click.stop="next()" class="absolute right-4 sm:right-8 text-white/50 hover:text-white p-2 transition-colors z-50">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+        </template>
+
+        <template x-if="images.length > 1">
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 px-4 py-2 rounded-full text-white text-xs font-bold tracking-widest z-50">
+                <span x-text="currentIndex + 1"></span> / <span x-text="images.length"></span>
+            </div>
+        </template>
+    </div>
             @endif
         </div>
     </div>
 </div>
-
