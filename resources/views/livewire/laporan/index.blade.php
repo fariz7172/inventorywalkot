@@ -167,7 +167,11 @@ new class extends Component {
         }
 
         return [
-            'reportData'        => $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(50),
+            'reportData'        => $query->orderByRaw('DATE(created_at) DESC')
+                                         ->orderBy('delivery_order_id', 'desc')
+                                         ->orderBy('reference_number', 'desc')
+                                         ->orderBy('id', 'desc')
+                                         ->paginate(50),
             'allMaterials'      => Material::orderBy('name', 'asc')->get(),
             'materialsSummary'  => $materialsSummary,
             'openingBalance'    => $openingBalance,
