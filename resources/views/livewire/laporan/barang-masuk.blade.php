@@ -410,9 +410,11 @@ new class extends Component {
                             
                             @if($firstImg)
                                 <div class="flex justify-center relative">
-                                    <img src="{{ Storage::url(trim($firstImg)) }}" class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm">
+                                    <img src="{{ Storage::url(trim($firstImg)) }}" 
+                                         @click.stop="$dispatch('open-lightbox', '{{ Storage::url(trim($firstImg)) }}')"
+                                         class="w-10 h-10 rounded-lg object-cover ring-2 ring-white shadow-sm cursor-pointer hover:opacity-90 transition-opacity">
                                     @if(count($thumbImages) > 1)
-                                    <div class="absolute -top-2 -right-2 bg-accent text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ring-2 ring-white shadow-sm">
+                                    <div class="absolute -top-2 -right-2 bg-accent text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ring-2 ring-white shadow-sm pointer-events-none">
                                         +{{ count($thumbImages) - 1 }}
                                     </div>
                                     @endif
@@ -548,7 +550,7 @@ new class extends Component {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     @foreach($allImages as $img)
                         <img src="{{ Storage::url(trim($img)) }}" 
-                             @click="$dispatch('open-lightbox', '{{ Storage::url(trim($img)) }}')"
+                             @click.stop="$dispatch('open-lightbox', '{{ Storage::url(trim($img)) }}')"
                              class="w-full h-48 object-cover rounded-3xl ring-4 ring-base shadow-inner cursor-pointer hover:opacity-90 transition-opacity">
                     @endforeach
                 </div>

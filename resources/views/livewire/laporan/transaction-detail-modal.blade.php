@@ -141,7 +141,7 @@ new class extends Component {
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         @foreach($allImages as $img)
                             <img src="{{ asset('storage/' . trim($img)) }}" 
-                                 @click="$dispatch('open-lightbox-modal', '{{ asset('storage/' . trim($img)) }}')"
+                                 @click.stop="$dispatch('open-lightbox-modal', '{{ asset('storage/' . trim($img)) }}')"
                                  alt="Bukti Transaksi" class="w-full rounded-2xl border border-warm/60 object-cover max-h-56 cursor-pointer hover:opacity-90 transition-opacity">
                         @endforeach
                     </div>
