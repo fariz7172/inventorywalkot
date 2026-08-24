@@ -102,11 +102,13 @@ use Livewire\Volt\Component;
                         </h4>
                         <div class="grid grid-cols-2 gap-4">
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->nota_dinas_photo): ?>
-                            <div class="bg-base/40 p-3 rounded-2xl border border-warm/60">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">Nota Dinas</p>
-                                <a href="<?php echo e(Storage::url(trim($order->nota_dinas_photo))); ?>" target="_blank" class="block">
-                                    <img src="<?php echo e(Storage::url(trim($order->nota_dinas_photo))); ?>" class="w-full h-32 object-cover rounded-xl hover:opacity-80 transition-opacity">
+                            <div class="space-y-2">
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nota Dinas</p>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php $__currentLoopData = explode(',', $order->nota_dinas_photo); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $nd): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <a href="<?php echo e(Storage::url(trim($nd))); ?>" target="_blank" class="block mb-2">
+                                    <img src="<?php echo e(Storage::url(trim($nd))); ?>" class="w-full h-32 object-cover rounded-xl hover:opacity-80 transition-opacity">
                                 </a>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
                             <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->progress_photo): ?>

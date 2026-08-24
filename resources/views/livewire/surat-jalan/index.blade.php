@@ -197,7 +197,7 @@ new class extends Component {
                             @if($order->status === 'draft')
                                 @if(empty($order->spb_document))
                                     <span class="text-[9px] font-black text-red-500 mt-1.5 block leading-tight">
-                                        (Segera Upload Form SPB)
+                                        (Menunggu Upload SPB dari Admin)
                                     </span>
                                 @else
                                     <span class="text-[9px] font-black text-emerald-500 mt-1.5 block leading-tight">

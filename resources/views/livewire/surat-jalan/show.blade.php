@@ -13,7 +13,7 @@ new class extends Component {
     use WithFileUploads;
 
     public DeliveryOrder $order;
-    public $spbFile;
+    public $spbFile = [];
 
     public function mount(DeliveryOrder $order)
     {
@@ -28,26 +28,35 @@ new class extends Component {
     public function saveSPB()
     {
         $this->validate([
-            'spbFile' => 'required|file|mimes:png,jpg,jpeg,webp,pdf|max:10240',
+            'spbFile' => 'required|array',
+            'spbFile.*' => 'file|mimes:png,jpg,jpeg,webp,pdf|max:10240',
         ], [
             'spbFile.required' => 'Pilih file terlebih dahulu.',
-            'spbFile.mimes' => 'Format file harus berupa gambar (png, jpg, jpeg, webp) atau pdf.',
-            'spbFile.max' => 'Ukuran maksimal file adalah 10 MB.'
+            'spbFile.*.mimes' => 'Format file harus berupa gambar (png, jpg, jpeg, webp) atau pdf.',
+            'spbFile.*.max' => 'Ukuran maksimal file adalah 10 MB.'
         ]);
 
-        $extension = $this->spbFile->getClientOriginalExtension();
-        if (strtolower($extension) === 'pdf') {
-            $spbPath = $this->spbFile->store('spb_documents', 'public');
-        } else {
-            $manager = new ImageManager(new Driver());
-            $image = $manager->read($this->spbFile->getRealPath());
-            $encoded = $image->toWebp(75);
-            $filename = 'spb_documents/' . uniqid('spb_') . '.webp';
-            Storage::disk('public')->put($filename, (string) $encoded);
-            $spbPath = $filename;
+        $paths = [];
+        if ($this->order->spb_document) {
+            $paths = explode(',', $this->order->spb_document);
         }
-        $this->order->update(['spb_document' => $spbPath]);
-        $this->spbFile = null;
+
+        foreach ($this->spbFile as $file) {
+            $extension = $file->getClientOriginalExtension();
+            if (strtolower($extension) === 'pdf') {
+                $paths[] = $file->store('spb_documents', 'public');
+            } else {
+                $manager = new ImageManager(new Driver());
+                $image = $manager->read($file->getRealPath());
+                $encoded = $image->toWebp(75);
+                $filename = 'spb_documents/' . uniqid('spb_') . '.webp';
+                Storage::disk('public')->put($filename, (string) $encoded);
+                $paths[] = $filename;
+            }
+        }
+
+        $this->order->update(['spb_document' => implode(',', $paths)]);
+        $this->spbFile = [];
         session()->flash('message_spb', 'Dokumen SPB berhasil diunggah!');
     }
 
@@ -58,12 +67,12 @@ new class extends Component {
             return;
         }
 
-        if ($this->spbFile) {
+        if (!empty($this->spbFile)) {
             $this->validate([
-                'spbFile' => 'file|mimes:png,jpg,jpeg,webp,pdf|max:10240',
+                'spbFile.*' => 'file|mimes:png,jpg,jpeg,webp,pdf|max:10240',
             ], [
-                'spbFile.mimes' => 'Format file harus berupa gambar (png, jpg, jpeg, webp) atau pdf.',
-                'spbFile.max' => 'Ukuran maksimal file adalah 10 MB.'
+                'spbFile.*.mimes' => 'Format file harus berupa gambar (png, jpg, jpeg, webp) atau pdf.',
+                'spbFile.*.max' => 'Ukuran maksimal file adalah 10 MB.'
             ]);
         }
 
@@ -81,20 +90,26 @@ new class extends Component {
             }
 
             // Proses File Upload
-            $spbPath = null;
-            if ($this->spbFile) {
-                $extension = $this->spbFile->getClientOriginalExtension();
-                if (strtolower($extension) === 'pdf') {
-                    $spbPath = $this->spbFile->store('spb_documents', 'public');
-                } else {
-                    $manager = new ImageManager(new Driver());
-                    $image = $manager->read($this->spbFile->getRealPath());
-                    $encoded = $image->toWebp(75);
-                    $filename = 'spb_documents/' . uniqid('spb_') . '.webp';
-                    Storage::disk('public')->put($filename, (string) $encoded);
-                    $spbPath = $filename;
+            if (!empty($this->spbFile)) {
+                $paths = [];
+                if ($this->order->spb_document) {
+                    $paths = explode(',', $this->order->spb_document);
                 }
-                $this->order->update(['spb_document' => $spbPath]);
+
+                foreach ($this->spbFile as $file) {
+                    $extension = $file->getClientOriginalExtension();
+                    if (strtolower($extension) === 'pdf') {
+                        $paths[] = $file->store('spb_documents', 'public');
+                    } else {
+                        $manager = new ImageManager(new Driver());
+                        $image = $manager->read($file->getRealPath());
+                        $encoded = $image->toWebp(75);
+                        $filename = 'spb_documents/' . uniqid('spb_') . '.webp';
+                        Storage::disk('public')->put($filename, (string) $encoded);
+                        $paths[] = $filename;
+                    }
+                }
+                $this->order->update(['spb_document' => implode(',', $paths)]);
             }
 
             $service->processDelivery($this->order->id, $formattedItems);
@@ -286,59 +301,52 @@ new class extends Component {
                 @enderror
 
                 @php
-                    $isAdmin = auth()->user()->hasRole(['gudang', 'kepala_gudang', 'superadmin', 'sudin', 'pemel']);
-                    $isUploader = auth()->user()->hasRole(['kasubag', 'kecamatan_admin']);
+                    $isAdmin = auth()->user()->hasRole(['gudang', 'kepala_gudang', 'superadmin', 'sudin']);
+                    $isUploader = auth()->user()->hasRole(['kasubag', 'kecamatan_admin', 'gudang', 'kepala_gudang', 'superadmin', 'sudin']);
                 @endphp
 
                 @if($order->status === 'draft' && ($isAdmin || $isUploader))
                     
-                    @if($isUploader && !$isAdmin)
+                    @if($isUploader)
                         <div class="mb-4 p-4 border border-dashed border-gray-300 rounded-xl bg-gray-50">
                             <label class="block text-xs font-bold text-gray-700 mb-2">Dokumen SPB <span class="text-red-500">*</span></label>
                             
                             @if($order->spb_document)
-                                <div class="mb-3 flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span class="font-bold text-xs">SPB Sudah Diunggah</span>
-                                    <a href="{{ Storage::url($order->spb_document) }}" target="_blank" class="ml-auto text-xs underline hover:text-emerald-800">Lihat File</a>
+                                @php
+                                    $spbFiles = explode(',', $order->spb_document);
+                                @endphp
+                                <div class="mb-3 flex flex-col gap-2">
+                                    <div class="flex items-center gap-2 text-sm text-emerald-600">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                        <span class="font-bold text-xs">{{ count($spbFiles) }} Dokumen SPB Terunggah:</span>
+                                    </div>
+                                    @foreach($spbFiles as $idx => $spbPath)
+                                        <div class="flex items-center justify-between text-sm bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
+                                            <span class="text-xs text-emerald-700 font-medium">SPB File {{ $idx + 1 }}</span>
+                                            <a href="{{ Storage::url($spbPath) }}" target="_blank" class="text-xs text-emerald-600 underline hover:text-emerald-800 font-bold">Lihat File</a>
+                                        </div>
+                                    @endforeach
                                 </div>
                             @endif
 
-                            <input type="file" wire:model="spbFile" accept=".png,.jpg,.jpeg,.webp,.pdf" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 transition-all">
-                            <p class="text-[10px] text-gray-400 mt-2">Format: JPG, PNG, WEBP, PDF. Max: 10MB.</p>
+                            <input type="file" wire:model="spbFile" accept=".png,.jpg,.jpeg,.webp,.pdf" multiple class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent/10 file:text-accent hover:file:bg-accent/20 transition-all">
+                            <p class="text-[10px] text-gray-400 mt-2">Bisa pilih beberapa file sekaligus. Format: JPG, PNG, WEBP, PDF. Max: 10MB per file.</p>
                             @error('spbFile') <p class="text-xs text-red-500 font-bold mt-1">{{ $message }}</p> @enderror
                             
                             @if (session()->has('message_spb'))
                                 <p class="text-xs text-emerald-500 font-bold mt-1">{{ session('message_spb') }}</p>
                             @endif
 
-                            <button wire:click="saveSPB" {{ !$spbFile ? 'disabled' : '' }} wire:loading.attr="disabled" class="w-full mt-3 bg-gray-800 text-white py-3 rounded-xl font-bold shadow-lg shadow-gray-800/30 hover:bg-gray-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button wire:click="saveSPB" {{ empty($spbFile) ? 'disabled' : '' }} wire:loading.attr="disabled" class="w-full mt-3 bg-gray-800 text-white py-3 rounded-xl font-bold shadow-lg shadow-gray-800/30 hover:bg-gray-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span wire:loading.remove>Upload SPB Sekarang</span>
                                 <span wire:loading>Mengupload...</span>
                             </button>
                         </div>
                     @endif
 
-                    @if($isAdmin)
-                        @if($order->spb_document)
-                            <div class="mb-4 p-4 border border-emerald-200 rounded-xl bg-emerald-50/50">
-                                <label class="block text-xs font-bold text-gray-700 mb-2">Dokumen SPB</label>
-                                <div class="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span class="font-bold text-xs">SPB Sudah Diunggah</span>
-                                    <a href="{{ Storage::url($order->spb_document) }}" target="_blank" class="ml-auto text-xs underline hover:text-emerald-800">Lihat File</a>
-                                </div>
-                            </div>
-                        @else
-                            <div class="mb-4 p-4 bg-warm/30 rounded-xl border border-warm/60 text-center">
-                                <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Menunggu Upload Form SPB</p>
-                                <p class="text-[10px] text-gray-400 mt-1 italic">Menunggu pihak Kecamatan untuk mengunggah dokumen SPB.</p>
-                            </div>
-                        @endif
-                    @endif
 
                     @if($isAdmin)
-                        <button wire:click="processShipment" {{ (!$order->spb_document) ? 'disabled' : '' }} wire:loading.attr="disabled" class="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent/30 hover:bg-accent-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <button wire:click="processShipment" {{ (!$order->spb_document && empty($spbFile)) ? 'disabled' : '' }} wire:loading.attr="disabled" class="w-full bg-accent text-white py-4 rounded-xl font-bold shadow-lg shadow-accent/30 hover:bg-accent-dark transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg wire:loading.remove class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                             </svg>

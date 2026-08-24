@@ -123,7 +123,7 @@ use Livewire\Volt\Component;
                             <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($order->status === 'draft'): ?>
                                 <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(empty($order->spb_document)): ?>
                                     <span class="text-[9px] font-black text-red-500 mt-1.5 block leading-tight">
-                                        (Segera Upload Form SPB)
+                                        (Menunggu Upload SPB dari Admin)
                                     </span>
                                 <?php else: ?>
                                     <span class="text-[9px] font-black text-emerald-500 mt-1.5 block leading-tight">
