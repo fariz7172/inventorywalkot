@@ -178,7 +178,7 @@ $saveOpname = function($force = false) {
                     $image = $manager->read($photo->getRealPath());
                     $webp = $image->toWebp(80);
                     $fileName = 'item_' . $m->id . '_' . uniqid() . '.webp';
-                    \Illuminate\Support\Facades\Storage::put('public/stock_opnames/' . $fileName, $webp->toString());
+                    \Illuminate\Support\Facades\Storage::disk('public')->put('stock_opnames/' . $fileName, (string) $webp);
                     $itemPhotoPaths[] = 'storage/stock_opnames/' . $fileName;
                 }
             }
