@@ -100,34 +100,39 @@ class RabController extends Controller
         $xml = str_replace('[NOMOR SPT]', $nomorSpt, $xml);
         $xml = str_replace('[NAMA PEKERJAAN]', $lokasi, $xml);
         $xml = str_replace('[NAMA PEKERJAAN/KEGIATAN]', $lokasi, $xml);
-        $xml = str_replace('[NAMA PENERIMA PERINTAH]', $penerimaName, $xml);
-        $xml = str_replace('[NIP/NRK]', $penerimaNip, $xml);
+        // Ganti bagian Kepada dan Rincian Pekerjaan dengan Tabel Rapi (Borderless Table) agar sistematik, rata, dan tidak rusak saat wrap text
+        $startMarker = 'MEMERINTAHKAN:</w:t></w:r></w:p>';
+        $posStart = strpos($xml, $startMarker);
+        $endMarker = '<w:t xml:space="preserve">I. </w:t>';
+        $posEnd = strpos($xml, $endMarker);
+        $pStartBeforeEnd = strrpos(substr($xml, 0, $posEnd), '<w:p ');
 
-        // Jabatan across paragraph 14 & 15
-        $xml = str_replace(': [KEPALA SATUAN PELAKSANA KECAMATAN ... / KEPALA ', ': ' . $jabatan, $xml);
-        $xml = str_replace('SEKSI PEMELIHARAAN DRAINASE]', '', $xml);
+        if ($posStart !== false && $posEnd !== false && $pStartBeforeEnd !== false) {
+            $rowsKepada = [
+                ['Nama', $penerimaName],
+                ['NIP/NRK', $penerimaNip],
+                ['Jabatan', $jabatan],
+                ['Kedudukan', 'Ketua/Koordinator Tim Pelaksana Swakelola Tipe I'],
+            ];
 
-        // Nilai DPA (Penggantian bertahap sesuai urutan pada template)
-        $dpaReplacements = [
-            ': 1.03.06 PROGRAM PENGELOLAAN DAN PENGEMBANGAN SISTEM DRAINASE',
-            ': 1.03.06.1.01 Pengelolaan dan Pengembangan Sistem Drainase yang Terhubung Langsung dengan Sungai Lintas Daerah Kabupaten/Kota dan Kawasan Strategis Provinsi',
-            ': 1.03.06.1.01.0010 Operasi dan Pemeliharaan Sistem Drainase Perkotaan',
-            ': 1.03.06.1.01.0010.001 Operasi dan Pemeliharaan Sistem Drainase',
-            ': 5.1.02.03.004.00024 Belanja Pemeliharaan Bangunan Air-Bangunan Air Irigasi-Bangunan Waduk Irigasi'
-        ];
+            $rowsData = [
+                ['Nama Program', '1.03.06 PROGRAM PENGELOLAAN DAN PENGEMBANGAN SISTEM DRAINASE'],
+                ['Nama Kegiatan', '1.03.06.1.01 Pengelolaan dan Pengembangan Sistem Drainase yang Terhubung Langsung dengan Sungai Lintas Daerah Kabupaten/Kota dan Kawasan Strategis Provinsi'],
+                ['Nama Subkegiatan', '1.03.06.1.01.0010 Operasi dan Pemeliharaan Sistem Drainase Perkotaan'],
+                ['Nomor/Kode Kegiatan', '1.03.06.1.01.0010.001 Operasi dan Pemeliharaan Sistem Drainase'],
+                ['Kode Rekening', '5.1.02.03.004.00024 Belanja Pemeliharaan Bangunan Air-Bangunan Air Irigasi-Bangunan Waduk Irigasi'],
+                ['Jenis Pekerjaan', 'Perbaikan dan Pengurasan Saluran'],
+                ['Lokasi', $lokasi],
+                ['Tahun Anggaran', $tahunAnggaran],
+            ];
 
-        foreach ($dpaReplacements as $replacement) {
-            $pos = strpos($xml, ': [SESUAI DPA]');
-            if ($pos !== false) {
-                $xml = substr_replace($xml, $replacement, $pos, strlen(': [SESUAI DPA]'));
-            }
+            $kepadaHeading = '<w:p><w:pPr><w:spacing w:before="120" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Kepada :</w:t></w:r></w:p>';
+            $dataHeading = '<w:p><w:pPr><w:spacing w:before="140" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Untuk melaksanakan pekerjaan Swakelola Tipe I dengan data sebagai berikut:</w:t></w:r></w:p>';
+
+            $newChunk = $kepadaHeading . $this->renderBorderlessTable($rowsKepada) . $dataHeading . $this->renderBorderlessTable($rowsData);
+
+            $xml = substr_replace($xml, $newChunk, $posStart + strlen($startMarker), $pStartBeforeEnd - ($posStart + strlen($startMarker)));
         }
-
-        // Jenis Pekerjaan
-        $xml = str_replace(' / [SESUAI PAKET]', '', $xml);
-
-        // Lokasi
-        $xml = str_replace('[LOKASI]', $lokasi, $xml);
 
         // Tanggal Pelaksanaan
         $xml = str_replace('[TANGGAL MULAI]', $tglMulai, $xml);
@@ -268,5 +273,62 @@ class RabController extends Controller
         $safeFilename = 'Berita_Acara_Serah_Terima_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $nomorUrut) . '.docx';
 
         return response()->download($tempFile, $safeFilename)->deleteFileAfterSend(true);
+    }
+
+    protected function renderBorderlessTable(array $rows, int $w1 = 2500, int $w2 = 200, int $w3 = 5940): string
+    {
+        $total = $w1 + $w2 + $w3;
+        $out = '<w:tbl>'
+            . '<w:tblPr>'
+            . '<w:tblW w:w="' . $total . '" w:type="dxa"/>'
+            . '<w:tblLayout w:type="fixed"/>'
+            . '<w:tblBorders>'
+            . '<w:top w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:left w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:bottom w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:right w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:insideH w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '<w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/>'
+            . '</w:tblBorders>'
+            . '<w:tblCellMar>'
+            . '<w:top w:w="30" w:type="dxa"/>'
+            . '<w:bottom w:w="30" w:type="dxa"/>'
+            . '<w:left w:w="20" w:type="dxa"/>'
+            . '<w:right w:w="20" w:type="dxa"/>'
+            . '</w:tblCellMar>'
+            . '</w:tblPr>'
+            . '<w:tblGrid>'
+            . '<w:gridCol w:w="' . $w1 . '"/>'
+            . '<w:gridCol w:w="' . $w2 . '"/>'
+            . '<w:gridCol w:w="' . $w3 . '"/>'
+            . '</w:tblGrid>';
+
+        foreach ($rows as $r) {
+            $l = $r[0];
+            $v = $r[1];
+            $out .= '<w:tr>'
+                . '<w:trPr><w:cantSplit/></w:trPr>'
+                . '<w:tc>'
+                . '<w:tcPr><w:tcW w:w="' . $w1 . '" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'
+                . '<w:p><w:pPr><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/></w:pPr>'
+                . '<w:r><w:t>' . $l . '</w:t></w:r>'
+                . '</w:p>'
+                . '</w:tc>'
+                . '<w:tc>'
+                . '<w:tcPr><w:tcW w:w="' . $w2 . '" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'
+                . '<w:p><w:pPr><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/></w:pPr>'
+                . '<w:r><w:t>:</w:t></w:r>'
+                . '</w:p>'
+                . '</w:tc>'
+                . '<w:tc>'
+                . '<w:tcPr><w:tcW w:w="' . $w3 . '" w:type="dxa"/><w:vAlign w:val="top"/></w:tcPr>'
+                . '<w:p><w:pPr><w:spacing w:before="20" w:after="20" w:line="240" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr>'
+                . '<w:r><w:t>' . $v . '</w:t></w:r>'
+                . '</w:p>'
+                . '</w:tc>'
+                . '</w:tr>';
+        }
+        $out .= '</w:tbl>';
+        return $out;
     }
 }
