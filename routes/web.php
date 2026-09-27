@@ -44,6 +44,8 @@ Route::prefix('dashboard')->middleware(['auth', \App\Http\Middleware\CheckKecama
     Volt::route('/stock-opname', 'stock-opname.index')->name('stock-opname.index');
     Volt::route('/settings', 'settings')->name('settings');
     Volt::route('/rab', 'rab.index')->name('rab.index');
+    Route::get('/rab/{rab}/download-spt', [\App\Http\Controllers\RabController::class, 'downloadSpt'])->name('rab.download-spt');
+    Route::get('/rab/{rab}/download-bast', [\App\Http\Controllers\RabController::class, 'downloadBast'])->name('rab.download-bast');
     Route::get('/laporan/print-riwayat/{id}', [App\Http\Controllers\ReportController::class, 'printRiwayat'])->name('laporan.print-riwayat');
     Route::get('/pengaturan', fn() => view('admin.settings'))->name('settings_alias');
 });

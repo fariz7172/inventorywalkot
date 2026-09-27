@@ -3,15 +3,22 @@
 use App\Models\Rab;
 use App\Models\DeliveryOrder;
 use App\Models\Kecamatan;
-use function Livewire\Volt\{state, computed, layout, with};
+use Livewire\WithFileUploads;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Illuminate\Support\Facades\Storage;
+use function Livewire\Volt\{state, computed, layout, with, uses};
 
 layout('layouts.admin');
+uses([WithFileUploads::class]);
 
 state([
     'selectedKecamatanId' => '',
     'selectedRabId' => '',
     'selectedMonth' => date('n'),
     'selectedYear' => date('Y'),
+    'showBastModal' => false,
+    'bastPhotos' => [],
 ]);
 
 $kecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->get());
@@ -160,6 +167,60 @@ $exportExcel = function() {
     );
 };
 
+$openBastModal = function() {
+    $this->bastPhotos = [];
+    $this->resetErrorBag();
+    $this->showBastModal = true;
+};
+
+$closeBastModal = function() {
+    $this->showBastModal = false;
+    $this->bastPhotos = [];
+    $this->resetErrorBag();
+};
+
+$removeBastPhoto = function($index) {
+    if (isset($this->bastPhotos[$index])) {
+        unset($this->bastPhotos[$index]);
+        $this->bastPhotos = array_values($this->bastPhotos);
+    }
+};
+
+$downloadBast = function() {
+    $this->validate([
+        'bastPhotos' => 'required|array|min:3',
+        'bastPhotos.*' => 'image|max:10240',
+    ], [
+        'bastPhotos.required' => 'Wajib mengunggah minimal 3 foto dokumentasi pekerjaan.',
+        'bastPhotos.min' => 'Wajib mengunggah minimal 3 foto dokumentasi pekerjaan (saat ini baru ' . count($this->bastPhotos) . ' foto).',
+        'bastPhotos.*.image' => 'Semua file harus berupa format gambar (JPG, PNG, JPEG, WEBP).',
+        'bastPhotos.*.max' => 'Ukuran setiap gambar maksimal 10MB.',
+    ]);
+
+    $rab = Rab::find($this->selectedRabId);
+    if (!$rab) {
+        session()->flash('error', 'Data RAB tidak ditemukan.');
+        return;
+    }
+
+    // Simpan foto bukti BAST ke storage public (dikonversi ke format webp kualitas 80%)
+    $manager = new ImageManager(new Driver());
+    foreach ($this->bastPhotos as $photo) {
+        $image = $manager->read($photo->getRealPath());
+        $webp = $image->toWebp(80);
+        $fileName = 'bast_' . $rab->id . '_' . uniqid() . '.webp';
+        Storage::disk('public')->put('bast_photos/' . $fileName, (string) $webp);
+    }
+
+    $controller = new \App\Http\Controllers\RabController();
+    $response = $controller->downloadBast($rab);
+
+    $this->showBastModal = false;
+    $this->bastPhotos = [];
+
+    return $response;
+};
+
 ?>
 
 <div class="max-w-[100vw] overflow-hidden flex flex-col h-full">
@@ -272,7 +333,11 @@ $exportExcel = function() {
                 <h2 class="font-black text-gray-800 text-lg uppercase tracking-wider">LOKASI: {{ $this->reportData['rab']->lokasi }}</h2>
                 <p class="text-xs font-bold text-gray-500 mt-1">PERIODE: {{ strtoupper($months[$selectedMonth]) }} {{ $selectedYear }}</p>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
+                <button wire:click="openBastModal" class="text-xs font-bold text-white bg-blue-600 border border-blue-700 px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Download BAST
+                </button>
                 <button wire:click="exportExcel" class="text-xs font-bold text-white bg-green-600 border border-green-700 px-4 py-2 rounded-xl hover:bg-green-700 transition-colors flex items-center gap-2 shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     Export Excel
@@ -439,6 +504,98 @@ $exportExcel = function() {
                 </div>
 
             </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal Upload Foto & Download BAST --}}
+    @if($showBastModal && $this->reportData)
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" wire:click="closeBastModal"></div>
+        <div class="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl p-6 md:p-8 animate-fade-in-up max-h-[90vh] overflow-y-auto">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-900">Download Berita Acara (BAST)</h2>
+                        <p class="text-xs text-gray-500">{{ $this->reportData['rab']->lokasi }}</p>
+                    </div>
+                </div>
+                <button type="button" wire:click="closeBastModal" class="text-gray-400 hover:text-gray-600 p-1.5 rounded-xl hover:bg-gray-100 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-3.5 mb-4 text-xs text-blue-800">
+                <div class="flex items-center gap-2 font-bold mb-1">
+                    <svg class="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Ketentuan Pengunduhan BAST:</span>
+                </div>
+                <p class="text-[11px] text-blue-700 leading-relaxed ml-6">
+                    Wajib mengunggah minimal <strong>3 foto dokumentasi pekerjaan</strong> sebelum berkas Word Berita Acara Serah Terima dapat diunduh.
+                </p>
+            </div>
+
+            <form wire:submit="downloadBast" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1.5">
+                        Unggah Foto Dokumentasi Pekerjaan <span class="text-red-500">* (Min. 3 Foto)</span>
+                    </label>
+                    
+                    <input type="file" wire:model="bastPhotos" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 border border-dashed border-gray-300 rounded-2xl p-3 transition-all cursor-pointer">
+                    
+                    <div wire:loading wire:target="bastPhotos" class="text-xs text-blue-600 font-bold mt-2 flex items-center gap-1.5">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>Sedang mengunggah dan memproses foto...</span>
+                    </div>
+
+                    @error('bastPhotos') <p class="text-xs text-red-500 font-bold mt-1.5">{{ $message }}</p> @enderror
+                    @error('bastPhotos.*') <p class="text-xs text-red-500 font-bold mt-1.5">{{ $message }}</p> @enderror
+                </div>
+
+                {{-- Thumbnail Previews --}}
+                @if (!empty($bastPhotos))
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-gray-600">Foto Terpilih:</span>
+                            <span class="font-bold {{ count($bastPhotos) >= 3 ? 'text-emerald-600' : 'text-amber-600' }}">
+                                {{ count($bastPhotos) }} / 3 Foto {{ count($bastPhotos) >= 3 ? '✓ (Lengkap)' : '(Kurang ' . (3 - count($bastPhotos)) . ' foto lagi)' }}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1 bg-gray-50 rounded-2xl border border-gray-100">
+                            @foreach($bastPhotos as $index => $photo)
+                            <div class="relative group rounded-xl overflow-hidden border border-gray-200 aspect-square bg-gray-200">
+                                <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button type="button" wire:click="removeBastPhoto({{ $index }})" class="bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg transition-transform hover:scale-110" title="Hapus Foto">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                                <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                                    #{{ $index + 1 }}
+                                </span>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
+
+                <div class="pt-3 flex gap-3">
+                    <button type="button" wire:click="closeBastModal" class="flex-1 bg-gray-100 text-gray-600 py-3 rounded-2xl font-bold text-xs hover:bg-gray-200 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            {{ count($bastPhotos) < 3 ? 'disabled' : '' }}
+                            wire:loading.attr="disabled"
+                            class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold text-xs shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <span wire:loading.remove wire:target="downloadBast">Download BAST (.docx)</span>
+                        <span wire:loading wire:target="downloadBast">Menyiapkan Dokumen...</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
     @endif

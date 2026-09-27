@@ -9,7 +9,7 @@ class Rab extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['lokasi', 'kecamatan_id', 'is_locked'];
+    protected $fillable = ['lokasi', 'nomor_spt', 'kecamatan_id', 'user_id', 'is_locked'];
 
     public function materials()
     {
@@ -19,5 +19,10 @@ class Rab extends Model
     public function kecamatan()
     {
         return $this->belongsTo(Kecamatan::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

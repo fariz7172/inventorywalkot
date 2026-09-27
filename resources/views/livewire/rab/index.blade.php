@@ -17,6 +17,7 @@ state([
     'showModal' => false,
     'editingRab' => null,
     'lokasi' => '',
+    'nomor_spt' => '',
     'kecamatan_id' => '',
     'search' => '',
     
@@ -32,7 +33,7 @@ on(['global-search' => function($search) {
 }]);
 
 $rabs = computed(function() {
-    $query = Rab::withCount('materials')->with('kecamatan');
+    $query = Rab::withCount('materials')->with(['kecamatan', 'user']);
     
     $userKecamatanId = auth()->user()->kecamatan_id;
     if ($userKecamatanId) {
@@ -40,7 +41,10 @@ $rabs = computed(function() {
     }
     
     if ($this->search) {
-        $query->where('lokasi', 'like', '%' . $this->search . '%');
+        $query->where(function($q) {
+            $q->where('lokasi', 'like', '%' . $this->search . '%')
+              ->orWhere('nomor_spt', 'like', '%' . $this->search . '%');
+        });
     }
     return $query->get();
 });
@@ -50,6 +54,8 @@ $allKecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->g
 
 $openCreate = function() {
     $this->reset(['editingRab', 'lokasi', 'kecamatan_id']);
+    $nextId = (Rab::max('id') ?? 0) + 1;
+    $this->nomor_spt = $nextId . '/KG.II.OO';
     $this->showModal = true;
 };
 
@@ -66,6 +72,7 @@ $save = function() {
     
     $rules = [
         'lokasi' => 'required|string|max:255',
+        'nomor_spt' => 'nullable|string|max:100',
     ];
     
     if (!$userKecamatanId) {
@@ -85,13 +92,18 @@ $save = function() {
         }
         $rabToEdit->update([
             'lokasi' => $this->lokasi,
+            'nomor_spt' => $this->nomor_spt,
             'kecamatan_id' => $finalKecamatanId,
         ]);
         session()->flash('message', 'Data RAB berhasil diperbarui!');
     } else {
+        $nextId = (Rab::max('id') ?? 0) + 1;
+        $spt = $this->nomor_spt ?: ($nextId . '/KG.II.OO');
         Rab::create([
             'lokasi' => $this->lokasi,
+            'nomor_spt' => $spt,
             'kecamatan_id' => $finalKecamatanId,
+            'user_id' => auth()->id(),
             'is_locked' => true,
         ]);
         session()->flash('message', 'Data RAB baru berhasil ditambahkan dan berstatus terkunci!');
@@ -106,6 +118,7 @@ $edit = function(Rab $rab) {
     }
     $this->editingRab = $rab->toArray();
     $this->lokasi = $rab->lokasi;
+    $this->nomor_spt = $rab->nomor_spt ?: ($rab->id . '/KG.II.OO');
     $this->kecamatan_id = $rab->kecamatan_id;
     $this->showModal = true;
 };
@@ -310,11 +323,15 @@ $saveMaterials = function() {
                     </div>
                 </div>
                 
-                <div class="flex items-center gap-2 mb-1">
-                    <h3 class="text-sm font-bold text-gray-400">ID: #{{ $rab->id }}</h3>
-                    @if($rab->kecamatan)
-                        <span class="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">{{ $rab->kecamatan->nama_kecamatan }}</span>
-                    @endif
+                <div class="flex items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="px-2.5 py-1 rounded-lg bg-accent/10 text-accent font-mono font-bold text-xs tracking-wide">
+                            SPT: {{ $rab->nomor_spt ?: ($rab->id . '/KG.II.OO') }}
+                        </span>
+                        @if($rab->kecamatan)
+                            <span class="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold text-gray-500 uppercase">{{ $rab->kecamatan->nama_kecamatan }}</span>
+                        @endif
+                    </div>
                     @if($rab->is_locked)
                         <span class="px-2 py-0.5 rounded-md bg-red-100 text-[10px] font-bold text-red-600 flex items-center gap-1 uppercase">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
@@ -334,25 +351,32 @@ $saveMaterials = function() {
                     <span class="text-sm font-black text-accent">{{ $rab->materials_count }} Material</span>
                 </div>
                 
-                <div class="flex items-center gap-2 mt-4">
-                    <button wire:click="openManageMaterial({{ $rab->id }})" class="flex-1 bg-accent/10 text-accent font-bold text-xs py-2 rounded-xl hover:bg-accent hover:text-white transition-colors flex items-center justify-center gap-1">
+                <div class="flex items-center gap-2 mt-4 flex-wrap">
+                    <button wire:click="openManageMaterial({{ $rab->id }})" class="flex-1 min-w-[120px] bg-accent/10 text-accent font-bold text-xs py-2 px-3 rounded-xl hover:bg-accent hover:text-white transition-colors flex items-center justify-center gap-1">
                         @if(auth()->user()->hasRole('gudang') || ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang'])))
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                            Lihat Detail RAB
+                            Lihat Detail
                         @else
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                             Kelola Stok
                         @endif
                     </button>
 
+                    <a href="{{ route('rab.download-spt', $rab->id) }}" title="Download Dokumen SPT (Word)" class="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-bold text-xs py-2 px-3 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>Download SPT</span>
+                    </a>
+
                     @hasanyrole('superadmin|sudin|kepala_gudang')
-                    <button wire:click="toggleLock({{ $rab->id }})" class="flex-1 {{ $rab->is_locked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-red-50 text-red-600 hover:bg-red-600' }} font-bold text-xs py-2 rounded-xl hover:text-white transition-colors flex items-center justify-center gap-1">
+                    <button wire:click="toggleLock({{ $rab->id }})" class="{{ $rab->is_locked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-red-50 text-red-600 hover:bg-red-600' }} font-bold text-xs py-2 px-3 rounded-xl hover:text-white transition-colors flex items-center justify-center gap-1">
                         @if($rab->is_locked)
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/></svg>
                         Buka Kunci
                         @else
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                        Kunci RAB
+                        Kunci
                         @endif
                     </button>
                     @endhasanyrole
@@ -368,9 +392,16 @@ $saveMaterials = function() {
         <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" wire:click="closeModal"></div>
         <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up">
             <h2 class="text-xl font-bold text-gray-900 mb-2">{{ $editingRab ? 'Edit RAB' : 'Tambah RAB Baru' }}</h2>
-            <p class="text-xs text-gray-500 mb-6">Masukkan data lokasi untuk RAB.</p>
+            <p class="text-xs text-gray-500 mb-6">Masukkan data lokasi dan nomor SPT untuk RAB.</p>
             
             <form wire:submit="save" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Nomor SPT</label>
+                    <input type="text" wire:model="nomor_spt" placeholder="Contoh: 71/KG.II.OO" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
+                    <p class="text-[10px] text-gray-400 mt-1 ml-1">Format default: [ID]/KG.II.OO</p>
+                    @error('nomor_spt') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+
                 <div>
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Lokasi</label>
                     <input type="text" wire:model="lokasi" placeholder="Contoh: Gedung A, Proyek B" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">

@@ -11,6 +11,7 @@ state([
     'showModal' => false,
     'editingUser' => null,
     'name' => '',
+    'nip' => '',
     'email' => '',
     'password' => '',
     'selected_role' => 'gudang',
@@ -20,13 +21,14 @@ $users = computed(fn() => User::with('roles')->get());
 $roles = computed(fn() => Role::all());
 
 $openCreate = function() {
-    $this->reset(['editingUser', 'name', 'email', 'password', 'selected_role']);
+    $this->reset(['editingUser', 'name', 'nip', 'email', 'password', 'selected_role']);
     $this->showModal = true;
 };
 
 $saveUser = function() {
     $rules = [
         'name' => 'required|string|max:255',
+        'nip' => 'nullable|string|max:50',
         'email' => 'required|email|unique:users,email,' . ($this->editingUser ? $this->editingUser['id'] : 'NULL'),
         'selected_role' => 'required|exists:roles,name',
     ];
@@ -41,6 +43,7 @@ $saveUser = function() {
         $user = User::find($this->editingUser['id']);
         $user->update([
             'name' => $this->name,
+            'nip' => $this->nip,
             'email' => $this->email,
         ]);
         if ($this->password) {
@@ -51,6 +54,7 @@ $saveUser = function() {
     } else {
         $user = User::create([
             'name' => $this->name,
+            'nip' => $this->nip,
             'email' => $this->email,
             'password' => Hash::make($this->password),
         ]);
@@ -64,6 +68,7 @@ $saveUser = function() {
 $editUser = function(User $user) {
     $this->editingUser = $user->toArray();
     $this->name = $user->name;
+    $this->nip = $user->nip ?? '';
     $this->email = $user->email;
     $this->selected_role = $user->roles->first()?->name ?? 'gudang';
     $this->password = '';
@@ -113,6 +118,7 @@ $deleteUser = function(User $user) {
                 <thead>
                     <tr class="bg-warm/40 border-b border-warm/60 text-gray-500 font-bold uppercase text-[11px]">
                         <th class="text-left px-6 py-4">Nama</th>
+                        <th class="text-left px-6 py-4">NIP / NRK</th>
                         <th class="text-left px-6 py-4">Email</th>
                         <th class="text-center px-6 py-4">Role</th>
                         <th class="text-center px-6 py-4">Aksi</th>
@@ -128,6 +134,11 @@ $deleteUser = function(User $user) {
                                 </div>
                                 <span class="font-bold text-gray-800">{{ $u->name }}</span>
                             </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="font-mono text-xs font-semibold {{ $u->nip ? 'text-gray-700 bg-gray-100 px-2.5 py-1 rounded-lg' : 'text-gray-400 italic' }}">
+                                {{ $u->nip ?: '-' }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 text-gray-600">{{ $u->email }}</td>
                         <td class="px-6 py-4 text-center">
@@ -178,6 +189,12 @@ $deleteUser = function(User $user) {
                 <div>
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Nama Lengkap</label>
                     <input type="text" wire:model="name" placeholder="John Doe" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
+                    @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">NIP / NRK</label>
+                    <input type="text" wire:model="nip" placeholder="Contoh: 198001012005011001" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
+                    @error('nip') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Email</label>
