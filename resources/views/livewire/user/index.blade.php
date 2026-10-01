@@ -3,6 +3,7 @@
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use function Livewire\Volt\{state, computed, layout};
 
 layout('layouts.admin');
@@ -14,14 +15,16 @@ state([
     'nip' => '',
     'email' => '',
     'password' => '',
-    'selected_role' => 'gudang',
+    'selected_role' => 'seksi_pompa',
 ]);
 
 $users = computed(fn() => User::with('roles')->get());
 $roles = computed(fn() => Role::all());
 
 $openCreate = function() {
-    $this->reset(['editingUser', 'name', 'nip', 'email', 'password', 'selected_role']);
+    $this->reset(['editingUser', 'name', 'nip', 'email', 'password']);
+    $this->selected_role = 'seksi_pompa';
+    $this->resetErrorBag();
     $this->showModal = true;
 };
 
@@ -29,7 +32,11 @@ $saveUser = function() {
     $rules = [
         'name' => 'required|string|max:255',
         'nip' => 'nullable|string|max:50',
-        'email' => 'required|email|unique:users,email,' . ($this->editingUser ? $this->editingUser['id'] : 'NULL'),
+        'email' => [
+            'required',
+            'email',
+            Rule::unique('users', 'email')->ignore($this->editingUser['id'] ?? null),
+        ],
         'selected_role' => 'required|exists:roles,name',
     ];
 
@@ -37,32 +44,48 @@ $saveUser = function() {
         $rules['password'] = 'required|min:6';
     }
 
-    $this->validate($rules);
+    $messages = [
+        'name.required' => 'Nama lengkap wajib diisi.',
+        'email.required' => 'Email wajib diisi.',
+        'email.email' => 'Format email tidak valid.',
+        'email.unique' => 'Email sudah digunakan oleh akun lain.',
+        'password.required' => 'Password wajib diisi untuk user baru.',
+        'password.min' => 'Password minimal harus 6 karakter.',
+        'selected_role.required' => 'Silakan pilih salah satu peran/role.',
+        'selected_role.exists' => 'Role yang dipilih tidak valid di sistem.',
+    ];
 
-    if ($this->editingUser) {
-        $user = User::find($this->editingUser['id']);
-        $user->update([
-            'name' => $this->name,
-            'nip' => $this->nip,
-            'email' => $this->email,
-        ]);
-        if ($this->password) {
-            $user->update(['password' => Hash::make($this->password)]);
+    $this->validate($rules, $messages);
+
+    try {
+        if ($this->editingUser) {
+            $user = User::findOrFail($this->editingUser['id']);
+            $user->update([
+                'name' => $this->name,
+                'nip' => $this->nip,
+                'email' => $this->email,
+            ]);
+            if (!empty($this->password)) {
+                $user->update(['password' => Hash::make($this->password)]);
+            }
+            $user->syncRoles([$this->selected_role]);
+            session()->flash('message', 'User berhasil diperbarui!');
+        } else {
+            $user = User::create([
+                'name' => $this->name,
+                'nip' => $this->nip,
+                'email' => $this->email,
+                'password' => Hash::make($this->password),
+            ]);
+            $user->assignRole($this->selected_role);
+            session()->flash('message', 'User baru berhasil dibuat!');
         }
-        $user->syncRoles($this->selected_role);
-        session()->flash('message', 'User berhasil diperbarui!');
-    } else {
-        $user = User::create([
-            'name' => $this->name,
-            'nip' => $this->nip,
-            'email' => $this->email,
-            'password' => Hash::make($this->password),
-        ]);
-        $user->assignRole($this->selected_role);
-        session()->flash('message', 'User baru berhasil dibuat!');
-    }
 
-    $this->showModal = false;
+        $this->showModal = false;
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error('Error saving user: ' . $e->getMessage());
+        session()->flash('error', 'Gagal menyimpan user: ' . $e->getMessage());
+    }
 };
 
 $editUser = function(User $user) {
@@ -70,8 +93,9 @@ $editUser = function(User $user) {
     $this->name = $user->name;
     $this->nip = $user->nip ?? '';
     $this->email = $user->email;
-    $this->selected_role = $user->roles->first()?->name ?? 'gudang';
+    $this->selected_role = $user->roles->first()?->name ?? 'seksi_pompa';
     $this->password = '';
+    $this->resetErrorBag();
     $this->showModal = true;
 };
 
@@ -184,32 +208,43 @@ $deleteUser = function(User $user) {
     @if($showModal)
     <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" wire:click="$set('showModal', false)"></div>
-        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up">
+        <div class="relative bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl p-8 animate-fade-in-up max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold text-gray-900 mb-2">{{ $editingUser ? 'Edit User' : 'Tambah User Baru' }}</h2>
-            <p class="text-xs text-gray-500 mb-6">Berikan akses masuk ke sistem inventory.</p>
+            <p class="text-xs text-gray-500 mb-4">Berikan akses masuk ke sistem inventory.</p>
+
+            @if ($errors->any())
+                <div class="bg-red-50 border border-red-200 text-red-600 p-4 rounded-2xl text-xs font-semibold space-y-1 mb-4">
+                    <div class="font-bold text-red-700">Mohon periksa kesalahan berikut:</div>
+                    @foreach ($errors->all() as $error)
+                        <div>• {{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
             
             <form wire:submit="saveUser" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Nama Lengkap</label>
-                    <input type="text" wire:model="name" placeholder="John Doe" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
-                    @error('name') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Nama Lengkap</label>
+                    <input type="text" wire:model="name" placeholder="John Doe" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border focus:ring-2 focus:ring-accent/20 outline-none {{ $errors->has('name') ? 'border-red-300' : 'border-transparent' }}">
+                    @error('name') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">NIP / NRK</label>
-                    <input type="text" wire:model="nip" placeholder="Contoh: 198001012005011001" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
-                    @error('nip') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">NIP / NRK</label>
+                    <input type="text" wire:model="nip" placeholder="Contoh: 198001012005011001" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border focus:ring-2 focus:ring-accent/20 outline-none {{ $errors->has('nip') ? 'border-red-300' : 'border-transparent' }}">
+                    @error('nip') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Email</label>
-                    <input type="email" wire:model="email" placeholder="john@example.com" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Email</label>
+                    <input type="email" wire:model="email" placeholder="john@example.com" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border focus:ring-2 focus:ring-accent/20 outline-none {{ $errors->has('email') ? 'border-red-300' : 'border-transparent' }}">
+                    @error('email') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Password {{ $editingUser ? '(Kosongkan jika tidak diubah)' : '' }}</label>
-                    <input type="password" wire:model="password" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border-none focus:ring-2 focus:ring-accent/20 outline-none">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Password {{ $editingUser ? '(Kosongkan jika tidak diubah)' : '(Minimal 6 karakter)' }}</label>
+                    <input type="password" wire:model="password" placeholder="••••••••" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border focus:ring-2 focus:ring-accent/20 outline-none {{ $errors->has('password') ? 'border-red-300' : 'border-transparent' }}">
+                    @error('password') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1.5 ml-1">Role / Peran</label>
-                    <div class="grid grid-cols-2 gap-3">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Role / Peran</label>
+                    <div class="grid grid-cols-2 gap-2.5">
                         @foreach($this->roles as $role)
                             @php
                                 $displayRoles = [
@@ -221,20 +256,30 @@ $deleteUser = function(User $user) {
                                     'pompa' => 'Seksi Pompa'
                                 ];
                                 $displayRoleName = $displayRoles[$role->name] ?? $role->name;
+                                $isSelected = ($selected_role === $role->name);
                             @endphp
-                        <label class="relative flex items-center justify-center p-3 rounded-2xl bg-base cursor-pointer hover:bg-accent/5 transition-all border-2 {{ $selected_role === $role->name ? 'border-accent bg-accent/5' : 'border-transparent' }}">
-                            <input type="radio" wire:model="selected_role" value="{{ $role->name }}" class="hidden">
-                            <span class="text-xs font-bold uppercase tracking-wider {{ $selected_role === $role->name ? 'text-accent' : 'text-gray-400' }}">
+                        <button 
+                            type="button" 
+                            wire:click="$set('selected_role', '{{ $role->name }}')" 
+                            class="relative flex items-center justify-center p-3 rounded-2xl cursor-pointer transition-all border-2 text-center {{ $isSelected ? 'border-accent bg-accent/10 shadow-sm' : 'border-gray-200/80 bg-base hover:bg-accent/5' }}">
+                            <span class="text-xs font-bold uppercase tracking-wider {{ $isSelected ? 'text-accent font-extrabold' : 'text-gray-500' }}">
                                 {{ $displayRoleName }}
                             </span>
-                        </label>
+                        </button>
                         @endforeach
                     </div>
+                    @error('selected_role') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
 
                 <div class="pt-4 flex gap-3">
-                    <button type="button" wire:click="$set('showModal', false)" class="flex-1 bg-gray-100 text-gray-500 py-3 rounded-2xl font-bold text-sm">Batal</button>
-                    <button type="submit" class="flex-1 bg-accent text-white py-3 rounded-2xl font-bold text-sm shadow-lg shadow-accent/20">Simpan User</button>
+                    <button type="button" wire:click="$set('showModal', false)" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-500 py-3 rounded-2xl font-bold text-sm transition-colors">Batal</button>
+                    <button type="submit" wire:loading.attr="disabled" class="flex-1 bg-accent hover:bg-accent-dark text-white py-3 rounded-2xl font-bold text-sm shadow-lg shadow-accent/20 flex items-center justify-center gap-2 disabled:opacity-50 transition-all">
+                        <span wire:loading.remove wire:target="saveUser">Simpan User</span>
+                        <span wire:loading wire:target="saveUser" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+                            Menyimpan...
+                        </span>
+                    </button>
                 </div>
             </form>
         </div>
