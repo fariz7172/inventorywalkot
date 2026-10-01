@@ -63,7 +63,7 @@ new class extends Component {
     {
         return [
             'deliveryOrders' => DeliveryOrder::query()
-                ->when(auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel'), function($q) {
+                ->when(auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa']), function($q) {
                     $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', auth()->user()->kecamatan_id)->pluck('lokasi');
                     $q->whereIn('lokasi', $lokasiKecamatan);
                 })
@@ -105,7 +105,7 @@ new class extends Component {
                 </svg>
                 Export Excel
             </button>
-            @hasanyrole('superadmin|sudin|kecamatan_admin|pemel|kepala_gudang|gudang')
+            @hasanyrole('superadmin|sudin|kecamatan_admin|pemel|seksi_pompa|pompa|kepala_gudang|gudang')
             <a href="/dashboard/surat-jalan/create" wire:navigate class="flex items-center gap-2 bg-accent text-white px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-accent-dark transition-all shadow-md shadow-accent/30">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
@@ -215,7 +215,7 @@ new class extends Component {
                                 </a>
                                 @php
                                     $canEdit = auth()->user()->hasRole('superadmin') || auth()->user()->hasRole('sudin') || 
-                                              ((auth()->user()->hasRole('pemel') || auth()->user()->hasRole('kecamatan_admin')) && in_array($order->status, ['draft', 'rejected']));
+                                              ((auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa']) || auth()->user()->hasRole('kecamatan_admin')) && in_array($order->status, ['draft', 'rejected']));
                                 @endphp
                                 @if($canEdit)
                                 <a href="/dashboard/surat-jalan/{{ $order->id }}/edit" wire:navigate class="w-8 h-8 rounded-lg hover:bg-amber-50 flex items-center justify-center transition-colors group" title="Edit Data">

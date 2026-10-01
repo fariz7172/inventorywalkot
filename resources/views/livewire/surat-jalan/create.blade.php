@@ -33,7 +33,7 @@ $remainingQuotas = computed(function() {
     }
 
     $query = Rab::with('materials')->where('lokasi', $this->lokasi);
-    if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
+    if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa'])) {
         $query->where('kecamatan_id', auth()->user()->kecamatan_id);
     }
     
@@ -60,7 +60,7 @@ $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
 $rabs = computed(function() {
     $query = Rab::has('materials')->orderBy('lokasi', 'asc');
     
-    if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
+    if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa'])) {
         if (auth()->user()->kecamatan_id) {
             $query->where('kecamatan_id', auth()->user()->kecamatan_id);
         } else {
@@ -101,8 +101,8 @@ $nextSuratJalanNo = computed(function() {
 });
 
 mount(function() {
-    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin') && !auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
-        abort(403, 'Akses Ditolak. Hanya Superadmin, Sudin, dan Admin Kecamatan yang dapat membuat Surat Jalan.');
+    if (!auth()->user()->hasRole('superadmin') && !auth()->user()->hasRole('sudin') && !auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa'])) {
+        abort(403, 'Akses Ditolak. Anda tidak memiliki izin untuk membuat Surat Jalan.');
     }
 });
 

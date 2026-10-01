@@ -20,6 +20,7 @@ class RoleAndUserSeeder extends Seeder
         $kepalaGudangRole = Role::firstOrCreate(['name' => 'kepala_gudang']);
         $sudinRole = Role::firstOrCreate(['name' => 'sudin']);
         $pemelRole = Role::firstOrCreate(['name' => 'pemel']);
+        $seksiPompaRole = Role::firstOrCreate(['name' => 'seksi_pompa']);
 
         // Membuat Akun Superadmin
         $superadmin = User::firstOrCreate(
@@ -70,5 +71,15 @@ class RoleAndUserSeeder extends Seeder
             ]
         );
         $pemel->assignRole($pemelRole);
+
+        // Membuat Akun Seksi Pompa
+        $pompa = User::firstOrCreate(
+            ['email' => 'pompa@gmail.com'],
+            [
+                'name' => 'Seksi Pompa',
+                'password' => Hash::make('password')
+            ]
+        );
+        $pompa->assignRole($seksiPompaRole);
     }
 }

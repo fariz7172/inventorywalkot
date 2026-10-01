@@ -364,7 +364,10 @@
                                 $displayRoles = [
                                     'superadmin' => 'Pengurus Barang',
                                     'kecamatan_admin' => 'Kasubag',
-                                    'sudin' => 'Kasudin'
+                                    'sudin' => 'Kasudin',
+                                    'pemel' => 'Pemeliharaan',
+                                    'seksi_pompa' => 'Seksi Pompa',
+                                    'pompa' => 'Seksi Pompa'
                                 ];
                                 $displayRoleName = $displayRoles[$roleName] ?? $roleName;
                             @endphp
@@ -445,10 +448,10 @@
                                                 ->whereDate('updated_at', \Carbon\Carbon::today())
                                                 ->orderBy('updated_at', 'desc')->take(5)->get();
                             }
-                            // Jika pemel/kecamatan admin: Hitung yang ditolak
-                            elseif (auth()->user()->hasRole('pemel') || auth()->user()->hasRole('kecamatan_admin')) {
+                            // Jika pemel/seksi pompa/kecamatan admin: Hitung yang ditolak
+                            elseif (auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa']) || auth()->user()->hasRole('kecamatan_admin')) {
                                 $query = \App\Models\DeliveryOrder::where('status', 'rejected');
-                                if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
+                                if (auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa'])) {
                                     $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', auth()->user()->kecamatan_id)->pluck('lokasi');
                                     $query->whereIn('lokasi', $lokasiKecamatan);
                                 }

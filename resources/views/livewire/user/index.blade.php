@@ -147,11 +147,14 @@ $deleteUser = function(User $user) {
                                     $displayRoles = [
                                         'superadmin' => 'Pengurus Barang',
                                         'kecamatan_admin' => 'Kasubag',
-                                        'sudin' => 'Kasudin'
+                                        'sudin' => 'Kasudin',
+                                        'pemel' => 'Pemeliharaan',
+                                        'seksi_pompa' => 'Seksi Pompa',
+                                        'pompa' => 'Seksi Pompa'
                                     ];
                                     $displayRoleName = $displayRoles[$role->name] ?? $role->name;
                                 @endphp
-                                <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {{ $role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : ($role->name === 'sudin' ? 'bg-purple-100 text-purple-600' : ($role->name === 'kepala_gudang' ? 'bg-blue-100 text-blue-600' : ($role->name === 'pemel' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'))) }}">
+                                <span class="inline-block px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider {{ $role->name === 'superadmin' ? 'bg-indigo-100 text-indigo-600' : ($role->name === 'sudin' ? 'bg-purple-100 text-purple-600' : ($role->name === 'kepala_gudang' ? 'bg-blue-100 text-blue-600' : ($role->name === 'pemel' ? 'bg-orange-100 text-orange-600' : (in_array($role->name, ['seksi_pompa', 'pompa']) ? 'bg-cyan-100 text-cyan-700' : 'bg-emerald-100 text-emerald-600')))) }}">
                                     {{ $displayRoleName }}
                                 </span>
                             @endforeach
@@ -212,7 +215,10 @@ $deleteUser = function(User $user) {
                                 $displayRoles = [
                                     'superadmin' => 'Pengurus Barang',
                                     'kecamatan_admin' => 'Kasubag',
-                                    'sudin' => 'Kasudin'
+                                    'sudin' => 'Kasudin',
+                                    'pemel' => 'Pemeliharaan',
+                                    'seksi_pompa' => 'Seksi Pompa',
+                                    'pompa' => 'Seksi Pompa'
                                 ];
                                 $displayRoleName = $displayRoles[$role->name] ?? $role->name;
                             @endphp

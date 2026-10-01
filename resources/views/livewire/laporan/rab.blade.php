@@ -26,7 +26,7 @@ $kecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->get(
 $rabs = computed(function() {
     $q = Rab::orderBy('lokasi', 'asc');
     
-    if (auth()->check() && auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasRole('pemel')) {
+    if (auth()->check() && auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa'])) {
         if (auth()->user()->kecamatan_id) {
             $q->where('kecamatan_id', auth()->user()->kecamatan_id);
         } else {
@@ -231,7 +231,7 @@ $downloadBast = function() {
         </div>
         
         <div class="flex flex-col md:flex-row md:flex-wrap items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-            @if(!auth()->user()->hasRole('kecamatan_admin') || auth()->user()->hasRole('pemel'))
+            @if(!auth()->user()->hasRole('kecamatan_admin') || auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa']))
             <select wire:model.live="selectedKecamatanId" class="bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20">
                 <option value="">-- Semua Kecamatan --</option>
                 <option value="null">-- Nota Dinas --</option>

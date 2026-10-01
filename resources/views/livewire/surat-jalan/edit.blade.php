@@ -64,7 +64,7 @@ mount(function(DeliveryOrder $order) {
     $user = auth()->user();
     $canEdit = $user->hasRole('superadmin') || $user->hasRole('sudin');
     
-    if (!$canEdit && ($user->hasRole('pemel') || $user->hasRole('kecamatan_admin'))) {
+    if (!$canEdit && ($user->hasAnyRole(['pemel', 'seksi_pompa', 'pompa']) || $user->hasRole('kecamatan_admin'))) {
         if ($order->status === 'draft' || $order->status === 'rejected') {
             $canEdit = true;
         }

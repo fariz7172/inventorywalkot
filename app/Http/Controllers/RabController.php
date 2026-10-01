@@ -63,11 +63,15 @@ class RabController extends Controller
         $penerimaName = htmlspecialchars($penerimaName, ENT_QUOTES, 'UTF-8');
         $penerimaNip = htmlspecialchars($penerimaNip, ENT_QUOTES, 'UTF-8');
 
-        // Jabatan sesuai Kecamatan / Dinas
-        $kecamatanName = $rab->kecamatan ? strtoupper($rab->kecamatan->nama_kecamatan) : '';
-        $jabatan = $kecamatanName 
-            ? "KEPALA SATUAN PELAKSANA KECAMATAN " . $kecamatanName 
-            : "KEPALA SEKSI PEMELIHARAAN DRAINASE";
+        // Jabatan sesuai Pembuat (Kecamatan / Seksi Pompa / Seksi Pemeliharaan)
+        $userCreator = $rab->user ?? (auth()->check() ? auth()->user() : null);
+        if ($userCreator && $userCreator->hasAnyRole(['seksi_pompa', 'pompa'])) {
+            $jabatan = "KEPALA SEKSI POMPA DAN PINTU AIR DRAINASE";
+        } elseif ($rab->kecamatan) {
+            $jabatan = "KEPALA SATUAN PELAKSANA KECAMATAN " . strtoupper($rab->kecamatan->nama_kecamatan);
+        } else {
+            $jabatan = "KEPALA SEKSI PEMELIHARAAN DRAINASE";
+        }
         $jabatan = htmlspecialchars($jabatan, ENT_QUOTES, 'UTF-8');
 
         // Tanggal Mulai (Tanggal dibuat RAB)
@@ -103,7 +107,7 @@ class RabController extends Controller
         // Ganti bagian Kepada dan Rincian Pekerjaan dengan Tabel Rapi (Borderless Table) agar sistematik, rata, dan tidak rusak saat wrap text
         $startMarker = 'MEMERINTAHKAN:</w:t></w:r></w:p>';
         $posStart = strpos($xml, $startMarker);
-        $endMarker = '<w:t xml:space="preserve">I. </w:t>';
+        $endMarker = 'Dokumen Teknis';
         $posEnd = strpos($xml, $endMarker);
         $pStartBeforeEnd = strrpos(substr($xml, 0, $posEnd), '<w:p ');
 
