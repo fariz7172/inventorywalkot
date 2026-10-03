@@ -47,31 +47,23 @@ class RabController extends Controller
         // Nama Pembuat / Penerima Perintah & NIP
         $penerimaName = '-';
         $penerimaNip = '-';
+        
+        // Cari user pembuat RAB atau user sesuai kecamatan
+        $targetUser = null;
         if (!empty($rab->user_id) && $rab->user) {
-            $penerimaName = $rab->user->name;
-            $penerimaNip = $rab->user->nip ?: '-';
-        } elseif ($rab->kecamatan_id) {
-            $userKec = User::where('kecamatan_id', $rab->kecamatan_id)->first();
-            if ($userKec) {
-                $penerimaName = $userKec->name;
-                $penerimaNip = $userKec->nip ?: '-';
-            }
+            $targetUser = $rab->user;
+        } elseif (!empty($rab->kecamatan_id)) {
+            $targetUser = User::where('kecamatan_id', $rab->kecamatan_id)->first();
         } elseif (auth()->check()) {
-            $penerimaName = auth()->user()->name;
-            $penerimaNip = auth()->user()->nip ?: '-';
+            $targetUser = auth()->user();
         }
+
+        $penerimaName = $targetUser ? $targetUser->name : '-';
+        $penerimaNip = ($targetUser && $targetUser->nip) ? $targetUser->nip : '-';
+        $jabatan = ($targetUser && !empty($targetUser->jabatan)) ? $targetUser->jabatan : '-';
+
         $penerimaName = htmlspecialchars($penerimaName, ENT_QUOTES, 'UTF-8');
         $penerimaNip = htmlspecialchars($penerimaNip, ENT_QUOTES, 'UTF-8');
-
-        // Jabatan sesuai Pembuat (Kecamatan / Seksi Pompa / Seksi Pemeliharaan)
-        $userCreator = $rab->user ?? (auth()->check() ? auth()->user() : null);
-        if ($userCreator && $userCreator->hasAnyRole(['seksi_pompa', 'pompa'])) {
-            $jabatan = "KEPALA SEKSI POMPA DAN PINTU AIR DRAINASE";
-        } elseif ($rab->kecamatan) {
-            $jabatan = "KEPALA SATUAN PELAKSANA KECAMATAN " . strtoupper($rab->kecamatan->nama_kecamatan);
-        } else {
-            $jabatan = "KEPALA SEKSI PEMELIHARAAN DRAINASE";
-        }
         $jabatan = htmlspecialchars($jabatan, ENT_QUOTES, 'UTF-8');
 
         // Tanggal Mulai (Tanggal dibuat RAB)
@@ -100,42 +92,60 @@ class RabController extends Controller
             $xml
         );
 
-        // Penggantian Placeholder dalam Template XML
+        // Penggantian Placeholder Header dan DPA dalam Template XML
         $xml = str_replace('[NOMOR SPT]', $nomorSpt, $xml);
         $xml = str_replace('[NAMA PEKERJAAN]', $lokasi, $xml);
         $xml = str_replace('[NAMA PEKERJAAN/KEGIATAN]', $lokasi, $xml);
-        // Ganti bagian Kepada dan Rincian Pekerjaan dengan Tabel Rapi (Borderless Table) agar sistematik, rata, dan tidak rusak saat wrap text
-        $startMarker = 'MEMERINTAHKAN:</w:t></w:r></w:p>';
-        $posStart = strpos($xml, $startMarker);
-        $endMarker = 'Dokumen Teknis';
-        $posEnd = strpos($xml, $endMarker);
-        $pStartBeforeEnd = strrpos(substr($xml, 0, $posEnd), '<w:p ');
+        $xml = str_replace('[NOMOR DPA]', '04/039/DPA/2026', $xml);
+        $xml = str_replace('[TANGGAL DPA]', '30 Desember 2026', $xml);
+        $xml = str_replace('[NOMOR SK SWAKELOLA]', '1445', $xml);
+        $xml = str_replace('[NOMOR SK SWAKELOLA] Tahun', '1445 Tahun', $xml);
 
-        if ($posStart !== false && $posEnd !== false && $pStartBeforeEnd !== false) {
-            $rowsKepada = [
-                ['Nama', $penerimaName],
-                ['NIP/NRK', $penerimaNip],
-                ['Jabatan', $jabatan],
-                ['Kedudukan', 'Ketua/Koordinator Tim Pelaksana Swakelola Tipe I'],
-            ];
+        // Cari blok 5 paragraf (mulai dari 'Kepada' sampai 'Tahun Anggaran') untuk digantikan dengan tabel borderless yang sangat rapi
+        $posMemerintahkan = strpos($xml, 'MEMERINTAHKAN:</w:t></w:r></w:p>');
+        if ($posMemerintahkan !== false) {
+            $startP = strpos($xml, '<w:p ', $posMemerintahkan);
+            $posTahun = strpos($xml, 'Tahun', $posMemerintahkan);
+            $endP = false;
+            if ($posTahun !== false) {
+                $closeP = strpos($xml, '</w:p>', $posTahun);
+                if ($closeP !== false) {
+                    $endP = $closeP + strlen('</w:p>');
+                }
+            }
 
-            $rowsData = [
-                ['Nama Program', '1.03.06 PROGRAM PENGELOLAAN DAN PENGEMBANGAN SISTEM DRAINASE'],
-                ['Nama Kegiatan', '1.03.06.1.01 Pengelolaan dan Pengembangan Sistem Drainase yang Terhubung Langsung dengan Sungai Lintas Daerah Kabupaten/Kota dan Kawasan Strategis Provinsi'],
-                ['Nama Subkegiatan', '1.03.06.1.01.0010 Operasi dan Pemeliharaan Sistem Drainase Perkotaan'],
-                ['Nomor/Kode Kegiatan', '1.03.06.1.01.0010.001 Operasi dan Pemeliharaan Sistem Drainase'],
-                ['Kode Rekening', '5.1.02.03.004.00024 Belanja Pemeliharaan Bangunan Air-Bangunan Air Irigasi-Bangunan Waduk Irigasi'],
-                ['Jenis Pekerjaan', 'Perbaikan dan Pengurasan Saluran'],
-                ['Lokasi', $lokasi],
-                ['Tahun Anggaran', $tahunAnggaran],
-            ];
+            if ($startP !== false && $endP !== false && $endP > $startP) {
+                $rowsKepada = [
+                    ['Nama', $penerimaName],
+                    ['NIP/NRK', $penerimaNip],
+                    ['Jabatan', $jabatan],
+                    ['Kedudukan', 'Ketua/Koordinator Tim Pelaksana Swakelola Tipe I'],
+                ];
 
-            $kepadaHeading = '<w:p><w:pPr><w:spacing w:before="120" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Kepada :</w:t></w:r></w:p>';
-            $dataHeading = '<w:p><w:pPr><w:spacing w:before="140" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Untuk melaksanakan pekerjaan Swakelola Tipe I dengan data sebagai berikut:</w:t></w:r></w:p>';
+                $namaProgram = '1.03.06 PROGRAM PENGELOLAAN DAN PENGEMBANGAN SISTEM DRAINASE';
+                $namaKegiatan = '1.03.06.1.01 Pengelolaan dan Pengembangan Sistem Drainase yang Terhubung Langsung dengan Sungai Lintas Daerah Kabupaten/Kota dan Kawasan Strategis Provinsi';
+                $namaSubkegiatan = '1.03.06.1.01.0010 Operasi dan Pemeliharaan Sistem Drainase Perkotaan';
+                $nomorKodeKegiatan = '1.03.06.1.01.0010.001 Operasi dan Pemeliharaan Sistem Drainase';
+                $kodeRekening = '5.1.02.03.004.00024 Belanja Pemeliharaan Bangunan Air-Bangunan Air Irigasi-Bangunan Waduk Irigasi';
 
-            $newChunk = $kepadaHeading . $this->renderBorderlessTable($rowsKepada) . $dataHeading . $this->renderBorderlessTable($rowsData);
+                $rowsData = [
+                    ['Nama Program', $namaProgram],
+                    ['Nama Kegiatan', $namaKegiatan],
+                    ['Nama Subkegiatan', $namaSubkegiatan],
+                    ['Nomor/Kode Kegiatan', $nomorKodeKegiatan],
+                    ['Kode Rekening', $kodeRekening],
+                    ['Jenis Pekerjaan', 'Perbaikan dan Pengurasan Saluran'],
+                    ['Lokasi', $lokasi],
+                    ['Tahun Anggaran', $tahunAnggaran],
+                ];
 
-            $xml = substr_replace($xml, $newChunk, $posStart + strlen($startMarker), $pStartBeforeEnd - ($posStart + strlen($startMarker)));
+                $kepadaHeading = '<w:p><w:pPr><w:spacing w:before="120" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Kepada :</w:t></w:r></w:p>';
+                $dataHeading = '<w:p><w:pPr><w:spacing w:before="140" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Untuk melaksanakan pekerjaan Swakelola Tipe I dengan data sebagai berikut:</w:t></w:r></w:p>';
+
+                $cleanTableSection = $kepadaHeading . $this->renderBorderlessTable($rowsKepada) . $dataHeading . $this->renderBorderlessTable($rowsData);
+
+                $xml = substr_replace($xml, $cleanTableSection, $startP, $endP - $startP);
+            }
         }
 
         // Tanggal Pelaksanaan

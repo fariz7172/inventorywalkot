@@ -13,6 +13,7 @@ state([
     'editingUser' => null,
     'name' => '',
     'nip' => '',
+    'jabatan' => '',
     'email' => '',
     'password' => '',
     'selected_role' => 'seksi_pompa',
@@ -22,7 +23,7 @@ $users = computed(fn() => User::with('roles')->get());
 $roles = computed(fn() => Role::all());
 
 $openCreate = function() {
-    $this->reset(['editingUser', 'name', 'nip', 'email', 'password']);
+    $this->reset(['editingUser', 'name', 'nip', 'jabatan', 'email', 'password']);
     $this->selected_role = 'seksi_pompa';
     $this->resetErrorBag();
     $this->showModal = true;
@@ -32,6 +33,7 @@ $saveUser = function() {
     $rules = [
         'name' => 'required|string|max:255',
         'nip' => 'nullable|string|max:50',
+        'jabatan' => 'nullable|string|max:255',
         'email' => [
             'required',
             'email',
@@ -63,6 +65,7 @@ $saveUser = function() {
             $user->update([
                 'name' => $this->name,
                 'nip' => $this->nip,
+                'jabatan' => $this->jabatan,
                 'email' => $this->email,
             ]);
             if (!empty($this->password)) {
@@ -74,6 +77,7 @@ $saveUser = function() {
             $user = User::create([
                 'name' => $this->name,
                 'nip' => $this->nip,
+                'jabatan' => $this->jabatan,
                 'email' => $this->email,
                 'password' => Hash::make($this->password),
             ]);
@@ -92,6 +96,7 @@ $editUser = function(User $user) {
     $this->editingUser = $user->toArray();
     $this->name = $user->name;
     $this->nip = $user->nip ?? '';
+    $this->jabatan = $user->jabatan ?? '';
     $this->email = $user->email;
     $this->selected_role = $user->roles->first()?->name ?? 'seksi_pompa';
     $this->password = '';
@@ -143,6 +148,7 @@ $deleteUser = function(User $user) {
                     <tr class="bg-warm/40 border-b border-warm/60 text-gray-500 font-bold uppercase text-[11px]">
                         <th class="text-left px-6 py-4">Nama</th>
                         <th class="text-left px-6 py-4">NIP / NRK</th>
+                        <th class="text-left px-6 py-4">Jabatan</th>
                         <th class="text-left px-6 py-4">Email</th>
                         <th class="text-center px-6 py-4">Role</th>
                         <th class="text-center px-6 py-4">Aksi</th>
@@ -162,6 +168,11 @@ $deleteUser = function(User $user) {
                         <td class="px-6 py-4">
                             <span class="font-mono text-xs font-semibold {{ $u->nip ? 'text-gray-700 bg-gray-100 px-2.5 py-1 rounded-lg' : 'text-gray-400 italic' }}">
                                 {{ $u->nip ?: '-' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="text-xs font-medium text-gray-700">
+                                {{ $u->jabatan ?: '-' }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-gray-600">{{ $u->email }}</td>
@@ -231,6 +242,11 @@ $deleteUser = function(User $user) {
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">NIP / NRK</label>
                     <input type="text" wire:model="nip" placeholder="Contoh: 198001012005011001" class="w-full bg-base rounded-2xl px-4 py-3 text-sm border focus:ring-2 focus:ring-accent/20 outline-none {{ $errors->has('nip') ? 'border-red-300' : 'border-transparent' }}">
                     @error('nip') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Jabatan</label>
+                    <input type="text" wire:model="jabatan" placeholder="Contoh: Kepala Satuan Pelaksana Kecamatan..." class="w-full bg-base rounded-2xl px-4 py-3 text-sm border focus:ring-2 focus:ring-accent/20 outline-none {{ $errors->has('jabatan') ? 'border-red-300' : 'border-transparent' }}">
+                    @error('jabatan') <span class="text-red-500 text-xs mt-1 block font-medium">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase mb-1.5 ml-1">Email</label>

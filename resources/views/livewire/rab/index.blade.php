@@ -3,7 +3,10 @@
 use App\Models\Rab;
 use App\Models\Material;
 use App\Models\Kecamatan;
+use App\Services\GeminiRabScannerService;
 use Livewire\WithFileUploads;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RabTemplateExport;
 use function Livewire\Volt\{state, computed, layout, on, uses};
@@ -26,6 +29,9 @@ state([
     'isViewOnly' => false,
     'managingRab' => null,
     'rabMaterials' => [],
+    'rabPhoto' => null,
+    'showPhotoPreviewModal' => false,
+    'previewPhotoUrl' => null,
 ]);
 
 on(['global-search' => function($search) {
@@ -128,6 +134,10 @@ $delete = function(Rab $rab) {
     if ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang'])) {
         abort(403, 'Akses Ditolak: RAB telah dikunci.');
     }
+    // Hapus file foto dokumen WebP jika ada
+    if ($rab->document_photo && \Illuminate\Support\Facades\Storage::disk('public')->exists($rab->document_photo)) {
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($rab->document_photo);
+    }
     $rab->delete();
     session()->flash('message', 'Data RAB berhasil dihapus.');
 };
@@ -219,6 +229,7 @@ $openManageMaterial = function(Rab $rab) {
     $this->isViewOnly = auth()->user()->hasRole('gudang') || ($rab->is_locked && !auth()->user()->hasAnyRole(['superadmin', 'sudin', 'kepala_gudang']));
     
     $this->managingRab = $rab;
+    $this->reset('rabPhoto');
     $this->rabMaterials = [];
     foreach ($rab->materials as $m) {
         $targetVolume = (float)$m->pivot->target_volume;
@@ -251,6 +262,158 @@ $addRabMaterial = function() {
 $removeRabMaterial = function($index) {
     unset($this->rabMaterials[$index]);
     $this->rabMaterials = array_values($this->rabMaterials);
+};
+
+$scanPhotoRab = function(GeminiRabScannerService $scanner) {
+    $this->validate([
+        'rabPhoto' => 'required|image|max:10240', // Max 10MB
+    ], [
+        'rabPhoto.required' => 'Silakan pilih foto dokumen terlebih dahulu.',
+        'rabPhoto.image' => 'File harus berupa gambar (JPG, PNG, WEBP).',
+        'rabPhoto.max' => 'Ukuran foto maksimal 10MB.',
+    ]);
+
+    try {
+        $extractedItems = $scanner->scanRabImage($this->rabPhoto->getRealPath());
+
+        if (empty($extractedItems)) {
+            session()->flash('import_message', 'Tidak ada data material yang terdeteksi dari foto.');
+            $this->reset('rabPhoto');
+            return;
+        }
+
+        // Ambil semua master material untuk pencocokan pintar (fuzzy & partial)
+        $allMaterials = Material::all();
+        $matchedCount = 0;
+        $unmatchedCount = 0;
+
+        // Bersihkan baris kosong default jika ada
+        $cleanMaterials = array_filter($this->rabMaterials, function($item) {
+            return !empty($item['material_id']) || !empty($item['target_volume']);
+        });
+
+        foreach ($extractedItems as $item) {
+            $rawName = trim($item['nama_material'] ?? '');
+            $volume = (float) ($item['volume'] ?? 0);
+            if (empty($rawName)) continue;
+
+            $normalizedRaw = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $rawName));
+
+            $matchedMaterial = null;
+            $bestSimilarity = 0;
+
+            // Ekstrak kata-kata kunci untuk pencocokan pintar (misal: "Besi Beton ø 10 mm" -> cari "BESI 10")
+            $rawWords = array_filter(explode(' ', strtolower(preg_replace('/[^a-zA-Z0-9\s]/', ' ', $rawName))));
+
+            foreach ($allMaterials as $m) {
+                $normalizedMaster = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $m->name));
+
+                // 1. Exact match
+                if ($normalizedRaw === $normalizedMaster) {
+                    $matchedMaterial = $m;
+                    break;
+                }
+
+                // 2. Partial match
+                if (str_contains($normalizedMaster, $normalizedRaw) || str_contains($normalizedRaw, $normalizedMaster)) {
+                    $matchedMaterial = $m;
+                    break;
+                }
+
+                // 3. Word-level intersection match (contoh: "besi" dan "10")
+                $masterWords = array_filter(explode(' ', strtolower(preg_replace('/[^a-zA-Z0-9\s]/', ' ', $m->name))));
+                $commonWords = array_intersect($rawWords, $masterWords);
+                // Singkirkan kata umum yang kurang spesifik
+                $meaningfulCommon = array_diff($commonWords, ['mm', 'cm', 'dan', 'atau', 'no', 'tipe', 'jenis']);
+                
+                if (count($meaningfulCommon) >= 2) {
+                    $matchedMaterial = $m;
+                    break;
+                }
+
+                // 4. Fuzzy similarity
+                similar_text($normalizedRaw, $normalizedMaster, $percent);
+                if ($percent > $bestSimilarity && $percent >= 65) {
+                    $bestSimilarity = $percent;
+                    $matchedMaterial = $m;
+                }
+            }
+
+            if ($matchedMaterial) {
+                // Cek apakah material sudah ada di list rabMaterials, jika ada update target_volume
+                $foundKey = false;
+                foreach ($cleanMaterials as $k => $existing) {
+                    if ($existing['material_id'] == $matchedMaterial->id) {
+                        $cleanMaterials[$k]['target_volume'] = $volume;
+                        $foundKey = true;
+                        break;
+                    }
+                }
+
+                if (!$foundKey) {
+                    $cleanMaterials[] = [
+                        'material_id' => $matchedMaterial->id,
+                        'material_name' => $matchedMaterial->name,
+                        'material_unit' => $matchedMaterial->unit,
+                        'target_volume' => $volume,
+                        'used_volume' => 0,
+                        'remaining_volume' => $volume
+                    ];
+                }
+                $matchedCount++;
+            } else {
+                // Tidak cocok dengan master data, tambahkan dengan material_id kosong agar user bisa pilih manual
+                $cleanMaterials[] = [
+                    'material_id' => '',
+                    'material_name' => "⚠️ Tidak Cocok: {$rawName}",
+                    'material_unit' => '',
+                    'target_volume' => $volume,
+                    'used_volume' => 0,
+                    'remaining_volume' => $volume
+                ];
+                $unmatchedCount++;
+            }
+        }
+
+        $this->rabMaterials = array_values($cleanMaterials);
+
+        // Convert foto ke format WebP dan simpan sebagai arsip permanen RAB
+        try {
+            $storageDir = storage_path('app/public/rab-documents');
+            if (!is_dir($storageDir)) {
+                mkdir($storageDir, 0755, true);
+            }
+
+            $fileName = 'rab_' . $this->managingRab->id . '_' . time() . '.webp';
+            $targetPath = $storageDir . '/' . $fileName;
+
+            // Optimasi resolusi dan kompresi ke format WebP via Intervention Image V3
+            $manager = new ImageManager(new Driver());
+            $img = $manager->read($this->rabPhoto->getRealPath());
+            $img->scaleDown(width: 1920); // Skala maksimal full HD agar hemat ukuran
+            $encoded = $img->toWebp(quality: 80);
+            $encoded->save($targetPath);
+
+            // Simpan path relatif ke database rabs
+            $relativePath = 'rab-documents/' . $fileName;
+            $this->managingRab->update(['document_photo' => $relativePath]);
+
+        } catch (\Exception $imgErr) {
+            \Illuminate\Support\Facades\Log::warning("Gagal mengonversi foto RAB ke WebP: " . $imgErr->getMessage());
+        }
+
+        $this->reset('rabPhoto');
+
+        $msg = "AI Scan Selesai: {$matchedCount} material cocok & foto dokumen berhasil disimpan (WebP).";
+        if ($unmatchedCount > 0) {
+            $msg .= " ({$unmatchedCount} material perlu dipilih manual).";
+        }
+        session()->flash('import_message', $msg);
+
+    } catch (\Exception $e) {
+        session()->flash('import_message', 'Gagal memproses foto: ' . $e->getMessage());
+        $this->reset('rabPhoto');
+    }
 };
 
 $saveMaterials = function() {
@@ -369,6 +532,15 @@ $saveMaterials = function() {
                         <span>Download SPT</span>
                     </a>
 
+                    @if($rab->document_photo)
+                    <a href="{{ asset('storage/' . $rab->document_photo) }}" target="_blank" title="Lihat Foto Dokumen Fisik (WebP)" class="bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white font-bold text-xs py-2 px-3 rounded-xl transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Foto Arsip</span>
+                    </a>
+                    @endif
+
                     @hasanyrole('superadmin|sudin|kepala_gudang')
                     <button wire:click="toggleLock({{ $rab->id }})" class="{{ $rab->is_locked ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600' : 'bg-red-50 text-red-600 hover:bg-red-600' }} font-bold text-xs py-2 px-3 rounded-xl hover:text-white transition-colors flex items-center justify-center gap-1">
                         @if($rab->is_locked)
@@ -447,6 +619,36 @@ $saveMaterials = function() {
             </div>
             
             @if(!$isViewOnly)
+            {{-- AI Camera / Photo Scanner Tool --}}
+            <div class="mb-4 bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-transparent p-4 rounded-2xl border border-purple-200/60 flex flex-col sm:flex-row gap-4 items-end justify-between">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider bg-purple-600 text-white rounded-md shadow-sm">AI Vision</span>
+                        <h3 class="text-xs font-bold text-gray-800">Scan dari Foto / Kamera Dokumen</h3>
+                        @if($managingRab && $managingRab->document_photo)
+                            <a href="{{ asset('storage/' . $managingRab->document_photo) }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-lg transition-colors border border-purple-300">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                <span>Lihat Arsip Foto (WebP)</span>
+                            </a>
+                        @endif
+                    </div>
+                    <p class="text-[10px] text-gray-500">Foto nota/lembar print RAB dari HP atau upload gambar untuk ekstraksi otomatis.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-end sm:items-center gap-2 w-full sm:w-auto">
+                    <div class="w-full sm:w-auto">
+                        <input type="file" wire:model="rabPhoto" accept="image/*" capture="environment" class="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-600/10 file:text-purple-700 hover:file:bg-purple-600 hover:file:text-white transition-all cursor-pointer">
+                        <div wire:loading wire:target="rabPhoto" class="text-[10px] text-purple-600 mt-1 animate-pulse font-medium">Mengunggah foto...</div>
+                        @error('rabPhoto') <p class="text-[9px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
+                    </div>
+                    <button type="button" wire:click="scanPhotoRab" wire:loading.attr="disabled" class="w-full sm:w-auto text-xs font-bold text-white bg-purple-600 px-4 py-2 rounded-xl hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 shadow-md shadow-purple-600/20 disabled:opacity-50">
+                        <svg wire:loading.remove wire:target="scanPhotoRab" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        <svg wire:loading wire:target="scanPhotoRab" class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span wire:loading.remove wire:target="scanPhotoRab">Scan AI</span>
+                        <span wire:loading wire:target="scanPhotoRab">Menganalisa AI...</span>
+                    </button>
+                </div>
+            </div>
+
             {{-- Excel Tools --}}
             <div class="mb-6 bg-base/50 p-4 rounded-2xl border border-warm/40 flex flex-col sm:flex-row gap-4 items-end justify-between">
                 <div>
