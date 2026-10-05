@@ -161,8 +161,15 @@ class RabController extends Controller
             $xml = substr_replace($xml, 'NIP ' . $penerimaNip, $posPenerimaNip, strlen('NIP [NIP]'));
         }
 
-        // Ganti NIP pemberi perintah yang tersisa
-        $xml = str_replace('[NIP]', '-', $xml);
+        // NIP Pemberi Perintah (Heria Suwandi)
+        $nipHeriaSuwandi = '197101272006041009';
+        $posHeriaNip = strpos($xml, 'NIP [NIP]');
+        if ($posHeriaNip !== false) {
+            $xml = substr_replace($xml, 'NIP ' . $nipHeriaSuwandi, $posHeriaNip, strlen('NIP [NIP]'));
+        }
+
+        // Ganti sisa placeholder jika ada
+        $xml = str_replace('[NIP]', $nipHeriaSuwandi, $xml);
         $xml = str_replace('[TANGGAL]', $tglMulai, $xml);
 
         $zip->addFromString('word/document.xml', $xml);
@@ -257,7 +264,17 @@ class RabController extends Controller
         $xml = str_replace('[NAMA KETUA TIM PELAKSANA]', $penerimaName, $xml);
 
         // Pihak 1 NIP/NRK di daftar nomor 1
-        $xml = str_replace(': [NIP]', ': ' . $penerimaNip, $xml);
+        $posPihak1Nip = strpos($xml, ': [NIP]');
+        if ($posPihak1Nip !== false) {
+            $xml = substr_replace($xml, ': ' . $penerimaNip, $posPihak1Nip, strlen(': [NIP]'));
+        }
+
+        // Pihak 2 NIP (Heria Suwandi) di daftar nomor 2
+        $nipHeriaSuwandi = '197101272006041009';
+        $posPihak2Nip = strpos($xml, ': [NIP]');
+        if ($posPihak2Nip !== false) {
+            $xml = substr_replace($xml, ': ' . $nipHeriaSuwandi, $posPihak2Nip, strlen(': [NIP]'));
+        }
 
         // Surat Perintah Tugas Nomor [NOMOR SPT] tanggal [TANGGAL];
         $xml = str_replace('[NOMOR SPT]', $sptNo, $xml);
@@ -278,8 +295,15 @@ class RabController extends Controller
             $xml = substr_replace($xml, 'NIP ' . $penerimaNip, $posPenerimaNip, strlen('NIP [NIP]'));
         }
 
-        // Sisa NIP (Pihak Kedua Heria Suwandi)
-        $xml = str_replace('[NIP]', '-', $xml);
+        // NIP Pihak Kedua (Heria Suwandi)
+        $nipHeriaSuwandi = '197101272006041009';
+        $posHeriaNip = strpos($xml, 'NIP [NIP]');
+        if ($posHeriaNip !== false) {
+            $xml = substr_replace($xml, 'NIP ' . $nipHeriaSuwandi, $posHeriaNip, strlen('NIP [NIP]'));
+        }
+
+        // Sisa NIP (Pihak Kedua Heria Suwandi di daftar identitas atas & lainnya)
+        $xml = str_replace('[NIP]', $nipHeriaSuwandi, $xml);
 
         $zip->addFromString('word/document.xml', $xml);
         $zip->close();
