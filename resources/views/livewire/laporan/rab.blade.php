@@ -253,6 +253,11 @@ $openBastModal = function() {
     $this->showBastModal = true;
 };
 
+$openBastModalFor = function($targetRabId) {
+    $this->selectedRabId = (string)$targetRabId;
+    $this->openBastModal();
+};
+
 $closeBastModal = function() {
     $this->showBastModal = false;
     $this->bastPhotos = [];
@@ -548,20 +553,26 @@ $downloadBast = function() {
                                 {{ $rabItem->kecamatan->nama_kecamatan ?? ($rabItem->kecamatan_id ? 'Kecamatan ID: '.$rabItem->kecamatan_id : 'Nota Dinas') }}
                             </td>
                             <td class="px-6 py-4 text-center font-bold text-gray-700">
-                                <span class="inline-flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full text-xs">
-                                    📸 {{ $rabItem->bast_count ?? 0 }} Foto
-                                </span>
+                                @if(($rabItem->bast_count ?? 0) > 0)
+                                    <button type="button" wire:click="openBastModalFor('{{ $rabItem->id }}')" class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-full text-xs transition-colors cursor-pointer" title="Klik untuk lihat foto BAST">
+                                        📸 {{ $rabItem->bast_count }} Foto
+                                    </button>
+                                @else
+                                    <span class="inline-flex items-center gap-1 bg-gray-100 text-gray-400 px-2.5 py-1 rounded-full text-xs">
+                                        📸 0 Foto
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-center">
                                 @if(($rabItem->bast_count ?? 0) >= 3)
-                                    <span class="inline-flex items-center gap-1 font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px]">
+                                    <button type="button" wire:click="openBastModalFor('{{ $rabItem->id }}')" class="inline-flex items-center gap-1 font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] hover:bg-emerald-200 transition-colors cursor-pointer" title="Klik untuk lihat foto BAST">
                                         <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                         ✓ BAST Lengkap (3)
-                                    </span>
+                                    </button>
                                 @elseif(($rabItem->bast_count ?? 0) > 0)
-                                    <span class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[11px]">
+                                    <button type="button" wire:click="openBastModalFor('{{ $rabItem->id }}')" class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[11px] hover:bg-amber-200 transition-colors cursor-pointer" title="Klik untuk lihat foto BAST">
                                         BAST {{ $rabItem->bast_count }}/3 Foto
-                                    </span>
+                                    </button>
                                 @elseif($rabItem->has_upload)
                                     <span class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300 text-[11px]">
                                         ✓ Ada File
@@ -606,19 +617,19 @@ $downloadBast = function() {
                 <div class="flex items-center gap-2.5 flex-wrap">
                     <h2 class="font-black text-gray-800 text-lg uppercase tracking-wider">LOKASI: {{ $this->reportData['rab']->lokasi }}</h2>
                     @if(($this->reportData['rab']->bast_count ?? 0) >= 3)
-                        <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm" title="Dokumentasi BAST Lengkap">
+                        <button type="button" wire:click="openBastModal" class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm hover:bg-emerald-200 transition-colors cursor-pointer" title="Klik untuk lihat / kelola foto BAST">
                             <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                             Foto BAST Lengkap ({{ $this->reportData['rab']->bast_count }} Foto)
-                        </span>
+                        </button>
                     @elseif(($this->reportData['rab']->bast_count ?? 0) > 0)
-                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-sm" title="Dokumentasi BAST Belum Lengkap">
+                        <button type="button" wire:click="openBastModal" class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-sm hover:bg-amber-200 transition-colors cursor-pointer" title="Klik untuk lihat / kelola foto BAST">
                             <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                             Foto BAST {{ $this->reportData['rab']->bast_count }}/3
-                        </span>
+                        </button>
                     @else
-                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                        <button type="button" wire:click="openBastModal" class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200 transition-colors cursor-pointer" title="Klik untuk unggah foto BAST">
                             Belum Ada Foto BAST
-                        </span>
+                        </button>
                     @endif
                 </div>
                 <p class="text-xs font-bold text-gray-500 mt-1">PERIODE: {{ strtoupper($months[$selectedMonth]) }} {{ $selectedYear }}</p>
