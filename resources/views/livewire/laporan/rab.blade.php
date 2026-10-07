@@ -7,7 +7,8 @@ use Livewire\WithFileUploads;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Illuminate\Support\Facades\Storage;
-use function Livewire\Volt\{state, computed, layout, with, uses};
+use Carbon\Carbon;
+use function Livewire\Volt\{state, computed, layout, with, uses, mount};
 
 layout('layouts.admin');
 uses([WithFileUploads::class]);
@@ -19,16 +20,37 @@ state([
     'selectedYear' => date('Y'),
     'showBastModal' => false,
     'bastPhotos' => [],
+    'existingBastPhotos' => [],
+    'bastTanggalMulai' => '',
+    'bastTanggalSelesai' => '',
 ]);
+
+mount(function() {
+    $user = auth()->user();
+    if ($user) {
+        $isKecamatanUser = $user->hasRole('kecamatan_admin') || 
+            ($user->kecamatan_id && !$user->hasAnyRole(['superadmin', 'sudin', 'pemel', 'seksi_pompa', 'pompa']));
+        
+        if ($isKecamatanUser && $user->kecamatan_id) {
+            $this->selectedKecamatanId = (string) $user->kecamatan_id;
+        }
+    }
+});
 
 $kecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->get());
 
 $rabs = computed(function() {
-    $q = Rab::orderBy('lokasi', 'asc');
+    $q = Rab::with('kecamatan')->orderBy('lokasi', 'asc');
     
-    if (auth()->check() && auth()->user()->hasRole('kecamatan_admin') && !auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa'])) {
-        if (auth()->user()->kecamatan_id) {
-            $q->where('kecamatan_id', auth()->user()->kecamatan_id);
+    $user = auth()->user();
+    $isKecamatanUser = $user && (
+        $user->hasRole('kecamatan_admin') || 
+        ($user->kecamatan_id && !$user->hasAnyRole(['superadmin', 'sudin', 'pemel', 'seksi_pompa', 'pompa']))
+    );
+
+    if ($isKecamatanUser) {
+        if ($user->kecamatan_id) {
+            $q->where('kecamatan_id', $user->kecamatan_id);
         } else {
             $q->where('id', '<', 0);
         }
@@ -42,7 +64,26 @@ $rabs = computed(function() {
         }
     }
     
-    return $q->get();
+    $allRabs = $q->get();
+
+    // Index uploaded BAST photos from storage
+    $allBastFiles = Storage::disk('public')->files('bast_photos');
+    $rabPhotoCounts = [];
+    foreach ($allBastFiles as $file) {
+        $filename = basename($file);
+        if (preg_match('/^bast_(\d+)_/', $filename, $matches)) {
+            $rId = (int)$matches[1];
+            $rabPhotoCounts[$rId] = ($rabPhotoCounts[$rId] ?? 0) + 1;
+        }
+    }
+
+    foreach ($allRabs as $rab) {
+        $photoCount = $rabPhotoCounts[$rab->id] ?? 0;
+        $rab->bast_count = $photoCount;
+        $rab->has_upload = !empty($rab->document_photo) || $photoCount > 0;
+    }
+
+    return $allRabs;
 });
 
 $updatedSelectedKecamatanId = function () {
@@ -67,6 +108,17 @@ $reportData = computed(function() {
     
     $rab = Rab::with('materials')->find($this->selectedRabId);
     if (!$rab) return null;
+    
+    // Check BAST photos count for selected RAB
+    $allBastFiles = Storage::disk('public')->files('bast_photos');
+    $bastCount = 0;
+    foreach ($allBastFiles as $file) {
+        if (str_starts_with(basename($file), 'bast_' . $rab->id . '_')) {
+            $bastCount++;
+        }
+    }
+    $rab->bast_count = $bastCount;
+    $rab->has_upload = !empty($rab->document_photo) || $bastCount > 0;
     
     // Get delivery orders for this lokasi, month, and year. We exclude cancelled if you have such status, usually draft and shipped are what exists.
     $dos = DeliveryOrder::where('lokasi', $rab->lokasi)
@@ -170,12 +222,41 @@ $exportExcel = function() {
 $openBastModal = function() {
     $this->bastPhotos = [];
     $this->resetErrorBag();
+
+    $rabId = $this->selectedRabId;
+    if ($rabId) {
+        $allFiles = Storage::disk('public')->files('bast_photos');
+        $this->existingBastPhotos = array_values(array_filter($allFiles, function($file) use ($rabId) {
+            return str_starts_with(basename($file), 'bast_' . $rabId . '_');
+        }));
+
+        $rab = Rab::find($rabId);
+        if ($rab) {
+            $tglMulaiDate = $rab->created_at ? Carbon::parse($rab->created_at)->format('Y-m-d') : date('Y-m-d');
+            $latestMaterial = \Illuminate\Support\Facades\DB::table('material_rab')
+                ->where('rab_id', $rab->id)
+                ->orderBy('created_at', 'desc')
+                ->first();
+            $tglSelesaiDate = ($latestMaterial && $latestMaterial->created_at)
+                ? Carbon::parse($latestMaterial->created_at)->format('Y-m-d')
+                : $tglMulaiDate;
+
+            $this->bastTanggalMulai = $tglMulaiDate;
+            $this->bastTanggalSelesai = $tglSelesaiDate;
+        }
+    } else {
+        $this->existingBastPhotos = [];
+        $this->bastTanggalMulai = date('Y-m-d');
+        $this->bastTanggalSelesai = date('Y-m-d');
+    }
+
     $this->showBastModal = true;
 };
 
 $closeBastModal = function() {
     $this->showBastModal = false;
     $this->bastPhotos = [];
+    $this->existingBastPhotos = [];
     $this->resetErrorBag();
 };
 
@@ -186,16 +267,45 @@ $removeBastPhoto = function($index) {
     }
 };
 
+$deleteExistingBastPhoto = function($path) {
+    if (Storage::disk('public')->exists($path)) {
+        Storage::disk('public')->delete($path);
+    }
+    $rabId = $this->selectedRabId;
+    if ($rabId) {
+        $allFiles = Storage::disk('public')->files('bast_photos');
+        $this->existingBastPhotos = array_values(array_filter($allFiles, function($file) use ($rabId) {
+            return str_starts_with(basename($file), 'bast_' . $rabId . '_');
+        }));
+    } else {
+        $this->existingBastPhotos = [];
+    }
+};
+
 $downloadBast = function() {
-    $this->validate([
-        'bastPhotos' => 'required|array|min:3',
-        'bastPhotos.*' => 'image|max:10240',
-    ], [
-        'bastPhotos.required' => 'Wajib mengunggah minimal 3 foto dokumentasi pekerjaan.',
-        'bastPhotos.min' => 'Wajib mengunggah minimal 3 foto dokumentasi pekerjaan (saat ini baru ' . count($this->bastPhotos) . ' foto).',
-        'bastPhotos.*.image' => 'Semua file harus berupa format gambar (JPG, PNG, JPEG, WEBP).',
-        'bastPhotos.*.max' => 'Ukuran setiap gambar maksimal 10MB.',
-    ]);
+    $existingCount = count($this->existingBastPhotos);
+    $totalCount = $existingCount + count($this->bastPhotos);
+
+    if ($totalCount < 3) {
+        $this->validate([
+            'bastPhotos' => 'required|array|min:' . (3 - $existingCount),
+            'bastPhotos.*' => 'image|max:10240',
+        ], [
+            'bastPhotos.required' => 'Wajib memiliki minimal 3 foto dokumentasi. Saat ini baru ada ' . $existingCount . ' foto.',
+            'bastPhotos.min' => 'Wajib memiliki total minimal 3 foto dokumentasi pekerjaan (saat ini baru ' . $totalCount . ' foto).',
+            'bastPhotos.*.image' => 'Semua file harus berupa format gambar (JPG, PNG, JPEG, WEBP).',
+            'bastPhotos.*.max' => 'Ukuran setiap gambar maksimal 10MB.',
+        ]);
+    } else {
+        if (!empty($this->bastPhotos)) {
+            $this->validate([
+                'bastPhotos.*' => 'image|max:10240',
+            ], [
+                'bastPhotos.*.image' => 'Semua file harus berupa format gambar (JPG, PNG, JPEG, WEBP).',
+                'bastPhotos.*.max' => 'Ukuran setiap gambar maksimal 10MB.',
+            ]);
+        }
+    }
 
     $rab = Rab::find($this->selectedRabId);
     if (!$rab) {
@@ -203,20 +313,23 @@ $downloadBast = function() {
         return;
     }
 
-    // Simpan foto bukti BAST ke storage public (dikonversi ke format webp kualitas 80%)
-    $manager = new ImageManager(new Driver());
-    foreach ($this->bastPhotos as $photo) {
-        $image = $manager->read($photo->getRealPath());
-        $webp = $image->toWebp(80);
-        $fileName = 'bast_' . $rab->id . '_' . uniqid() . '.webp';
-        Storage::disk('public')->put('bast_photos/' . $fileName, (string) $webp);
+    if (!empty($this->bastPhotos)) {
+        // Simpan foto bukti BAST ke storage public (dikonversi ke format webp kualitas 80%)
+        $manager = new ImageManager(new Driver());
+        foreach ($this->bastPhotos as $photo) {
+            $image = $manager->read($photo->getRealPath());
+            $webp = $image->toWebp(80);
+            $fileName = 'bast_' . $rab->id . '_' . uniqid() . '.webp';
+            Storage::disk('public')->put('bast_photos/' . $fileName, (string) $webp);
+        }
     }
 
     $controller = new \App\Http\Controllers\RabController();
-    $response = $controller->downloadBast($rab);
+    $response = $controller->downloadBast($rab, $this->bastTanggalMulai, $this->bastTanggalSelesai);
 
     $this->showBastModal = false;
     $this->bastPhotos = [];
+    $this->existingBastPhotos = [];
 
     return $response;
 };
@@ -231,7 +344,15 @@ $downloadBast = function() {
         </div>
         
         <div class="flex flex-col md:flex-row md:flex-wrap items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
-            @if(!auth()->user()->hasRole('kecamatan_admin') || auth()->user()->hasAnyRole(['pemel', 'seksi_pompa', 'pompa']))
+            @php
+                $user = auth()->user();
+                $isKecamatanUser = $user && (
+                    $user->hasRole('kecamatan_admin') || 
+                    ($user->kecamatan_id && !$user->hasAnyRole(['superadmin', 'sudin', 'pemel', 'seksi_pompa', 'pompa']))
+                );
+            @endphp
+
+            @if(!$isKecamatanUser)
             <select wire:model.live="selectedKecamatanId" class="bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20">
                 <option value="">-- Semua Kecamatan --</option>
                 <option value="null">-- Nota Dinas --</option>
@@ -239,22 +360,39 @@ $downloadBast = function() {
                     <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan }}</option>
                 @endforeach
             </select>
+            @else
+            <div class="bg-blue-50 text-blue-700 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 border border-blue-200">
+                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>{{ $user->kecamatan->nama_kecamatan ?? 'Kecamatan Anda' }}</span>
+            </div>
             @endif
 
             @php
                 $rabOptions = [];
                 foreach($this->rabs as $rab) {
-                    $rabOptions[] = ['id' => $rab->id, 'label' => $rab->lokasi];
+                    $rabOptions[] = [
+                        'id' => $rab->id, 
+                        'label' => $rab->lokasi,
+                        'bast_count' => (int)($rab->bast_count ?? 0),
+                        'has_upload' => (bool)($rab->has_upload ?? false)
+                    ];
                 }
             @endphp
             <div wire:key="dropdown-rab-{{ $selectedKecamatanId }}" x-data="{
                     open: false,
                     search: '',
+                    filterStatus: 'all',
                     selectedId: @entangle('selectedRabId').live,
                     options: {{ json_encode($rabOptions) }},
                     get filteredOptions() {
-                        if (this.search === '') return this.options;
-                        return this.options.filter(opt => opt.label.toLowerCase().includes(this.search.toLowerCase()));
+                        return this.options.filter(opt => {
+                            const matchSearch = this.search === '' || opt.label.toLowerCase().includes(this.search.toLowerCase());
+                            if (!matchSearch) return false;
+
+                            if (this.filterStatus === 'uploaded') return opt.has_upload;
+                            if (this.filterStatus === 'pending') return !opt.has_upload;
+                            return true;
+                        });
                     },
                     get selectedLabel() {
                         const selectedOpt = this.options.find(opt => opt.id == this.selectedId);
@@ -273,22 +411,39 @@ $downloadBast = function() {
                 <div x-show="open" 
                      x-transition.opacity
                      style="display: none;"
-                     class="absolute z-50 w-full md:w-[400px] mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto left-0 md:left-auto">
+                     class="absolute z-50 w-full md:w-[440px] mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-72 overflow-y-auto left-0 md:left-auto">
                      
-                     <div x-show="options.length > 10" class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm z-10">
+                     <div class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm z-10 space-y-2">
                          <input type="text" x-model="search" placeholder="Cari lokasi RAB..." 
-                                class="w-full bg-gray-50 rounded-md px-3 py-2 text-sm border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
+                                class="w-full bg-gray-50 rounded-md px-3 py-1.5 text-xs border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
                                 @click.stop>
+                         <div class="flex items-center gap-1 text-[10px] font-bold">
+                             <button type="button" @click.stop="filterStatus = 'all'" :class="filterStatus === 'all' ? 'bg-accent text-white font-black' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'" class="px-2 py-0.5 rounded-lg transition-colors flex-1 text-center">Semua</button>
+                             <button type="button" @click.stop="filterStatus = 'uploaded'" :class="filterStatus === 'uploaded' ? 'bg-emerald-600 text-white font-black' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'" class="px-2 py-0.5 rounded-lg transition-colors flex-1 text-center">✓ Sudah Upload</button>
+                             <button type="button" @click.stop="filterStatus = 'pending'" :class="filterStatus === 'pending' ? 'bg-gray-600 text-white font-black' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'" class="px-2 py-0.5 rounded-lg transition-colors flex-1 text-center">Belum Upload</button>
+                         </div>
                      </div>
 
                      <ul class="py-1">
                          <template x-for="option in filteredOptions" :key="option.id">
                              <li @click="selectedId = option.id; open = false; search = ''"
-                                 class="px-4 py-2 text-sm text-gray-700 hover:bg-accent hover:text-white cursor-pointer transition-colors border-b border-gray-50 last:border-0"
-                                 x-text="option.label">
+                                 class="px-4 py-2.5 text-sm text-gray-700 hover:bg-accent/10 cursor-pointer transition-colors border-b border-gray-50 last:border-0 flex items-center justify-between gap-2">
+                                 <span x-text="option.label" class="font-bold text-gray-800 truncate flex-1"></span>
+                                 <template x-if="option.bast_count >= 3">
+                                     <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-300 flex-shrink-0">✓ BAST (3)</span>
+                                 </template>
+                                 <template x-if="option.bast_count > 0 && option.bast_count < 3">
+                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-300 flex-shrink-0" x-text="'BAST (' + option.bast_count + '/3)'"></span>
+                                 </template>
+                                 <template x-if="option.bast_count === 0 && option.has_upload">
+                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-300 flex-shrink-0">✓ Ada File</span>
+                                 </template>
+                                 <template x-if="!option.has_upload">
+                                     <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200 flex-shrink-0">Belum Upload</span>
+                                 </template>
                              </li>
                          </template>
-                         <li x-show="filteredOptions.length === 0" class="px-4 py-2 text-sm text-gray-400 italic">
+                         <li x-show="filteredOptions.length === 0" class="px-4 py-2 text-sm text-gray-400 italic text-center">
                              Lokasi tidak ditemukan...
                          </li>
                      </ul>
@@ -310,12 +465,130 @@ $downloadBast = function() {
     </div>
 
     @if(!$this->selectedRabId)
-    <div class="bg-white rounded-3xl shadow-card ring-1 ring-accent/5 p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
-        <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mb-4">
-            <svg class="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    <div class="space-y-6">
+        @php
+            $rabsList = $this->rabs;
+            $totalRabsCount = count($rabsList);
+            $bastLengkapCount = $rabsList->filter(fn($r) => ($r->bast_count ?? 0) >= 3)->count();
+            $hasUploadCount = $rabsList->filter(fn($r) => $r->has_upload)->count();
+            $belumUploadCount = $rabsList->filter(fn($r) => !$r->has_upload)->count();
+        @endphp
+
+        <!-- Stat Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total RAB</p>
+                    <p class="text-2xl font-black text-gray-800 mt-1">{{ $totalRabsCount }}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-emerald-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider">BAST Lengkap (3)</p>
+                    <p class="text-2xl font-black text-emerald-700 mt-1">{{ $bastLengkapCount }}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-blue-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-blue-600 uppercase tracking-wider">Sudah Upload</p>
+                    <p class="text-2xl font-black text-blue-700 mt-1">{{ $hasUploadCount }}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Belum Upload</p>
+                    <p class="text-2xl font-black text-gray-500 mt-1">{{ $belumUploadCount }}</p>
+                </div>
+                <div class="w-10 h-10 rounded-xl bg-gray-100 text-gray-400 flex items-center justify-center font-bold">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+            </div>
         </div>
-        <h3 class="text-lg font-bold text-gray-800">Pilih Lokasi RAB</h3>
-        <p class="text-sm text-gray-500 mt-2 max-w-sm">Silakan pilih lokasi RAB, bulan, dan tahun pada filter di atas untuk melihat laporan matriks pengambilan barang.</p>
+
+        <!-- Tabel Rekap Status Upload Semua RAB -->
+        <div class="bg-white rounded-3xl shadow-card ring-1 ring-accent/5 overflow-hidden border border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex items-center justify-between flex-wrap gap-4 bg-gray-50/50">
+                <div>
+                    <h3 class="text-lg font-black text-gray-800">Rekapitulasi Status Upload Lokasi RAB</h3>
+                    <p class="text-xs text-gray-500 mt-0.5">Daftar semua RAB beserta status dokumen dan foto BAST yang diunggah.</p>
+                </div>
+            </div>
+
+            @if($rabsList->count() > 0)
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                            <th class="px-6 py-3.5 w-12 text-center">NO</th>
+                            <th class="px-6 py-3.5">LOKASI PEKERJAAN RAB</th>
+                            <th class="px-6 py-3.5">KECAMATAN</th>
+                            <th class="px-6 py-3.5 text-center">FOTO BAST</th>
+                            <th class="px-6 py-3.5 text-center">STATUS UPLOAD</th>
+                            <th class="px-6 py-3.5 text-right">AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50 text-xs">
+                        @foreach($rabsList as $idx => $rabItem)
+                        <tr class="hover:bg-blue-50/30 transition-colors">
+                            <td class="px-6 py-4 text-center font-bold text-gray-400">{{ $idx + 1 }}</td>
+                            <td class="px-6 py-4 font-bold text-gray-900">{{ $rabItem->lokasi }}</td>
+                            <td class="px-6 py-4 text-gray-600 font-semibold">
+                                {{ $rabItem->kecamatan->nama_kecamatan ?? ($rabItem->kecamatan_id ? 'Kecamatan ID: '.$rabItem->kecamatan_id : 'Nota Dinas') }}
+                            </td>
+                            <td class="px-6 py-4 text-center font-bold text-gray-700">
+                                <span class="inline-flex items-center gap-1 bg-gray-100 px-2.5 py-1 rounded-full text-xs">
+                                    📸 {{ $rabItem->bast_count ?? 0 }} Foto
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center">
+                                @if(($rabItem->bast_count ?? 0) >= 3)
+                                    <span class="inline-flex items-center gap-1 font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px]">
+                                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                        ✓ BAST Lengkap (3)
+                                    </span>
+                                @elseif(($rabItem->bast_count ?? 0) > 0)
+                                    <span class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 text-[11px]">
+                                        BAST {{ $rabItem->bast_count }}/3 Foto
+                                    </span>
+                                @elseif($rabItem->has_upload)
+                                    <span class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-300 text-[11px]">
+                                        ✓ Ada File
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-400 border border-gray-200 text-[11px]">
+                                        Belum Upload
+                                    </span>
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button wire:click="$set('selectedRabId', '{{ $rabItem->id }}')" class="bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded-xl hover:bg-blue-600 hover:text-white transition-colors text-xs inline-flex items-center gap-1">
+                                    <span>Pilih Lokasi</span>
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @else
+            <div class="p-12 text-center text-gray-400 italic">
+                Tidak ada data RAB untuk kecamatan terpilih.
+            </div>
+            @endif
+        </div>
     </div>
     @elseif($this->reportData && empty($this->reportData['rows']))
     <div class="bg-white rounded-3xl shadow-card ring-1 ring-accent/5 p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
@@ -328,9 +601,26 @@ $downloadBast = function() {
     </div>
     @else
     <div class="bg-white rounded-3xl shadow-card ring-1 ring-accent/5 flex-1 overflow-hidden flex flex-col">
-        <div class="p-6 border-b border-warm/60 flex items-center justify-between bg-gray-50/50">
+        <div class="p-6 border-b border-warm/60 flex items-center justify-between bg-gray-50/50 flex-wrap gap-4">
             <div>
-                <h2 class="font-black text-gray-800 text-lg uppercase tracking-wider">LOKASI: {{ $this->reportData['rab']->lokasi }}</h2>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <h2 class="font-black text-gray-800 text-lg uppercase tracking-wider">LOKASI: {{ $this->reportData['rab']->lokasi }}</h2>
+                    @if(($this->reportData['rab']->bast_count ?? 0) >= 3)
+                        <span class="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm" title="Dokumentasi BAST Lengkap">
+                            <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                            Foto BAST Lengkap ({{ $this->reportData['rab']->bast_count }} Foto)
+                        </span>
+                    @elseif(($this->reportData['rab']->bast_count ?? 0) > 0)
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-sm" title="Dokumentasi BAST Belum Lengkap">
+                            <svg class="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            Foto BAST {{ $this->reportData['rab']->bast_count }}/3
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                            Belum Ada Foto BAST
+                        </span>
+                    @endif
+                </div>
                 <p class="text-xs font-bold text-gray-500 mt-1">PERIODE: {{ strtoupper($months[$selectedMonth]) }} {{ $selectedYear }}</p>
             </div>
             <div class="flex gap-2 flex-wrap">
@@ -528,20 +818,89 @@ $downloadBast = function() {
                 </button>
             </div>
 
-            <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-3.5 mb-4 text-xs text-blue-800">
-                <div class="flex items-center gap-2 font-bold mb-1">
-                    <svg class="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    <span>Ketentuan Pengunduhan BAST:</span>
+            @php
+                $existingCount = count($existingBastPhotos);
+                $newCount = count($bastPhotos);
+                $totalCount = $existingCount + $newCount;
+            @endphp
+
+            @if($existingCount >= 3)
+                <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 mb-4 text-xs text-emerald-800">
+                    <div class="flex items-center gap-2 font-bold mb-1">
+                        <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        <span>Dokumentasi Foto Sudah Lengkap ({{ $existingCount }} Foto)</span>
+                    </div>
+                    <p class="text-[11px] text-emerald-700 leading-relaxed ml-6">
+                        Foto dokumentasi untuk RAB ini sudah pernah diunggah. Anda dapat <strong>langsung mengunduh berkas BAST</strong> tanpa perlu mengunggah file baru lagi.
+                    </p>
                 </div>
-                <p class="text-[11px] text-blue-700 leading-relaxed ml-6">
-                    Wajib mengunggah minimal <strong>3 foto dokumentasi pekerjaan</strong> sebelum berkas Word Berita Acara Serah Terima dapat diunduh.
-                </p>
-            </div>
+            @elseif($existingCount > 0)
+                <div class="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-4 text-xs text-amber-800">
+                    <div class="flex items-center gap-2 font-bold mb-1">
+                        <svg class="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <span>Sudah Ada {{ $existingCount }} Foto Terunggah</span>
+                    </div>
+                    <p class="text-[11px] text-amber-700 leading-relaxed ml-6">
+                        Silakan unggah minimal <strong>{{ 3 - $existingCount }} foto lagi</strong> agar dokumen BAST dapat diunduh.
+                    </p>
+                </div>
+            @else
+                <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-3.5 mb-4 text-xs text-blue-800">
+                    <div class="flex items-center gap-2 font-bold mb-1">
+                        <svg class="w-4 h-4 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Ketentuan Pengunduhan BAST:</span>
+                    </div>
+                    <p class="text-[11px] text-blue-700 leading-relaxed ml-6">
+                        Wajib mengunggah minimal <strong>3 foto dokumentasi pekerjaan</strong> sebelum berkas Word Berita Acara Serah Terima dapat diunduh.
+                    </p>
+                </div>
+            @endif
+
+            {{-- Display Existing Uploaded Photos --}}
+            @if(!empty($existingBastPhotos))
+                <div class="mb-4 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-gray-700">Foto Terunggah di Server ({{ $existingCount }}):</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2.5 max-h-40 overflow-y-auto p-2 bg-emerald-50/40 rounded-2xl border border-emerald-100">
+                        @foreach($existingBastPhotos as $idx => $filePath)
+                        <div class="relative group rounded-xl overflow-hidden border border-emerald-200 aspect-square bg-gray-100">
+                            <img src="{{ Storage::url($filePath) }}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <a href="{{ Storage::url($filePath) }}" target="_blank" class="bg-white text-gray-800 rounded-full p-1.5 hover:bg-gray-100 shadow-lg transition-transform hover:scale-110" title="Lihat Foto Full">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </a>
+                                <button type="button" wire:click="deleteExistingBastPhoto('{{ $filePath }}')" wire:confirm="Hapus foto dokumentasi ini dari server?" class="bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg transition-transform hover:scale-110" title="Hapus Foto dari Server">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <span class="absolute bottom-1 left-1 bg-emerald-700/80 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                                File #{{ $idx + 1 }}
+                            </span>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             <form wire:submit="downloadBast" class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1.5">Tanggal Mulai Pekerjaan</label>
+                        <input type="date" wire:model="bastTanggalMulai" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1.5">Tanggal Selesai Pekerjaan</label>
+                        <input type="date" wire:model="bastTanggalSelesai" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1.5">
-                        Unggah Foto Dokumentasi Pekerjaan <span class="text-red-500">* (Min. 3 Foto)</span>
+                        {{ $existingCount >= 3 ? 'Tambah / Ganti Foto (Opsional)' : 'Unggah Foto Dokumentasi Pekerjaan' }} 
+                        @if($existingCount < 3)
+                            <span class="text-red-500">* (Butuh min. {{ 3 - $existingCount }} foto lagi)</span>
+                        @endif
                     </label>
                     
                     <input type="file" wire:model="bastPhotos" multiple accept="image/*" class="w-full text-xs text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 border border-dashed border-gray-300 rounded-2xl p-3 transition-all cursor-pointer">
@@ -555,13 +914,13 @@ $downloadBast = function() {
                     @error('bastPhotos.*') <p class="text-xs text-red-500 font-bold mt-1.5">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Thumbnail Previews --}}
+                {{-- Thumbnail Previews of NEW uploads --}}
                 @if (!empty($bastPhotos))
                     <div class="space-y-2">
                         <div class="flex items-center justify-between text-xs">
-                            <span class="font-bold text-gray-600">Foto Terpilih:</span>
-                            <span class="font-bold {{ count($bastPhotos) >= 3 ? 'text-emerald-600' : 'text-amber-600' }}">
-                                {{ count($bastPhotos) }} / 3 Foto {{ count($bastPhotos) >= 3 ? '✓ (Lengkap)' : '(Kurang ' . (3 - count($bastPhotos)) . ' foto lagi)' }}
+                            <span class="font-bold text-gray-600">Foto Baru Terpilih:</span>
+                            <span class="font-bold {{ $totalCount >= 3 ? 'text-emerald-600' : 'text-amber-600' }}">
+                                Total: {{ $totalCount }} / 3 Foto {{ $totalCount >= 3 ? '✓ (Lengkap)' : '(Kurang ' . (3 - $totalCount) . ' foto)' }}
                             </span>
                         </div>
 
@@ -575,7 +934,7 @@ $downloadBast = function() {
                                     </button>
                                 </div>
                                 <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
-                                    #{{ $index + 1 }}
+                                    Baru #{{ $index + 1 }}
                                 </span>
                             </div>
                             @endforeach
@@ -588,7 +947,7 @@ $downloadBast = function() {
                         Batal
                     </button>
                     <button type="submit" 
-                            {{ count($bastPhotos) < 3 ? 'disabled' : '' }}
+                            {{ $totalCount < 3 ? 'disabled' : '' }}
                             wire:loading.attr="disabled"
                             class="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold text-xs shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                         <span wire:loading.remove wire:target="downloadBast">Download BAST (.docx)</span>

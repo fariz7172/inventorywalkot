@@ -180,7 +180,7 @@ class RabController extends Controller
         return response()->download($tempFile, $safeFilename)->deleteFileAfterSend(true);
     }
 
-    public function downloadBast(Rab $rab)
+    public function downloadBast(Rab $rab, ?string $customTglMulai = null, ?string $customTglSelesai = null)
     {
         $templatePath = public_path('assets/Berita_Acara_Serah_Terima.docx');
         if (!file_exists($templatePath)) {
@@ -242,15 +242,24 @@ class RabController extends Controller
             ? Carbon::parse($rab->created_at)->locale('id')->isoFormat('D MMMM Y') 
             : Carbon::now()->locale('id')->isoFormat('D MMMM Y');
 
-        $tglMulai = $tglRab;
-        $latestMaterial = \Illuminate\Support\Facades\DB::table('material_rab')
-            ->where('rab_id', $rab->id)
-            ->orderBy('created_at', 'desc')
-            ->first();
+        if (!empty($customTglMulai)) {
+            $tglMulai = Carbon::parse($customTglMulai)->locale('id')->isoFormat('D MMMM Y');
+        } else {
+            $tglMulai = $tglRab;
+        }
 
-        $tglSelesai = ($latestMaterial && $latestMaterial->created_at) 
-            ? Carbon::parse($latestMaterial->created_at)->locale('id')->isoFormat('D MMMM Y') 
-            : $tglMulai;
+        if (!empty($customTglSelesai)) {
+            $tglSelesai = Carbon::parse($customTglSelesai)->locale('id')->isoFormat('D MMMM Y');
+        } else {
+            $latestMaterial = \Illuminate\Support\Facades\DB::table('material_rab')
+                ->where('rab_id', $rab->id)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            $tglSelesai = ($latestMaterial && $latestMaterial->created_at) 
+                ? Carbon::parse($latestMaterial->created_at)->locale('id')->isoFormat('D MMMM Y') 
+                : $tglMulai;
+        }
 
         // 2. Replacements
         // Nomor BAST
@@ -276,7 +285,8 @@ class RabController extends Controller
             $xml = substr_replace($xml, ': ' . $nipHeriaSuwandi, $posPihak2Nip, strlen(': [NIP]'));
         }
 
-        // Surat Perintah Tugas Nomor [NOMOR SPT] tanggal [TANGGAL];
+        // Keputusan Nomor [NOMOR SK] & Surat Perintah Tugas Nomor [NOMOR SPT]
+        $xml = str_replace('[NOMOR SK]', '1445', $xml);
         $xml = str_replace('[NOMOR SPT]', $sptNo, $xml);
         $xml = str_replace('tanggal [TANGGAL];', "tanggal {$tglRab};", $xml);
 
