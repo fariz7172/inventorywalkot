@@ -9,11 +9,18 @@ use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\RabTemplateExport;
-use function Livewire\Volt\{state, computed, layout, on, uses};
+use function Livewire\Volt\{state, computed, layout, on, uses, mount};
 
 uses([WithFileUploads::class]);
 
 layout('layouts.admin');
+
+mount(function() {
+    $user = auth()->user();
+    if (!$user || !$user->hasAnyRole(['superadmin', 'sudin', 'gudang', 'kepala_gudang'])) {
+        abort(403, 'Akses Ditolak. Halaman Data RAB hanya dapat diakses oleh Superadmin, Sudin, dan Gudang.');
+    }
+});
 
 state([
     'importFile' => null,

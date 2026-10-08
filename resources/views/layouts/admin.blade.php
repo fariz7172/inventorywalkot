@@ -223,7 +223,7 @@
                             'children' => [
                                 ['label' => 'Kategori Barang', 'route' => 'category.index', 'role' => 'superadmin|sudin'],
                                 ['label' => 'Stok Barang', 'route' => 'material.index', 'role' => 'superadmin|sudin|kepala_gudang'],
-                                ['label' => 'Data RAB', 'route' => 'rab.index'],
+                                ['label' => 'Data RAB', 'route' => 'rab.index', 'role' => 'superadmin|sudin|gudang|kepala_gudang'],
                                 ['label' => 'BAP Barang', 'route' => 'surat-jalan.index'],
                             ]
                         ],
