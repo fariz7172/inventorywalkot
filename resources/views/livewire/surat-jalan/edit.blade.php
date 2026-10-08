@@ -25,7 +25,18 @@ state([
 
 $categories = computed(fn() => Category::with('materials')->get());
 $allMaterials = computed(fn() => Material::orderBy('name', 'asc')->get());
-$rabs = computed(fn() => Rab::orderBy('lokasi', 'asc')->get());
+$rabs = computed(function() {
+    $query = Rab::orderBy('lokasi', 'asc');
+    $user = auth()->user();
+    if ($user && $user->hasRole('kecamatan_admin') && !$user->hasAnyRole(['superadmin', 'sudin', 'pemel', 'seksi_pompa', 'pompa'])) {
+        if ($user->kecamatan_id) {
+            $query->where('kecamatan_id', $user->kecamatan_id);
+        } else {
+            $query->where('id', '<', 0);
+        }
+    }
+    return $query->get();
+});
 
 $remainingQuotas = computed(function() {
     $quotas = [];
@@ -230,12 +241,51 @@ $save = function () {
                 </div>
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lokasi Tujuan (RAB)</label>
-                    <select wire:model="lokasi" class="w-full bg-base rounded-xl px-4 py-2.5 text-sm text-gray-700 border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all @error('lokasi') border-red-500 @enderror">
-                        <option value="">-- Pilih Lokasi RAB --</option>
-                        @foreach($this->rabs as $rab)
-                            <option value="{{ $rab->lokasi }}">{{ $rab->lokasi }}</option>
-                        @endforeach
-                    </select>
+                    <div x-data="{
+                            open: false,
+                            search: '',
+                            selected: @entangle('lokasi').live,
+                            options: {{ json_encode($this->rabs->pluck('lokasi')->toArray()) }},
+                            get filteredOptions() {
+                                if (this.search === '') {
+                                    return this.options;
+                                }
+                                return this.options.filter(opt => opt.toLowerCase().includes(this.search.toLowerCase()));
+                            }
+                        }"
+                        class="relative w-full"
+                        @click.away="open = false"
+                    >
+                        <div @click="open = !open"
+                             class="w-full bg-base rounded-xl px-4 py-2.5 text-sm border border-warm/60 focus:ring-2 focus:ring-accent/30 outline-none transition-all cursor-pointer flex justify-between items-center @error('lokasi') border-red-500 @enderror">
+                            <span x-text="selected ? selected : '-- Pilih Lokasi --'" :class="selected ? 'text-gray-700 font-bold' : 'text-gray-500'"></span>
+                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+
+                        <div x-show="open" 
+                             x-transition.opacity
+                             style="display: none;"
+                             class="absolute z-50 w-full mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                             
+                             <div class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm">
+                                 <input type="text" x-model="search" placeholder="Cari lokasi..." 
+                                        class="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
+                                        @click.stop>
+                             </div>
+
+                             <ul class="py-1">
+                                 <template x-for="option in filteredOptions" :key="option">
+                                     <li @click="selected = option; open = false; search = ''"
+                                         class="px-4 py-2 text-sm text-gray-700 hover:bg-accent hover:text-white cursor-pointer transition-colors"
+                                         x-text="option">
+                                     </li>
+                                 </template>
+                                 <li x-show="filteredOptions.length === 0" class="px-4 py-2 text-sm text-gray-400 italic">
+                                     Lokasi tidak ditemukan...
+                                 </li>
+                             </ul>
+                        </div>
+                    </div>
                     @error('lokasi') <p class="text-[10px] text-red-500 mt-1 font-bold">{{ $message }}</p> @enderror
                 </div>
                 <div>

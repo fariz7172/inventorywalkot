@@ -380,7 +380,7 @@ $save = function () {
                                  style="display: none;"
                                  class="absolute z-50 w-full mt-1 bg-white border border-warm/60 rounded-xl shadow-xl max-h-60 overflow-y-auto">
                                  
-                                 <div x-show="options.length > 10" class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm">
+                                 <div class="p-2 sticky top-0 bg-white border-b border-warm/30 shadow-sm">
                                      <input type="text" x-model="search" placeholder="Cari lokasi..." 
                                             class="w-full bg-gray-50 rounded-lg px-3 py-2 text-sm border border-warm/30 focus:outline-none focus:ring-1 focus:ring-accent"
                                             @click.stop>
