@@ -100,6 +100,10 @@ class RabController extends Controller
         $xml = str_replace('[TANGGAL DPA]', '30 Desember 2026', $xml);
         $xml = str_replace('[NOMOR SK SWAKELOLA]', '1445', $xml);
         $xml = str_replace('[NOMOR SK SWAKELOLA] Tahun', '1445 Tahun', $xml);
+        if (!str_contains($xml, 'Nomor 1445 Tahun 2026 Tanggal 1 Desember 2025')) {
+            $xml = str_replace('Nomor 1445 Tahun 2026', 'Nomor 1445 Tahun 2026 Tanggal 1 Desember 2025', $xml);
+        }
+        $xml = str_replace('Tanggal 1 Desember 2025 Tanggal 1 Desember 2025', 'Tanggal 1 Desember 2025', $xml);
 
         // Cari blok 5 paragraf (mulai dari 'Kepada' sampai 'Tahun Anggaran') untuk digantikan dengan tabel borderless yang sangat rapi
         $posMemerintahkan = strpos($xml, 'MEMERINTAHKAN:</w:t></w:r></w:p>');
@@ -286,7 +290,10 @@ class RabController extends Controller
         }
 
         // Keputusan Nomor [NOMOR SK] & Surat Perintah Tugas Nomor [NOMOR SPT]
-        $xml = str_replace('[NOMOR SK]', '1445', $xml);
+        $xml = str_replace('[NOMOR SK] Tahun 2026', '6 Tahun 2026 Tanggal 5 Januari 2026', $xml);
+        $xml = str_replace('1445 Tahun 2026 ', '6 Tahun 2026 Tanggal 5 Januari 2026 ', $xml);
+        $xml = str_replace('1445 Tahun 2026', '6 Tahun 2026 Tanggal 5 Januari 2026', $xml);
+        $xml = str_replace('[NOMOR SK]', '6', $xml);
         $xml = str_replace('[NOMOR SPT]', $sptNo, $xml);
         $xml = str_replace('tanggal [TANGGAL];', "tanggal {$tglRab};", $xml);
 
