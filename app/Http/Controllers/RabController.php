@@ -48,12 +48,14 @@ class RabController extends Controller
         $penerimaName = '-';
         $penerimaNip = '-';
         
-        // Cari user pembuat RAB atau user sesuai kecamatan
+        // Cari user pembuat RAB atau user sesuai kecamatan (utamakan admin kecamatan jika relevan)
         $targetUser = null;
-        if (!empty($rab->user_id) && $rab->user) {
-            $targetUser = $rab->user;
+        if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin'))) {
+            $targetUser = auth()->user();
         } elseif (!empty($rab->kecamatan_id)) {
             $targetUser = User::where('kecamatan_id', $rab->kecamatan_id)->first();
+        } elseif (!empty($rab->user_id) && $rab->user) {
+            $targetUser = $rab->user;
         } elseif (auth()->check()) {
             $targetUser = auth()->user();
         }
@@ -220,21 +222,31 @@ class RabController extends Controller
 
         $penerimaName = '-';
         $penerimaNip = '-';
-        if (!empty($rab->user_id) && $rab->user) {
-            $penerimaName = $rab->user->name;
-            $penerimaNip = $rab->user->nip ?: '-';
-        } elseif ($rab->kecamatan_id) {
-            $userKec = User::where('kecamatan_id', $rab->kecamatan_id)->first();
-            if ($userKec) {
-                $penerimaName = $userKec->name;
-                $penerimaNip = $userKec->nip ?: '-';
-            }
+        $jabatan = 'Ketua Tim Pelaksana Swakelola Tipe I';
+
+        // Cari user Pihak Kesatu: prioritaskan admin kecamatan jika relevan, atau kasatpel kecamatan RAB
+        $targetUser = null;
+        if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin'))) {
+            $targetUser = auth()->user();
+        } elseif (!empty($rab->kecamatan_id)) {
+            $targetUser = User::where('kecamatan_id', $rab->kecamatan_id)->first();
+        } elseif (!empty($rab->user_id) && $rab->user) {
+            $targetUser = $rab->user;
         } elseif (auth()->check()) {
-            $penerimaName = auth()->user()->name;
-            $penerimaNip = auth()->user()->nip ?: '-';
+            $targetUser = auth()->user();
         }
+
+        if ($targetUser) {
+            $penerimaName = $targetUser->name;
+            $penerimaNip = $targetUser->nip ?: '-';
+            if (!empty($targetUser->jabatan)) {
+                $jabatan = $targetUser->jabatan;
+            }
+        }
+
         $penerimaName = htmlspecialchars($penerimaName, ENT_QUOTES, 'UTF-8');
         $penerimaNip = htmlspecialchars($penerimaNip, ENT_QUOTES, 'UTF-8');
+        $jabatan = htmlspecialchars($jabatan, ENT_QUOTES, 'UTF-8');
         $lokasi = htmlspecialchars($rab->lokasi, ENT_QUOTES, 'UTF-8');
 
         Carbon::setLocale('id');
@@ -280,6 +292,20 @@ class RabController extends Controller
         $posPihak1Nip = strpos($xml, ': [NIP]');
         if ($posPihak1Nip !== false) {
             $xml = substr_replace($xml, ': ' . $penerimaNip, $posPihak1Nip, strlen(': [NIP]'));
+        }
+
+        // Pihak 1 Jabatan di daftar nomor 1
+        if (!empty($targetUser?->jabatan)) {
+            $xml = str_replace(
+                '<w:t>Ketua</w:t></w:r><w:proofErr w:type="spellEnd"/><w:r><w:t xml:space="preserve"> Tim Pelaksana Swakelola Tipe I</w:t>',
+                '<w:t>' . $jabatan . '</w:t>',
+                $xml
+            );
+            $xml = str_replace(
+                '<w:t>Ketua Tim Pelaksana Swakelola Tipe I</w:t>',
+                '<w:t>' . $jabatan . '</w:t>',
+                $xml
+            );
         }
 
         // Pihak 2 NIP (Heria Suwandi) di daftar nomor 2
