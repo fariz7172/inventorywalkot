@@ -33,22 +33,49 @@ mount(function() {
         
         if ($isKecamatanUser && $user->kecamatan_id) {
             $this->selectedKecamatanId = (string) $user->kecamatan_id;
+        } elseif ($user->hasRole('pemel')) {
+            $pemelKec = Kecamatan::where('nama_kecamatan', 'PEMEL')->first();
+            if ($pemelKec) {
+                $this->selectedKecamatanId = (string) $pemelKec->id;
+            }
         }
     }
 });
 
-$kecamatans = computed(fn() => Kecamatan::orderBy('nama_kecamatan', 'asc')->get());
+$kecamatans = computed(function() {
+    $user = auth()->user();
+    if ($user && $user->hasRole('pemel')) {
+        return Kecamatan::where('nama_kecamatan', 'PEMEL')->get();
+    }
+    return Kecamatan::orderBy('nama_kecamatan', 'asc')->get();
+});
 
 $rabs = computed(function() {
     $q = Rab::with('kecamatan')->orderBy('lokasi', 'asc');
     
     $user = auth()->user();
+    $isPemelUser = $user && $user->hasRole('pemel');
     $isKecamatanUser = $user && (
         $user->hasRole('kecamatan_admin') || 
         ($user->kecamatan_id && !$user->hasAnyRole(['superadmin', 'sudin', 'pemel', 'seksi_pompa', 'pompa']))
     );
 
-    if ($isKecamatanUser) {
+    $pemelKec = Kecamatan::where('nama_kecamatan', 'PEMEL')->first();
+    $isFilteringPemel = $pemelKec && (string)$this->selectedKecamatanId === (string)$pemelKec->id;
+
+    if ($isPemelUser) {
+        // Ketika akun yang login adalah PEMEL, data yang ditampilkan HANYA data yang berstatus PEMEL saja (termasuk saat memilih '-- Semua Kecamatan --')
+        $q->where(function($query) use ($pemelKec) {
+            if ($pemelKec) {
+                $query->where('kecamatan_id', $pemelKec->id);
+            }
+            $query->orWhere('lokasi', 'like', '%(PML)%')
+                  ->orWhere('lokasi', 'like', '%(PEMEL)%')
+                  ->orWhere('lokasi', 'like', '%PML%')
+                  ->orWhere('lokasi', 'like', '%PEMEL%')
+                  ->orWhere('lokasi', 'like', '%PEMELIHARAAN%');
+        });
+    } elseif ($isKecamatanUser) {
         if ($user->kecamatan_id) {
             $q->where('kecamatan_id', $user->kecamatan_id);
         } else {
@@ -58,6 +85,17 @@ $rabs = computed(function() {
         if ($this->selectedKecamatanId !== '') {
             if ($this->selectedKecamatanId === 'null') {
                 $q->whereNull('kecamatan_id');
+            } elseif ($isFilteringPemel) {
+                $q->where(function($query) use ($pemelKec) {
+                    if ($pemelKec) {
+                        $query->where('kecamatan_id', $pemelKec->id);
+                    }
+                    $query->orWhere('lokasi', 'like', '%(PML)%')
+                          ->orWhere('lokasi', 'like', '%(PEMEL)%')
+                          ->orWhere('lokasi', 'like', '%PML%')
+                          ->orWhere('lokasi', 'like', '%PEMEL%')
+                          ->orWhere('lokasi', 'like', '%PEMELIHARAAN%');
+                });
             } else {
                 $q->where('kecamatan_id', $this->selectedKecamatanId);
             }
@@ -359,8 +397,10 @@ $downloadBast = function() {
 
             @if(!$isKecamatanUser)
             <select wire:model.live="selectedKecamatanId" class="bg-gray-50 rounded-xl px-4 py-2 text-sm font-bold text-gray-700 outline-none border-none focus:ring-2 focus:ring-accent/20">
-                <option value="">-- Semua Kecamatan --</option>
-                <option value="null">-- Nota Dinas --</option>
+                @if(!auth()->user()?->hasRole('pemel'))
+                    <option value="">-- Semua Kecamatan --</option>
+                    <option value="null">-- Nota Dinas --</option>
+                @endif
                 @foreach($this->kecamatans as $kec)
                     <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan }}</option>
                 @endforeach
@@ -550,7 +590,11 @@ $downloadBast = function() {
                             <td class="px-6 py-4 text-center font-bold text-gray-400">{{ $idx + 1 }}</td>
                             <td class="px-6 py-4 font-bold text-gray-900">{{ $rabItem->lokasi }}</td>
                             <td class="px-6 py-4 text-gray-600 font-semibold">
-                                {{ $rabItem->kecamatan->nama_kecamatan ?? ($rabItem->kecamatan_id ? 'Kecamatan ID: '.$rabItem->kecamatan_id : 'Nota Dinas') }}
+                                @if(preg_match('/\b(PML|PEMEL|PEMELIHARAAN)\b/i', $rabItem->lokasi) || ($rabItem->kecamatan && $rabItem->kecamatan->nama_kecamatan === 'PEMEL'))
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-purple-100 text-purple-700">PEMEL</span>
+                                @else
+                                    {{ $rabItem->kecamatan->nama_kecamatan ?? ($rabItem->kecamatan_id ? 'Kecamatan ID: '.$rabItem->kecamatan_id : 'Nota Dinas') }}
+                                @endif
                             </td>
                             <td class="px-6 py-4 text-center font-bold text-gray-700">
                                 @if(($rabItem->bast_count ?? 0) > 0)
