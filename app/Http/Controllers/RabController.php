@@ -48,10 +48,12 @@ class RabController extends Controller
         $penerimaName = '-';
         $penerimaNip = '-';
         
-        // Cari user pembuat RAB atau user sesuai kecamatan (utamakan admin kecamatan jika relevan)
+        // Cari user pembuat RAB atau user sesuai kecamatan (utamakan admin kecamatan jika relevan, role pemel, atau kasatpel kecamatan RAB)
         $targetUser = null;
-        if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin'))) {
+        if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin') || auth()->user()->hasRole('pemel'))) {
             $targetUser = auth()->user();
+        } elseif (preg_match('/\b(PML|PEMEL|PEMELIHARAAN)\b/i', $rab->lokasi)) {
+            $targetUser = User::role('pemel')->first() ?: auth()->user();
         } elseif (!empty($rab->kecamatan_id)) {
             $targetUser = User::where('kecamatan_id', $rab->kecamatan_id)->first();
         } elseif (!empty($rab->user_id) && $rab->user) {
@@ -60,7 +62,7 @@ class RabController extends Controller
             $targetUser = auth()->user();
         }
 
-        $penerimaName = $targetUser ? $targetUser->name : '-';
+        $penerimaName = $targetUser ? ($targetUser->name ?: 'Rezky A P') : '-';
         $penerimaNip = ($targetUser && $targetUser->nip) ? $targetUser->nip : '-';
         $jabatan = ($targetUser && !empty($targetUser->jabatan)) ? $targetUser->jabatan : '-';
 
@@ -224,10 +226,12 @@ class RabController extends Controller
         $penerimaNip = '-';
         $jabatan = 'Ketua Tim Pelaksana Swakelola Tipe I';
 
-        // Cari user Pihak Kesatu: prioritaskan admin kecamatan jika relevan, atau kasatpel kecamatan RAB
+        // Cari user Pihak Kesatu: prioritaskan admin kecamatan jika relevan, role pemel jika login sebagai pemel, atau kasatpel kecamatan RAB
         $targetUser = null;
-        if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin'))) {
+        if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin') || auth()->user()->hasRole('pemel'))) {
             $targetUser = auth()->user();
+        } elseif (preg_match('/\b(PML|PEMEL|PEMELIHARAAN)\b/i', $rab->lokasi)) {
+            $targetUser = User::role('pemel')->first() ?: auth()->user();
         } elseif (!empty($rab->kecamatan_id)) {
             $targetUser = User::where('kecamatan_id', $rab->kecamatan_id)->first();
         } elseif (!empty($rab->user_id) && $rab->user) {
@@ -237,7 +241,7 @@ class RabController extends Controller
         }
 
         if ($targetUser) {
-            $penerimaName = $targetUser->name;
+            $penerimaName = $targetUser->name ?: 'Rezky A P';
             $penerimaNip = $targetUser->nip ?: '-';
             if (!empty($targetUser->jabatan)) {
                 $jabatan = $targetUser->jabatan;
