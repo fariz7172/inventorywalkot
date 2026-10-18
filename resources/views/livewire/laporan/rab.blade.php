@@ -767,15 +767,16 @@ $submitToAppReses = function () {
 
     $apiService = new AppResesApiService();
 
-    $cleanNum = function($val) {
+    $cleanNum = function($val, bool $allowNegative = false) {
         if ($val === null || $val === '') return null;
-        $str = str_replace(',', '.', preg_replace('/[^0-9,\.]/', '', (string)$val));
+        $pattern = $allowNegative ? '/[^0-9,\.\-]/' : '/[^0-9,\.]/';
+        $str = str_replace(',', '.', preg_replace($pattern, '', (string)$val));
         return is_numeric($str) ? (float)$str : null;
     };
 
-    $panjangNum = $cleanNum($this->appResesPanjang);
-    $lebarNum   = $cleanNum($this->appResesLebar);
-    $tinggiNum  = $cleanNum($this->appResesTinggi);
+    $panjangNum = $cleanNum($this->appResesPanjang, false);
+    $lebarNum   = $cleanNum($this->appResesLebar, false);
+    $tinggiNum  = $cleanNum($this->appResesTinggi, false);
 
     $vol = null;
     if ($panjangNum !== null && $lebarNum !== null && $tinggiNum !== null) {
@@ -806,8 +807,8 @@ $submitToAppReses = function () {
         $kodeTracking = $this->appResesKodeTracking ?: ('TRK-' . date('Ymd') . '-RAB' . $this->appResesRabId . '-' . strtoupper(substr(uniqid(), -4)));
     }
 
-    $latNum = $cleanNum($this->appResesLatitude);
-    $lngNum = $cleanNum($this->appResesLongitude);
+    $latNum = $cleanNum($this->appResesLatitude, true);
+    $lngNum = $cleanNum($this->appResesLongitude, true);
     if ($latNum !== null && ($latNum < -90 || $latNum > 90)) $latNum = null;
     if ($lngNum !== null && ($lngNum < -180 || $lngNum > 180)) $lngNum = null;
 
