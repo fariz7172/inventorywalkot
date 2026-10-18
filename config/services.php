@@ -31,4 +31,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'app_reses' => [
+        'url' => env('APP_RESES_API_URL', 'http://127.0.0.1:1111/api'),
+        'token' => env('APP_RESES_API_TOKEN', '3|CSs4PL5tMfe0xU7Nu2mT2UpxyqaPVpMXIZpNOuiUa9156386'),
+    ],
+
+    'maptiler' => [
+        'key' => env('MAPTILER_API_KEY', 'ZDiWx4r1ToT9jGdlNPco'),
+    ],
+
 ];

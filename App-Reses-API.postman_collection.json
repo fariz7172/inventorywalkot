@@ -1,0 +1,608 @@
+{
+	"info": {
+		"_postman_id": "b3e09871-3312-4217-91a1-appresesapi01",
+		"name": "App Reses - API Collection",
+		"description": "Collection API untuk aplikasi App Reses (Pekerjaan SDA, Survei Reses, Surat Permohonan) dengan autentikasi Laravel Sanctum.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://127.0.0.1:1111/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "3|CSs4PL5tMfe0xU7Nu2mT2UpxyqaPVpMXIZpNOuiUa9156386",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "User",
+			"item": [
+				{
+					"name": "Get Authenticated User",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/user",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"user"
+							]
+						},
+						"description": "Mengambil info profil user pemilik token yang sedang login."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Pekerjaan SDA",
+			"item": [
+				{
+					"name": "1. Peta Pekerjaan SDA (Map)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/pekerjaan-sda/map",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"pekerjaan-sda",
+								"map"
+							]
+						},
+						"description": "Mengambil semua data pekerjaan SDA yang memiliki koordinat GPS (latitude & longitude) untuk plotting peta."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Detail Pekerjaan SDA",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/pekerjaan-sda/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"pekerjaan-sda",
+								"1"
+							]
+						},
+						"description": "Mengambil detail 1 pekerjaan SDA beserta relasi kecamatan, kelurahan, dewan, pelaksana, vendor, dan surat permohonan."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Tambah Pekerjaan SDA (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "sumber_data",
+									"value": "Masyarakat",
+									"description": "WAJIB: Reses / Masyarakat / Musrenbang / Lainnya",
+									"type": "text"
+								},
+								{
+									"key": "id_kecamatan",
+									"value": "1",
+									"description": "WAJIB: ID Kecamatan",
+									"type": "text"
+								},
+								{
+									"key": "id_kelurahan",
+									"value": "1",
+									"description": "OPSIONAL: ID Kelurahan",
+									"type": "text"
+								},
+								{
+									"key": "alamat",
+									"value": "Jl. Kali Baru Timur No. 45",
+									"description": "WAJIB: Alamat lokasi",
+									"type": "text"
+								},
+								{
+									"key": "deskripsi",
+									"value": "Pembangunan turap saluran penghubung yang longsor",
+									"description": "WAJIB: Rincian pekerjaan / keluhan",
+									"type": "text"
+								},
+								{
+									"key": "no_skpd",
+									"value": "600/123/SDA/2026",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "tahun_monev",
+									"value": "2026",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "tgl_input",
+									"value": "2026-10-18",
+									"description": "OPSIONAL: YYYY-MM-DD",
+									"type": "text"
+								},
+								{
+									"key": "rincian_sumber_data",
+									"value": "Permohonan Warga RT 05",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "kode_tracking",
+									"value": "TRK-2026-001",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "id_dewan",
+									"value": "",
+									"description": "OPSIONAL (Isi jika sumber dari Dewan)",
+									"type": "text"
+								},
+								{
+									"key": "rt",
+									"value": "05",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "rw",
+									"value": "02",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "lingkup_kewenangan",
+									"value": "Kota",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "kategori_pekerjaan",
+									"value": "Saluran PHB",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "kategori_prioritas",
+									"value": "Prioritas 1",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "status_tindak_lanjut",
+									"value": "Survei Lapangan",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "tgl_survei",
+									"value": "2026-10-20",
+									"description": "OPSIONAL: YYYY-MM-DD",
+									"type": "text"
+								},
+								{
+									"key": "volume_panjang",
+									"value": "150 meter",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "tahun_dikerjakan",
+									"value": "2026",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "metode_pekerjaan",
+									"value": "Swakelola",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "checklist_perencanaan",
+									"value": "DED Siap, RAB Tersedia",
+									"description": "OPSIONAL",
+									"type": "text"
+								},
+								{
+									"key": "estimasi_tgl_realisasi",
+									"value": "2026-11-01",
+									"description": "OPSIONAL: YYYY-MM-DD",
+									"type": "text"
+								},
+								{
+									"key": "tgl_mulai",
+									"value": "2026-11-05",
+									"description": "OPSIONAL: YYYY-MM-DD",
+									"type": "text"
+								},
+								{
+									"key": "tgl_selesai",
+									"value": "2026-12-15",
+									"description": "OPSIONAL: YYYY-MM-DD",
+									"type": "text"
+								},
+								{
+									"key": "progress",
+									"value": "0",
+									"description": "OPSIONAL: 0 - 100",
+									"type": "text"
+								},
+								{
+									"key": "latitude",
+									"value": "-6.115820",
+									"description": "OPSIONAL: Titik GPS Latitude",
+									"type": "text"
+								},
+								{
+									"key": "longitude",
+									"value": "106.912530",
+									"description": "OPSIONAL: Titik GPS Longitude",
+									"type": "text"
+								},
+								{
+									"key": "id_pelaksana",
+									"value": "1",
+									"description": "OPSIONAL: ID Pelaksana",
+									"type": "text"
+								},
+								{
+									"key": "photo[]",
+									"description": "OPSIONAL: File foto (JPG/PNG/WebP) otomatis diconvert ke .webp",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/pekerjaan-sda",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"pekerjaan-sda"
+							]
+						},
+						"description": "Menambahkan data pekerjaan SDA baru secara langsung ke database."
+					},
+					"response": []
+				},
+				{
+					"name": "4. Update Progress Pekerjaan SDA (PATCH)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"progress\": 75,\n    \"status_tindak_lanjut\": \"Sedang Dikerjakan\",\n    \"tgl_mulai\": \"2026-11-05\",\n    \"tgl_selesai\": \"2026-12-15\",\n    \"kode_tracking\": \"TRK-2026-001\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/pekerjaan-sda/1/progress",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"pekerjaan-sda",
+								"1",
+								"progress"
+							]
+						},
+						"description": "Mengupdate progress (0-100), status tindak lanjut, tanggal pelaksanaan, dan kode tracking pekerjaan SDA."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Survei Reses",
+			"item": [
+				{
+					"name": "1. Peta Survei Reses (Map)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/survei-reses/map",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"survei-reses",
+								"map"
+							]
+						},
+						"description": "Mengambil semua ringkasan data Survei Reses dewan."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Detail Survei Reses",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/survei-reses/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"survei-reses",
+								"1"
+							]
+						},
+						"description": "Mengambil data detail 1 Survei Reses beserta relasi dewan, kecamatan, kelurahan, dan pekerjaan SDA terkait."
+					},
+					"response": []
+				},
+				{
+					"name": "3. Tambah Survei Reses (POST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "id_dewan",
+									"value": "1",
+									"description": "WAJIB: ID Anggota Dewan",
+									"type": "text"
+								},
+								{
+									"key": "id_kecamatan",
+									"value": "1",
+									"description": "WAJIB: ID Kecamatan",
+									"type": "text"
+								},
+								{
+									"key": "id_kelurahan",
+									"value": "1",
+									"description": "WAJIB: ID Kelurahan",
+									"type": "text"
+								},
+								{
+									"key": "tanggal_reses",
+									"value": "2026-10-18",
+									"description": "WAJIB: YYYY-MM-DD",
+									"type": "text"
+								},
+								{
+									"key": "alamat",
+									"value": "Jl. Cilincing Bakti No. 10",
+									"description": "WAJIB: Lokasi reses",
+									"type": "text"
+								},
+								{
+									"key": "permintaan",
+									"value": "Normalisasi saluran air dan peninggian tanggul",
+									"description": "WAJIB: Aspirasi / Usulan reses",
+									"type": "text"
+								},
+								{
+									"key": "keterangan",
+									"value": "Sering meluap ketika musim hujan",
+									"description": "OPSIONAL: Catatan tambahan",
+									"type": "text"
+								},
+								{
+									"key": "status",
+									"value": "Menunggu",
+									"description": "OPSIONAL: Menunggu / Diproses / Selesai",
+									"type": "text"
+								},
+								{
+									"key": "panjang",
+									"value": "100",
+									"description": "OPSIONAL (angka)",
+									"type": "text"
+								},
+								{
+									"key": "lebar",
+									"value": "2.5",
+									"description": "OPSIONAL (angka)",
+									"type": "text"
+								},
+								{
+									"key": "tinggi",
+									"value": "1.5",
+									"description": "OPSIONAL (angka)",
+									"type": "text"
+								},
+								{
+									"key": "volume",
+									"value": "375",
+									"description": "OPSIONAL (angka)",
+									"type": "text"
+								},
+								{
+									"key": "estimasi_biaya",
+									"value": "50000000",
+									"description": "OPSIONAL (angka)",
+									"type": "text"
+								},
+								{
+									"key": "foto[]",
+									"description": "OPSIONAL: File foto survei reses (JPG/PNG/WebP) otomatis convert ke .webp",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/survei-reses",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"survei-reses"
+							]
+						},
+						"description": "Menyimpan data Survei Reses sekaligus OTOMATIS membuat Pekerjaan SDA dan Surat Permohonan."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Surat Permohonan",
+			"item": [
+				{
+					"name": "1. Peta Surat Permohonan (Map)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/surat-permohonan/map",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"surat-permohonan",
+								"map"
+							]
+						},
+						"description": "Mengambil semua data Surat Permohonan yang memiliki relasi koordinat GPS."
+					},
+					"response": []
+				},
+				{
+					"name": "2. Detail Surat Permohonan",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/surat-permohonan/1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"surat-permohonan",
+								"1"
+							]
+						},
+						"description": "Mengambil detail 1 Surat Permohonan beserta relasi pekerjaan SDA, kecamatan, dan kelurahan."
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
