@@ -32,8 +32,8 @@ return [
     ],
 
     'app_reses' => [
-        'url' => env('APP_RESES_API_URL', 'http://127.0.0.1:1111/api'),
-        'token' => env('APP_RESES_API_TOKEN', '3|CSs4PL5tMfe0xU7Nu2mT2UpxyqaPVpMXIZpNOuiUa9156386'),
+        'url' => env('APP_RESES_API_URL', 'https://app-reses.farizahmad.com/api'),
+        'token' => env('APP_RESES_API_TOKEN', '2|akLorTMvq2kbvFfUMcRg3wO1r7691QWKuXmuoFWy84149041'),
     ],
 
     'maptiler' => [

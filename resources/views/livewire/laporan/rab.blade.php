@@ -1589,7 +1589,7 @@ $submitToAppReses = function () {
                             <h2 class="text-base sm:text-lg font-black text-gray-900 tracking-tight">Kirim Data ke API App-Reses</h2>
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Port 1111 Active
+                                App-Reses Online
                             </span>
                         </div>
                         <p class="text-xs text-gray-500 mt-0.5">Sinkronisasi usulan & pekerjaan SDA langsung ke sistem App-Reses.</p>
@@ -1671,7 +1671,7 @@ $submitToAppReses = function () {
                     <div class="flex items-center justify-between mb-2 flex-wrap gap-1">
                         <span class="text-[11px] font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                            Koneksi ID Record di App-Reses (Port 1111)
+                            Koneksi ID Record di App-Reses
                         </span>
                         <div class="flex items-center gap-2">
                             <button type="button" wire:click="syncFromApi" wire:loading.attr="disabled" class="inline-flex items-center gap-1 text-[10px] bg-indigo-100/80 hover:bg-indigo-200 text-indigo-800 border border-indigo-300 px-2.5 py-0.5 rounded-lg font-extrabold transition-all shadow-sm cursor-pointer" title="Ambil data detail & foto dari API App-Reses">
@@ -1951,7 +1951,7 @@ $submitToAppReses = function () {
                     <div class="flex items-center justify-between mb-2.5">
                         <p class="text-[11px] font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
                             <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-                            Data Pekerjaan SDA (Port 1111)
+                            Data Pekerjaan SDA
                         </p>
                         <span class="text-[9px] font-black text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full">Pelaksana & Klasifikasi</span>
                     </div>
@@ -2098,7 +2098,7 @@ $submitToAppReses = function () {
                                             <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                             Foto Tersimpan di App-Reses ({{ count($appResesExistingPhotosAwal) }})
                                         </span>
-                                        <span class="text-[9px] text-gray-400 font-bold">Port 1111</span>
+                                        <span class="text-[9px] text-gray-400 font-bold">App-Reses</span>
                                     </div>
                                     <div class="grid grid-cols-3 gap-2">
                                         @foreach($appResesExistingPhotosAwal as $oldUrl)
@@ -2161,7 +2161,7 @@ $submitToAppReses = function () {
                                             <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
                                             Foto Tersimpan di App-Reses ({{ count($appResesExistingPhotosAkhir) }})
                                         </span>
-                                        <span class="text-[9px] text-gray-400 font-bold">Port 1111</span>
+                                        <span class="text-[9px] text-gray-400 font-bold">App-Reses</span>
                                     </div>
                                     <div class="grid grid-cols-3 gap-2">
                                         @foreach($appResesExistingPhotosAkhir as $oldUrl)
@@ -2221,7 +2221,7 @@ $submitToAppReses = function () {
                             </span>
                             <span wire:loading wire:target="submitToAppReses" class="flex items-center gap-2">
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>Memperbarui Data di Port 1111...</span>
+                                <span>Memperbarui Data di App-Reses...</span>
                             </span>
                         </button>
                     @else
@@ -2235,7 +2235,7 @@ $submitToAppReses = function () {
                             </span>
                             <span wire:loading wire:target="submitToAppReses" class="flex items-center gap-2">
                                 <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                <span>Mengirim Data ke Port 1111...</span>
+                                <span>Mengirim Data ke App-Reses...</span>
                             </span>
                         </button>
                     @endif

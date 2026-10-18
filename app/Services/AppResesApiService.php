@@ -12,7 +12,7 @@ class AppResesApiService
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('services.app_reses.url', 'http://127.0.0.1:1111/api'), '/');
+        $this->baseUrl = rtrim(config('services.app_reses.url', 'https://app-reses.farizahmad.com/api'), '/');
         $this->token = config('services.app_reses.token', '');
     }
 
@@ -587,9 +587,17 @@ class AppResesApiService
     /**
      * Parse string/JSON photo paths menjadi array URL lengkap
      */
-    public static function parsePhotoUrls($raw, string $baseUrl = 'http://127.0.0.1:1111'): array
+    public static function parsePhotoUrls($raw, ?string $baseUrl = null): array
     {
         if (empty($raw)) return [];
+        if ($baseUrl === null) {
+            $apiUrl = config('services.app_reses.url', 'https://app-reses.farizahmad.com/api');
+            $parsed = parse_url($apiUrl);
+            $scheme = $parsed['scheme'] ?? 'https';
+            $host = $parsed['host'] ?? 'app-reses.farizahmad.com';
+            $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+            $baseUrl = "{$scheme}://{$host}{$port}";
+        }
         if (is_string($raw)) {
             $decoded = json_decode($raw, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
