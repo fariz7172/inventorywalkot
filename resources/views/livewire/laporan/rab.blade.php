@@ -678,7 +678,7 @@ $openAppResesModalFor = function ($rabId) {
     $this->appResesLingkupKewenangan = 'Seksi Pemeliharaan';
     $this->appResesMetodePekerjaan = 'Swakelola';
     $this->appResesTahunDikerjakan = date('Y');
-    $this->appResesIdPelaksana = 2;
+    $this->appResesIdPelaksana = 8;
     $this->appResesPanjang = '';
     $this->appResesLebar = '';
     $this->appResesTinggi = '';
@@ -767,36 +767,73 @@ $submitToAppReses = function () {
 
     $apiService = new AppResesApiService();
 
+    $cleanNum = function($val) {
+        if ($val === null || $val === '') return null;
+        $str = str_replace(',', '.', preg_replace('/[^0-9,\.]/', '', (string)$val));
+        return is_numeric($str) ? (float)$str : null;
+    };
+
+    $panjangNum = $cleanNum($this->appResesPanjang);
+    $lebarNum   = $cleanNum($this->appResesLebar);
+    $tinggiNum  = $cleanNum($this->appResesTinggi);
+
     $vol = null;
-    if ($this->appResesPanjang && $this->appResesLebar && $this->appResesTinggi) {
-        $vol = (float)$this->appResesPanjang * (float)$this->appResesLebar * (float)$this->appResesTinggi;
+    if ($panjangNum !== null && $lebarNum !== null && $tinggiNum !== null) {
+        $vol = round($panjangNum * $lebarNum * $tinggiNum, 3);
     }
 
     $tahun = date('Y', strtotime($this->appResesTanggal));
     $noSkpd = $this->appResesNoSkpd ?: ('600/RAB-' . $this->appResesRabId . '/SDA/' . $tahun);
-    $kodeTracking = $this->appResesKodeTracking ?: ('TRK-' . date('Ymd') . '-RAB' . $this->appResesRabId . '-' . strtoupper(substr(uniqid(), -4)));
+
+    // Pastikan Kecamatan & Kelurahan valid
+    $kecId = (int)($this->appResesKecamatanId ?: 1);
+    if ($kecId < 1 || $kecId > 6) $kecId = 1;
+    $kelList = AppResesApiService::getKelurahans($kecId);
+    $kelId = (int)$this->appResesKelurahanId;
+    if (!$kelId || !array_key_exists($kelId, $kelList)) {
+        $kelId = !empty($kelList) ? array_key_first($kelList) : 1;
+        $this->appResesKelurahanId = $kelId;
+    }
+
+    $surveiId = (int)$this->appResesSurveiId;
+    $pekerjaanId = (int)$this->appResesPekerjaanId;
+
+    // Untuk data baru, selalu buat kode_tracking yang baru dan unik
+    if ($surveiId <= 0 && $pekerjaanId <= 0) {
+        $kodeTracking = 'TRK-' . date('Ymd') . '-RAB' . $this->appResesRabId . '-' . strtoupper(substr(uniqid(), -4));
+        $this->appResesKodeTracking = $kodeTracking;
+    } else {
+        $kodeTracking = $this->appResesKodeTracking ?: ('TRK-' . date('Ymd') . '-RAB' . $this->appResesRabId . '-' . strtoupper(substr(uniqid(), -4)));
+    }
+
+    $latNum = $cleanNum($this->appResesLatitude);
+    $lngNum = $cleanNum($this->appResesLongitude);
+    if ($latNum !== null && ($latNum < -90 || $latNum > 90)) $latNum = null;
+    if ($lngNum !== null && ($lngNum < -180 || $lngNum > 180)) $lngNum = null;
+
+    $idPelaksana = (int)($this->appResesIdPelaksana ?: 8);
 
     // Payload untuk Survei Reses (otomatis membuat Survei Reses & Surat Permohonan)
     $surveiPayload = [
         'sumber_data' => 'Masyarakat',
-        'id_kecamatan' => (int)$this->appResesKecamatanId,
-        'id_kelurahan' => (int)$this->appResesKelurahanId,
+        'id_kecamatan' => $kecId,
+        'id_kelurahan' => $kelId,
         'tanggal_reses' => $this->appResesTanggal,
         'alamat' => $this->appResesLokasi,
         'permintaan' => $this->appResesUraian,
         'keterangan' => $this->appResesKeterangan ?: 'Data terkirim dari Aplikasi Inventory',
         'status' => $this->appResesStatusSurvei ?: 'Selesai',
-        'panjang' => $this->appResesPanjang ?: null,
-        'lebar' => $this->appResesLebar ?: null,
-        'tinggi' => $this->appResesTinggi ?: null,
+        'panjang' => $panjangNum,
+        'lebar' => $lebarNum,
+        'tinggi' => $tinggiNum,
         'volume' => $vol,
     ];
 
     // Payload untuk Pekerjaan SDA (dengan no_skpd & kode_tracking unik)
     $pekerjaanPayload = [
         'sumber_data' => 'Masyarakat',
-        'id_kecamatan' => (int)$this->appResesKecamatanId,
-        'id_kelurahan' => (int)$this->appResesKelurahanId,
+        'id_kecamatan' => $kecId,
+        'id_kelurahan' => $kelId,
         'rt' => $this->appResesRt ?: null,
         'rw' => $this->appResesRw ?: null,
         'alamat' => $this->appResesLokasi,
@@ -807,16 +844,16 @@ $submitToAppReses = function () {
         'lingkup_kewenangan' => $this->appResesLingkupKewenangan ?: 'Seksi Pemeliharaan',
         'metode_pekerjaan' => $this->appResesMetodePekerjaan ?: 'Swakelola',
         'tahun_dikerjakan' => (int)($this->appResesTahunDikerjakan ?: date('Y')),
-        'id_pelaksana' => (int)($this->appResesIdPelaksana ?: 2),
+        'id_pelaksana' => $idPelaksana,
         'status_tindak_lanjut' => $this->appResesStatusTindakLanjut ?: 'Survei Lapangan',
         'progress' => (int)($this->appResesProgress ?: 0),
         'tgl_input' => $this->appResesTanggal,
         'tahun_monev' => (int)$tahun,
         'tgl_mulai' => $this->appResesTglMulai ?: null,
         'tgl_selesai' => $this->appResesTglSelesai ?: null,
-        'volume_panjang' => $this->appResesPanjang ? $this->appResesPanjang . ' m' : null,
-        'latitude' => $this->appResesLatitude ? (float)$this->appResesLatitude : null,
-        'longitude' => $this->appResesLongitude ? (float)$this->appResesLongitude : null,
+        'volume_panjang' => $panjangNum ? $panjangNum . ' m' : null,
+        'latitude' => $latNum,
+        'longitude' => $lngNum,
     ];
 
     $surveiId = (int)$this->appResesSurveiId;
@@ -2002,9 +2039,9 @@ $submitToAppReses = function () {
                         <div>
                             <div class="flex items-center justify-between mb-1">
                                 <label class="text-[10px] font-bold text-gray-700">Pelaksana</label>
-                                <span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1 rounded">ID: 2</span>
+                                <span class="text-[9px] font-black text-emerald-700 bg-emerald-100 px-1 rounded">ID: {{ $this->appResesIdPelaksana ?: 8 }}</span>
                             </div>
-                            <select wire:model="appResesIdPelaksana" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-emerald-800 outline-none focus:ring-1 focus:ring-emerald-500">
+                            <select wire:model.live="appResesIdPelaksana" class="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-emerald-800 outline-none focus:ring-1 focus:ring-emerald-500">
                                 @foreach($this->appResesPelaksanas as $pId => $pName)
                                     <option value="{{ $pId }}">{{ $pName }}</option>
                                 @endforeach

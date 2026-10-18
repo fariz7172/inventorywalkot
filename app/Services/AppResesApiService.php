@@ -129,8 +129,14 @@ class AppResesApiService
     public static function getPelaksanas(): array
     {
         return [
-            2 => 'SUDIN JAKARTA UTARA (Default)',
+            8 => 'SUDIN SDA JAKARTA UTARA (Default)',
+            2 => 'Seksi Drainase',
             1 => 'Slamet Riyanto (Satpel SDA Koja)',
+            3 => 'Novita Kesnanda (Satpel SDA Pademangan)',
+            4 => 'Pendi (Satpel SDA Penjaringan)',
+            5 => 'Ichsan Nasution (Satpel SDA Cilincing)',
+            6 => 'Neti Heriati (Satpel SDA Tanjung Priok)',
+            7 => 'Supiyan (Satpel SDA Kelapa Gading)',
         ];
     }
 
@@ -320,6 +326,24 @@ class AppResesApiService
     }
 
     /**
+     * Helper untuk memformat pesan error dari API agar mencakup detail validasi kolom
+     */
+    private function formatApiErrorMessage($response, string $fallback): string
+    {
+        $message = $response->json('message') ?? $fallback;
+        $errors = $response->json('errors');
+        if (!empty($errors) && is_array($errors)) {
+            $formatted = [];
+            foreach ($errors as $field => $messages) {
+                $msgStr = is_array($messages) ? implode(', ', $messages) : (string)$messages;
+                $formatted[] = "{$field}: {$msgStr}";
+            }
+            $message .= ' (' . implode('; ', $formatted) . ')';
+        }
+        return $message;
+    }
+
+    /**
      * Kirim data ke POST /api/survei-reses
      */
     public function sendSurveiReses(array $data, array $photos = []): array
@@ -345,7 +369,7 @@ class AppResesApiService
                 ];
             }
 
-            $errorMessage = $response->json('message') ?? 'Gagal mengirim data ke API Survei Reses (Status: ' . $response->status() . ')';
+            $errorMessage = $this->formatApiErrorMessage($response, 'Gagal mengirim data ke API Survei Reses (Status: ' . $response->status() . ')');
             $errors = $response->json('errors') ?? [];
 
             return [
@@ -391,7 +415,7 @@ class AppResesApiService
                 ];
             }
 
-            $errorMessage = $response->json('message') ?? 'Gagal mengirim data ke API Pekerjaan SDA (Status: ' . $response->status() . ')';
+            $errorMessage = $this->formatApiErrorMessage($response, 'Gagal mengirim data ke API Pekerjaan SDA (Status: ' . $response->status() . ')');
             $errors = $response->json('errors') ?? [];
 
             return [
@@ -441,7 +465,7 @@ class AppResesApiService
             return [
                 'success' => false,
                 'status' => $response->status(),
-                'message' => $response->json('message') ?? "Gagal memperbarui Survei Reses #{$id}.",
+                'message' => $this->formatApiErrorMessage($response, "Gagal memperbarui Survei Reses #{$id}."),
                 'errors' => $response->json('errors') ?? [],
                 'raw' => $response->body(),
             ];
@@ -485,7 +509,7 @@ class AppResesApiService
             return [
                 'success' => false,
                 'status' => $response->status(),
-                'message' => $response->json('message') ?? "Gagal memperbarui Pekerjaan SDA #{$id}.",
+                'message' => $this->formatApiErrorMessage($response, "Gagal memperbarui Pekerjaan SDA #{$id}."),
                 'errors' => $response->json('errors') ?? [],
                 'raw' => $response->body(),
             ];

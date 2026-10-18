@@ -33,7 +33,7 @@ return [
 
     'app_reses' => [
         'url' => env('APP_RESES_API_URL', 'https://app-reses.farizahmad.com/api'),
-        'token' => env('APP_RESES_API_TOKEN', '2|akLorTMvq2kbvFfUMcRg3wO1r7691QWKuXmuoFWy84149041'),
+        'token' => env('APP_RESES_API_TOKEN', '1|NOOazE9wfjBcGD7pt850sGuQ9gXC4HyURp8X6b2W3b61246b'),
     ],
 
     'maptiler' => [
