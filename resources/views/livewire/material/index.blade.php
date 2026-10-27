@@ -513,6 +513,11 @@ new class extends Component {
                             <option value="Set">Set</option>
                             <option value="Rol">Rol</option>
                             <option value="Meter">Meter</option>
+                            <option value="Pail">Pail</option>
+                            <option value="Galon">Galon</option>
+                            <option value="Kaleng">Kaleng</option>
+                            <option value="Pack">Pack</option>
+                            <option value="Box">Box</option>
                         </select>
                     </div>
 
@@ -766,6 +771,11 @@ new class extends Component {
                             <option>Set</option>
                             <option>Rol</option>
                             <option>Meter</option>
+                            <option>Pail</option>
+                            <option>Galon</option>
+                            <option>Kaleng</option>
+                            <option>Pack</option>
+                            <option>Box</option>
                         </select>
                     </div>
                     <div>
