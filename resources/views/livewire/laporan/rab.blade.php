@@ -67,6 +67,13 @@ state([
     'appResesSuccessMessage' => '',
     'appResesErrorMessage' => '',
     'appResesLastResponse' => null,
+
+    // State untuk Rekap Data Selisih RAB (Khusus Admin)
+    'showSelisihModal' => false,
+    'selisihSearch' => '',
+    'selisihKecamatanFilter' => '',
+    'selisihCategoryFilter' => 'all', // 'all', 'over_budget', 'non_rab'
+    'selisihData' => [],
 ]);
 
 mount(function() {
@@ -934,6 +941,179 @@ $submitToAppReses = function () {
     }
 };
 
+$openSelisihModal = function() {
+    $user = auth()->user();
+    abort_if(!$user || !$user->hasAnyRole(['superadmin', 'sudin']), 403, 'Akses terbatas untuk akun Admin.');
+
+    $this->showSelisihModal = true;
+    $this->selisihSearch = '';
+    $this->selisihKecamatanFilter = '';
+    $this->selisihCategoryFilter = 'all';
+    $this->generateSelisihData();
+};
+
+$closeSelisihModal = function() {
+    $this->showSelisihModal = false;
+};
+
+$generateSelisihData = function() {
+    $user = auth()->user();
+    abort_if(!$user || !$user->hasAnyRole(['superadmin', 'sudin']), 403, 'Akses terbatas untuk akun Admin.');
+
+    $month = (int)$this->selectedMonth;
+    $year = (int)$this->selectedYear;
+    $currentDateStr = sprintf('%04d-%02d-01', $year, $month);
+
+    $allDos = DeliveryOrder::with('materials')
+        ->whereYear('tanggal', '<=', $year)
+        ->get()
+        ->groupBy('lokasi');
+
+    $rabs = Rab::with(['materials', 'kecamatan'])->get();
+
+    $selisihList = [];
+
+    foreach ($rabs as $rab) {
+        $dosForRab = $allDos->get($rab->lokasi, collect());
+        if ($dosForRab->isEmpty() && $rab->materials->isEmpty()) {
+            continue;
+        }
+
+        $prevDos = $dosForRab->filter(fn($d) => $d->tanggal < $currentDateStr);
+        $monthDos = $dosForRab->filter(function($d) use ($month, $year) {
+            $t = strtotime($d->tanggal);
+            return (int)date('n', $t) === $month && (int)date('Y', $t) === $year;
+        });
+
+        $data = [];
+        foreach ($rab->materials as $m) {
+            $data[$m->id] = [
+                'material_id' => $m->id,
+                'material_name' => $m->name,
+                'unit' => $m->unit,
+                'target_awal' => (float)$m->pivot->target_volume,
+                'lalu' => 0,
+                'bulan_ini' => 0,
+            ];
+        }
+
+        foreach ($prevDos as $d) {
+            foreach ($d->materials as $mat) {
+                if (!isset($data[$mat->id])) {
+                    $data[$mat->id] = [
+                        'material_id' => $mat->id,
+                        'material_name' => $mat->name,
+                        'unit' => $mat->unit,
+                        'target_awal' => 0,
+                        'lalu' => 0,
+                        'bulan_ini' => 0,
+                    ];
+                }
+                $data[$mat->id]['lalu'] += (float)$mat->pivot->requested_volume;
+            }
+        }
+
+        foreach ($monthDos as $d) {
+            foreach ($d->materials as $mat) {
+                if (!isset($data[$mat->id])) {
+                    $data[$mat->id] = [
+                        'material_id' => $mat->id,
+                        'material_name' => $mat->name,
+                        'unit' => $mat->unit,
+                        'target_awal' => 0,
+                        'lalu' => 0,
+                        'bulan_ini' => 0,
+                    ];
+                }
+                $data[$mat->id]['bulan_ini'] += (float)$mat->pivot->requested_volume;
+            }
+        }
+
+        foreach ($data as $mId => $item) {
+            $stockMaterialRab = $item['target_awal'] - $item['lalu'];
+            $sisaPengambilan = $stockMaterialRab - $item['bulan_ini'];
+
+            if ($stockMaterialRab < 0 || $sisaPengambilan < 0) {
+                $selisihList[] = [
+                    'rab_id' => $rab->id,
+                    'lokasi' => $rab->lokasi,
+                    'kecamatan_id' => $rab->kecamatan_id,
+                    'kecamatan' => $rab->kecamatan->nama_kecamatan ?? 'Nota Dinas',
+                    'material_id' => $mId,
+                    'material_name' => $item['material_name'],
+                    'unit' => $item['unit'],
+                    'target_awal' => $item['target_awal'],
+                    'lalu' => $item['lalu'],
+                    'stock_rab' => $stockMaterialRab,
+                    'bulan_ini' => $item['bulan_ini'],
+                    'sisa' => $sisaPengambilan,
+                    'is_non_rab' => $item['target_awal'] == 0,
+                ];
+            }
+        }
+    }
+
+    $this->selisihData = $selisihList;
+};
+
+$filteredSelisihData = computed(function() {
+    $data = collect($this->selisihData);
+
+    if ($this->selisihKecamatanFilter !== '') {
+        $data = $data->filter(function($item) {
+            if ($this->selisihKecamatanFilter === 'null') {
+                return empty($item['kecamatan_id']);
+            }
+            return (string)$item['kecamatan_id'] === (string)$this->selisihKecamatanFilter;
+        });
+    }
+
+    if ($this->selisihCategoryFilter === 'over_budget') {
+        $data = $data->filter(fn($item) => !$item['is_non_rab']);
+    } elseif ($this->selisihCategoryFilter === 'non_rab') {
+        $data = $data->filter(fn($item) => $item['is_non_rab']);
+    }
+
+    if (!empty($this->selisihSearch)) {
+        $kw = strtolower($this->selisihSearch);
+        $data = $data->filter(function($item) use ($kw) {
+            return str_contains(strtolower($item['lokasi']), $kw) ||
+                   str_contains(strtolower($item['material_name']), $kw) ||
+                   str_contains(strtolower($item['kecamatan']), $kw);
+        });
+    }
+
+    return $data->values()->all();
+});
+
+$selectRabFromSelisih = function($rabId) {
+    $this->selectedRabId = (string)$rabId;
+    $this->showSelisihModal = false;
+};
+
+$exportSelisihExcel = function() {
+    $user = auth()->user();
+    abort_if(!$user || !$user->hasAnyRole(['superadmin', 'sudin']), 403, 'Akses terbatas untuk akun Admin.');
+
+    if (empty($this->selisihData)) {
+        $this->generateSelisihData();
+    }
+
+    $filteredData = $this->filteredSelisihData;
+    $months = [
+        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+    ];
+    $monthName = $months[(int)$this->selectedMonth] ?? 'Bulan-' . $this->selectedMonth;
+    $fileName = 'Laporan-Selisih-RAB-' . str_replace(' ', '-', $monthName) . '-' . $this->selectedYear . '.xlsx';
+
+    return \Maatwebsite\Excel\Facades\Excel::download(
+        new \App\Exports\RabSelisihExport($filteredData, $this->selectedMonth, $this->selectedYear, $monthName),
+        $fileName
+    );
+};
+
 ?>
 
 <div class="max-w-[100vw] overflow-hidden flex flex-col h-full">
@@ -1063,6 +1243,18 @@ $submitToAppReses = function () {
                     <option value="{{ $year }}">{{ $year }}</option>
                 @endforeach
             </select>
+
+            @if(auth()->user()?->hasAnyRole(['superadmin', 'sudin']))
+            <button type="button" wire:click="openSelisihModal" 
+                class="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl shadow-md shadow-red-500/20 transition-all hover:scale-[1.02] cursor-pointer"
+                title="Buka rekap seluruh data yang selisih/minus (Khusus Admin)">
+                <svg class="w-4 h-4 text-white animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                <span>Generate Selisih RAB</span>
+                <span class="bg-black/20 text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Admin</span>
+            </button>
+            @endif
         </div>
     </div>
 
@@ -2279,6 +2471,236 @@ $submitToAppReses = function () {
                     @endif
                 </div>
             </form>
+        </div>
+    </div>
+    @endif
+
+    {{-- Modal Rekap Data Selisih RAB (Khusus Admin) --}}
+    @if($showSelisihModal && auth()->user()?->hasAnyRole(['superadmin', 'sudin']))
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-gray-950/70 backdrop-blur-sm overflow-hidden animate-fade-in">
+        <div class="bg-white w-full max-w-7xl rounded-3xl shadow-2xl flex flex-col max-h-[94vh] overflow-hidden border border-gray-100">
+            
+            {{-- Modal Header --}}
+            <div class="px-6 py-5 bg-gradient-to-r from-red-50 via-rose-50 to-white border-b border-rose-100 flex items-center justify-between flex-wrap gap-4 flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-600/30">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-lg font-black text-gray-900 tracking-tight">Rekap Data Selisih Material RAB (Nilai Minus / Over-Budget)</h2>
+                            <span class="bg-rose-100 text-rose-800 border border-rose-200 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">Khusus Admin</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Menampilkan seluruh lokasi dengan <strong>Stock Material RAB</strong> atau <strong>Sisa Pengambilan</strong> bernilai minus pada periode: <strong class="text-rose-700 uppercase">{{ $months[$selectedMonth] }} {{ $selectedYear }}</strong>.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <button type="button" wire:click="exportSelisihExcel" 
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span>Export Excel (.xlsx)</span>
+                    </button>
+                    <button type="button" wire:click="closeSelisihModal" class="text-gray-400 hover:text-gray-700 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer" title="Tutup Modal">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            {{-- Stat Cards --}}
+            @php
+                $filteredList = $this->filteredSelisihData;
+                $totalMinusItems = count($filteredList);
+                $uniqueRabsCount = count(array_unique(array_column($filteredList, 'rab_id')));
+                $overBudgetCount = count(array_filter($filteredList, fn($x) => !$x['is_non_rab']));
+                $nonRabCount = count(array_filter($filteredList, fn($x) => $x['is_non_rab']));
+            @endphp
+            <div class="p-4 bg-gray-50/70 border-b border-gray-100 flex-shrink-0">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="bg-white p-3 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Total Item Minus</p>
+                            <p class="text-xl font-black text-rose-600 mt-0.5">{{ number_format($totalMinusItems, 0, ',', '.') }}</p>
+                        </div>
+                        <div class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs">⚠️</div>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Lokasi Terdampak</p>
+                            <p class="text-xl font-black text-gray-800 mt-0.5">{{ number_format($uniqueRabsCount, 0, ',', '.') }}</p>
+                        </div>
+                        <div class="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">📍</div>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Over-Budget (Target > 0)</p>
+                            <p class="text-xl font-black text-amber-600 mt-0.5">{{ number_format($overBudgetCount, 0, ',', '.') }}</p>
+                        </div>
+                        <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">📈</div>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl border border-gray-200/80 shadow-xs flex items-center justify-between">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Material Non-RAB (Target 0)</p>
+                            <p class="text-xl font-black text-purple-600 mt-0.5">{{ number_format($nonRabCount, 0, ',', '.') }}</p>
+                        </div>
+                        <div class="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xs">📦</div>
+                    </div>
+                </div>
+
+                {{-- Filters & Search Toolbar --}}
+                <div class="mt-3 flex flex-col md:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-200/60">
+                    <div class="flex-1 w-full relative">
+                        <input type="text" wire:model.live.debounce.300ms="selisihSearch" 
+                               placeholder="Cari lokasi, material, atau kecamatan..." 
+                               class="w-full bg-white rounded-xl pl-9 pr-4 py-2 text-xs border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 shadow-xs">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <select wire:model.live="selisihKecamatanFilter" class="bg-white rounded-xl px-3 py-2 text-xs font-bold text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20 shadow-xs">
+                            <option value="">-- Semua Kecamatan --</option>
+                            <option value="null">-- Nota Dinas --</option>
+                            @foreach($this->kecamatans as $kec)
+                                <option value="{{ $kec->id }}">{{ $kec->nama_kecamatan }}</option>
+                            @endforeach
+                        </select>
+
+                        <select wire:model.live="selisihCategoryFilter" class="bg-white rounded-xl px-3 py-2 text-xs font-bold text-gray-700 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-500/20 shadow-xs">
+                            <option value="all">Semua Kategori</option>
+                            <option value="over_budget">Melebihi Kuota RAB Saja</option>
+                            <option value="non_rab">Material Non-RAB Saja</option>
+                        </select>
+
+                        <button type="button" wire:click="generateSelisihData" 
+                                class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs px-3 py-2 rounded-xl border border-gray-200 transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap" title="Pindai ulang data selisih">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>Scan Ulang</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Table Container --}}
+            <div class="overflow-y-auto flex-1 min-h-[350px] p-0">
+                <table class="min-w-full border-collapse text-left">
+                    <thead class="sticky top-0 bg-gray-100 shadow-xs z-10 text-[10px] font-black uppercase tracking-wider text-gray-600 border-b border-gray-200">
+                        <tr>
+                            <th class="py-2.5 px-3 text-center w-10">NO</th>
+                            <th class="py-2.5 px-3 min-w-[280px]">LOKASI PEKERJAAN / RAB</th>
+                            <th class="py-2.5 px-3 text-center min-w-[110px]">KECAMATAN</th>
+                            <th class="py-2.5 px-3 min-w-[160px]">MATERIAL</th>
+                            <th class="py-2.5 px-2 text-center w-14">SATUAN</th>
+                            <th class="py-2.5 px-3 text-right">TARGET RAB</th>
+                            <th class="py-2.5 px-3 text-right">PENGELUARAN LALU</th>
+                            <th class="py-2.5 px-3 text-right bg-rose-100/70 text-rose-900">STOCK RAB (AWAL)</th>
+                            <th class="py-2.5 px-3 text-right">BLN INI</th>
+                            <th class="py-2.5 px-3 text-right bg-rose-100/70 text-rose-900">SISA AKHIR</th>
+                            <th class="py-2.5 px-3 text-center min-w-[140px]">KETERANGAN</th>
+                            <th class="py-2.5 px-3 text-center w-24">AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-xs">
+                        @forelse($filteredList as $idx => $row)
+                        <tr class="hover:bg-rose-50/40 transition-colors {{ $idx % 2 == 0 ? 'bg-white' : 'bg-gray-50/30' }}">
+                            <td class="py-2 px-3 text-center font-bold text-gray-400">{{ $idx + 1 }}</td>
+                            <td class="py-2 px-3">
+                                <button type="button" wire:click="selectRabFromSelisih('{{ $row['rab_id'] }}')" 
+                                        class="font-black text-gray-900 hover:text-accent text-left transition-colors cursor-pointer group flex items-start gap-1"
+                                        title="Buka laporan RAB untuk lokasi ini">
+                                    <span class="group-hover:underline leading-snug">{{ $row['lokasi'] }}</span>
+                                    <svg class="w-3 h-3 text-gray-400 group-hover:text-accent flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                                </button>
+                            </td>
+                            <td class="py-2 px-3 text-center">
+                                <span class="inline-block px-2 py-0.5 rounded-md font-bold text-[10px] bg-gray-100 text-gray-700">
+                                    {{ $row['kecamatan'] }}
+                                </span>
+                            </td>
+                            <td class="py-2 px-3 font-bold text-gray-800">{{ $row['material_name'] }}</td>
+                            <td class="py-2 px-2 text-center text-gray-500 font-semibold">{{ $row['unit'] }}</td>
+                            <td class="py-2 px-3 text-right font-semibold text-gray-600">
+                                {{ number_format($row['target_awal'], 2, ',', '.') }}
+                            </td>
+                            <td class="py-2 px-3 text-right font-semibold text-gray-600">
+                                {{ number_format($row['lalu'], 2, ',', '.') }}
+                            </td>
+                            
+                            {{-- STOCK MATERIAL RAB (Awal Bulan) --}}
+                            <td class="py-2 px-3 text-right font-black {{ $row['stock_rab'] < 0 ? 'text-rose-600 bg-rose-50/80' : 'text-gray-800' }}">
+                                @if($row['stock_rab'] < 0)
+                                    <span class="inline-block px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">
+                                        {{ number_format($row['stock_rab'], 2, ',', '.') }}
+                                    </span>
+                                @else
+                                    {{ number_format($row['stock_rab'], 2, ',', '.') }}
+                                @endif
+                            </td>
+
+                            <td class="py-2 px-3 text-right font-semibold text-gray-700">
+                                {{ number_format($row['bulan_ini'], 2, ',', '.') }}
+                            </td>
+
+                            {{-- Sisa Pengambilan (Akhir Bulan) --}}
+                            <td class="py-2 px-3 text-right font-black {{ $row['sisa'] < 0 ? 'text-rose-600 bg-rose-50/80' : 'text-gray-800' }}">
+                                @if($row['sisa'] < 0)
+                                    <span class="inline-block px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-bold">
+                                        {{ number_format($row['sisa'], 2, ',', '.') }}
+                                    </span>
+                                @else
+                                    {{ number_format($row['sisa'], 2, ',', '.') }}
+                                @endif
+                            </td>
+
+                            {{-- Keterangan / Status --}}
+                            <td class="py-2 px-3 text-center">
+                                @if($row['is_non_rab'])
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                        📦 Non-RAB (Keluar: {{ number_format($row['lalu'] + $row['bulan_ini'], 2, ',', '.') }})
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                        📈 Over-Budget ({{ number_format($row['sisa'], 2, ',', '.') }})
+                                    </span>
+                                @endif
+                            </td>
+
+                            {{-- Aksi --}}
+                            <td class="py-2 px-3 text-center">
+                                <button type="button" wire:click="selectRabFromSelisih('{{ $row['rab_id'] }}')" 
+                                        class="bg-accent/10 hover:bg-accent text-accent hover:text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+                                        title="Buka detail laporan RAB lokasi ini">
+                                    Buka RAB →
+                                </button>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="12" class="py-12 text-center text-gray-400">
+                                <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2 text-xl font-bold">✓</div>
+                                <p class="font-bold text-gray-600">Tidak ada material yang selisih/minus pada filter ini.</p>
+                                <p class="text-[11px] text-gray-400 mt-1">Seluruh pengambilan material sesuai dengan atau berada dalam batas kuota RAB.</p>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Modal Footer --}}
+            <div class="px-6 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 flex-shrink-0">
+                <div>
+                    Menampilkan <strong>{{ count($filteredList) }}</strong> baris material selisih dari <strong>{{ $uniqueRabsCount }}</strong> lokasi RAB.
+                </div>
+                <button type="button" wire:click="closeSelisihModal" class="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl transition-colors cursor-pointer">
+                    Tutup
+                </button>
+            </div>
         </div>
     </div>
     @endif
