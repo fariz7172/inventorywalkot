@@ -22,5 +22,6 @@ yarn-error.log
 inventory.sql
 
 /scratch/
+captcha key.txt
 /storage/framework/views/*
 !/storage/framework/views/.gitignore

@@ -65,6 +65,8 @@
         }
         .btn-login:active { transform: translateY(0); }
     </style>
+    <!-- Google reCAPTCHA v2 -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 
 <body class="min-h-screen bg-base flex flex-col items-center justify-center relative overflow-y-auto py-12 px-4">
@@ -133,7 +135,7 @@
                                       d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
                             </svg>
                         </div>
-                        <input type="email" name="email" placeholder="admin@panel.com"
+                        <input type="email" name="email" value="{{ old('email') }}" placeholder="admin@panel.com"
                                class="input-field w-full rounded-xl pl-10 pr-4 py-3 text-sm text-gray-700"/>
                     </div>
                 </div>
@@ -148,7 +150,7 @@
                                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                             </svg>
                         </div>
-                        <input type="password" name="password" id="passInput" placeholder="••••••••"
+                        <input type="password" name="password" id="passInput" placeholder="Masukkan password Anda"
                                class="input-field w-full rounded-xl pl-10 pr-12 py-3 text-sm text-gray-700"/>
                         <button type="button" onclick="togglePass()" class="absolute right-3.5 top-1/2 -translate-y-1/2">
                             <svg id="eyeIcon" class="w-4 h-4 text-gray-400 hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,12 +164,20 @@
                 <!-- Remember & Forgot -->
                 <div class="flex items-center justify-between">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" class="w-4 h-4 rounded accent-accent">
+                        <input type="checkbox" name="remember" class="w-4 h-4 rounded accent-accent">
                         <span class="text-xs text-gray-600 font-medium">Ingat saya</span>
                     </label>
                     <a href="#" class="text-xs font-semibold text-accent hover:text-accent-dark transition-colors">
                         Lupa password?
                     </a>
+                </div>
+
+                <!-- Google reCAPTCHA v2 -->
+                <div class="pt-2 flex flex-col items-center justify-center">
+                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                    @error('g-recaptcha-response')
+                        <p class="text-xs text-red-600 font-medium mt-1.5 text-center">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <!-- Submit -->

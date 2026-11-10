@@ -244,9 +244,8 @@
                         ],
                         [
                             'icon' => 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-                            'label' => 'Manajemen User',
-                            'route' => 'user.index',
-                            'role' => 'superadmin|sudin'
+                            'label' => auth()->user()->hasAnyRole(['superadmin', 'sudin']) ? 'Manajemen User' : 'Profil & Password',
+                            'route' => 'user.index'
                         ],
                     ];
                 @endphp
@@ -356,12 +355,13 @@
 
             <!-- User Profile -->
             <div class="px-3 py-4 border-t border-warm/60">
-                <div class="flex items-center gap-3 px-2">
-                    <div class="w-9 h-9 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0">
-                        <span class="text-accent font-bold text-sm">A</span>
+                <a href="{{ route('user.index') }}" title="Kelola Profil & Ganti Password"
+                    class="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-accent/5 transition-all group">
+                    <div class="w-9 h-9 rounded-xl bg-accent/20 flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                        <span class="text-accent group-hover:text-white font-bold text-sm">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</span>
                     </div>
                     <div class="user-info flex-1 min-w-0">
-                        <p class="text-sm font-bold text-gray-900 truncate">{{ auth()->user()->name }}</p>
+                        <p class="text-sm font-bold text-gray-900 truncate group-hover:text-accent transition-colors">{{ auth()->user()->name }}</p>
                         <p class="text-[10px] font-black text-accent uppercase tracking-widest truncate">
                             @php
                                 $roleName = auth()->user()->getRoleNames()->first() ?? 'User';
@@ -378,14 +378,13 @@
                             {{ strtoupper($displayRoleName) }}
                         </p>
                     </div>
-                    <button
-                        class="user-info w-7 h-7 rounded-lg hover:bg-accent/10 flex items-center justify-center transition-colors">
-                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="user-info w-7 h-7 rounded-lg group-hover:bg-accent/10 flex items-center justify-center transition-colors">
+                        <svg class="w-4 h-4 text-gray-400 group-hover:text-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                    </button>
-                </div>
+                    </div>
+                </a>
             </div>
         </aside>
 

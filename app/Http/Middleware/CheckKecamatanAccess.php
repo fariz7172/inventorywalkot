@@ -11,8 +11,8 @@ class CheckKecamatanAccess
     public function handle(Request $request, Closure $next): Response
     {
         if (auth()->check() && auth()->user()->hasRole('kecamatan_admin')) {
-            // Izinkan akses ke rute surat-jalan, rab, laporan, dan stock-opname
-            if ($request->is('dashboard/surat-jalan*') || $request->is('dashboard/rab*') || $request->is('dashboard/laporan*') || $request->is('dashboard/stock-opname*')) {
+            // Izinkan akses ke rute surat-jalan, rab, laporan, stock-opname, dan users (profil sendiri)
+            if ($request->is('dashboard/surat-jalan*') || $request->is('dashboard/rab*') || $request->is('dashboard/laporan*') || $request->is('dashboard/stock-opname*') || $request->is('dashboard/users*')) {
                 return $next($request);
             }
             
