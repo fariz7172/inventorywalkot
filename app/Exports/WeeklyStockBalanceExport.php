@@ -30,72 +30,126 @@ class WeeklyStockBalanceExport implements FromCollection, WithHeadings, WithMapp
         $this->search = $search;
     }
 
+    /**
+     * Menghasilkan 7 hari (Senin s/d Minggu) untuk minggu yang dipilih.
+     */
+    protected function getDays(): array
+    {
+        $date = Carbon::create((int)$this->year, (int)$this->month, 1);
+        $displayStartDate = $date->copy()->startOfMonth()->addWeeks((int)$this->week - 1)->startOfWeek();
+
+        $days = [];
+        for ($i = 0; $i < 7; $i++) {
+            $days[] = $displayStartDate->copy()->addDays($i);
+        }
+
+        return $days;
+    }
+
     public function collection()
     {
         $date = Carbon::create((int)$this->year, (int)$this->month, 1);
-        $startDate = $date->copy()->startOfMonth()->addWeeks((int)$this->week - 1)->startOfWeek();
-        $endDate = $startDate->copy()->endOfWeek();
-        
-        if ($startDate->month != (int)$this->month) $startDate = $date->copy()->startOfMonth();
-        if ($endDate->month != (int)$this->month) $endDate = $date->copy()->endOfMonth();
+        $monthStart = $date->copy()->startOfMonth();
+        $monthEnd = $date->copy()->endOfMonth();
+
+        $displayStartDate = $date->copy()->startOfMonth()->addWeeks((int)$this->week - 1)->startOfWeek();
+        $displayEndDate = $displayStartDate->copy()->endOfWeek();
+
+        // Rentang kalkulasi mutasi clamped ke dalam bulan berjalan agar konsisten dengan view
+        $calcStartDate = $displayStartDate->copy();
+        if ($calcStartDate->lt($monthStart)) {
+            $calcStartDate = $monthStart->copy();
+        }
+
+        $calcEndDate = $displayEndDate->copy();
+        if ($calcEndDate->gt($monthEnd)) {
+            $calcEndDate = $monthEnd->copy();
+        }
 
         $materials = Material::with('category')
             ->when($this->category_id, fn($q) => $q->where('category_id', $this->category_id))
             ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'))
+            ->orderBy('name', 'asc')
             ->get();
 
-        $days = [];
-        for ($i = 0; $i < 7; $i++) {
-            $days[] = $startDate->copy()->addDays($i);
-        }
+        $days = $this->getDays();
 
-        return $materials->map(function($material) use ($startDate, $endDate, $days) {
-            $mutationAfter = InventoryTransaction::where('material_id', $material->id)
-                ->where('created_at', '>', $endDate)
-                ->selectRaw('SUM(volume_masuk) as in_sum, SUM(volume_keluar) as out_sum')
-                ->first();
-            
-            $netAfter = (float)($mutationAfter->in_sum ?? 0) - (float)($mutationAfter->out_sum ?? 0);
-            $finalBalance = (float)$material->current_volume - $netAfter;
+        $applyKecamatanFilter = function($q) {
+            if (auth()->check() && auth()->user()->kecamatan_id) {
+                $userKecId = auth()->user()->kecamatan_id;
+                $lokasiKecamatan = \App\Models\Rab::where('kecamatan_id', $userKecId)->pluck('lokasi');
+                $q->where(function($subQ) use ($userKecId, $lokasiKecamatan) {
+                    $subQ->whereHas('user', function($uq) use ($userKecId) {
+                        $uq->where('kecamatan_id', $userKecId);
+                    })->orWhereHas('deliveryOrder', function($dq) use ($lokasiKecamatan) {
+                        $dq->whereIn('lokasi', $lokasiKecamatan);
+                    });
+                });
+            }
+            return $q;
+        };
 
-            $periodTransactions = InventoryTransaction::where('material_id', $material->id)
-                ->whereBetween('created_at', [$startDate, $endDate])
-                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out')
-                ->first();
+        return $materials->map(function($material) use ($calcStartDate, $calcEndDate, $days, $applyKecamatanFilter) {
+            // 1. Saldo Awal: Semua transaksi SEBELUM tanggal awal kalkulasi
+            $qOp = InventoryTransaction::where('material_id', $material->id)
+                ->where('created_at', '<', $calcStartDate->copy()->startOfDay())
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out');
+            $applyKecamatanFilter($qOp);
+            $openingTrx = $qOp->first();
+
+            $openingBalance = (float)($openingTrx->total_in ?? 0) - (float)($openingTrx->total_out ?? 0);
+
+            // 2. Mutasi Selama Periode: Transaksi ANTARA tanggal awal dan akhir kalkulasi
+            $qPeriod = InventoryTransaction::where('material_id', $material->id)
+                ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
+                ->selectRaw('SUM(volume_masuk) as total_in, SUM(volume_keluar) as total_out');
+            $applyKecamatanFilter($qPeriod);
+            $periodTransactions = $qPeriod->first();
 
             $totalIn = (float)($periodTransactions->total_in ?? 0);
             $totalOut = (float)($periodTransactions->total_out ?? 0);
-            $openingBalance = $finalBalance - ($totalIn - $totalOut);
+
+            // 3. Saldo Akhir
+            $finalBalance = $openingBalance + $totalIn - $totalOut;
+
+            // 4. Data Harian untuk Kolom 7 Hari (Senin - Minggu)
+            $qDailyIn = InventoryTransaction::where('material_id', $material->id)
+                ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
+                ->where('type', 'in')
+                ->selectRaw('DATE(created_at) as date, SUM(volume_masuk) as total')
+                ->groupBy('date');
+            $applyKecamatanFilter($qDailyIn);
+            $inTrx = $qDailyIn->get()->pluck('total', 'date');
+
+            $qDailyOut = InventoryTransaction::where('material_id', $material->id)
+                ->whereBetween('created_at', [$calcStartDate->copy()->startOfDay(), $calcEndDate->copy()->endOfDay()])
+                ->where('type', 'out')
+                ->selectRaw('DATE(created_at) as date, SUM(volume_keluar) as total')
+                ->groupBy('date');
+            $applyKecamatanFilter($qDailyOut);
+            $outTrx = $qDailyOut->get()->pluck('total', 'date');
 
             $dailyIn = [];
             $dailyOut = [];
-            
-            $inTrx = InventoryTransaction::where('material_id', $material->id)
-                ->whereBetween('created_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
-                ->where('type', 'in')
-                ->selectRaw('DATE(created_at) as date, SUM(volume_masuk) as total')
-                ->groupBy('date')->get()->pluck('total', 'date');
-            
-            $outTrx = InventoryTransaction::where('material_id', $material->id)
-                ->whereBetween('created_at', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
-                ->where('type', 'out')
-                ->selectRaw('DATE(created_at) as date, SUM(volume_keluar) as total')
-                ->groupBy('date')->get()->pluck('total', 'date');
-
             foreach ($days as $day) {
                 $dateStr = $day->format('Y-m-d');
-                $dailyIn[] = (float)($inTrx[$dateStr] ?? 0);
-                $dailyOut[] = (float)($outTrx[$dateStr] ?? 0);
+                if ($day->month != (int)$this->month) {
+                    $dailyIn[] = '-';
+                    $dailyOut[] = '-';
+                } else {
+                    $dailyIn[] = isset($inTrx[$dateStr]) ? (float)$inTrx[$dateStr] : 0;
+                    $dailyOut[] = isset($outTrx[$dateStr]) ? (float)$outTrx[$dateStr] : 0;
+                }
             }
 
             return (object) [
                 'name' => $material->name,
                 'category' => $material->category->name ?? '-',
                 'unit' => $material->unit,
-                'opening_balance' => $openingBalance,
-                'total_in' => $totalIn,
-                'total_out' => $totalOut,
-                'final_balance' => $finalBalance,
+                'opening_balance' => round($openingBalance, 2),
+                'total_in' => round($totalIn, 2),
+                'total_out' => round($totalOut, 2),
+                'final_balance' => round($finalBalance, 2),
                 'daily_in' => $dailyIn,
                 'daily_out' => $dailyOut,
             ];
@@ -105,14 +159,33 @@ class WeeklyStockBalanceExport implements FromCollection, WithHeadings, WithMapp
     public function headings(): array
     {
         $headers = ['Material', 'Satuan', 'Saldo Awal'];
-        $daysLabels = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-        
-        foreach ($daysLabels as $day) $headers[] = $day . ' (Masuk)';
+
+        $indoDays = [
+            'Monday'    => 'Senin',
+            'Tuesday'   => 'Selasa',
+            'Wednesday' => 'Rabu',
+            'Thursday'  => 'Kamis',
+            'Friday'    => 'Jumat',
+            'Saturday'  => 'Sabtu',
+            'Sunday'    => 'Minggu',
+        ];
+
+        $days = $this->getDays();
+
+        // 7 Hari Masuk dengan Tanggal
+        foreach ($days as $day) {
+            $dayName = $indoDays[$day->format('l')] ?? $day->format('l');
+            $headers[] = $dayName . ' (' . $day->format('d/m') . ') (Masuk)';
+        }
         $headers[] = 'Total Masuk (+)';
-        
-        foreach ($daysLabels as $day) $headers[] = $day . ' (Keluar)';
+
+        // 7 Hari Keluar dengan Tanggal
+        foreach ($days as $day) {
+            $dayName = $indoDays[$day->format('l')] ?? $day->format('l');
+            $headers[] = $dayName . ' (' . $day->format('d/m') . ') (Keluar)';
+        }
         $headers[] = 'Total Keluar (-)';
-        
+
         $headers[] = 'Saldo Akhir';
 
         return [
@@ -131,11 +204,15 @@ class WeeklyStockBalanceExport implements FromCollection, WithHeadings, WithMapp
             $row->opening_balance,
         ];
 
-        foreach ($row->daily_in as $val) $data[] = $val ?: '-';
-        $data[] = $row->total_in;
+        foreach ($row->daily_in as $val) {
+            $data[] = ($val === '-' || $val == 0) ? '-' : $val;
+        }
+        $data[] = $row->total_in ?: '-';
 
-        foreach ($row->daily_out as $val) $data[] = $val ?: '-';
-        $data[] = $row->total_out;
+        foreach ($row->daily_out as $val) {
+            $data[] = ($val === '-' || $val == 0) ? '-' : $val;
+        }
+        $data[] = $row->total_out ?: '-';
         
         $data[] = $row->final_balance;
 
@@ -166,12 +243,10 @@ class WeeklyStockBalanceExport implements FromCollection, WithHeadings, WithMapp
 
     protected function getPeriodRange()
     {
-        $date = Carbon::create((int)$this->year, (int)$this->month, 1);
-        $start = $date->copy()->startOfMonth()->addWeeks((int)$this->week - 1)->startOfWeek();
-        $end = $start->copy()->endOfWeek();
-        if ($start->month != (int)$this->month) $start = $date->copy()->startOfMonth();
-        if ($end->month != (int)$this->month) $end = $date->copy()->endOfMonth();
-        
+        $days = $this->getDays();
+        $start = $days[0];
+        $end = $days[6];
+
         return $start->format('d M') . " - " . $end->format('d M Y');
     }
 }

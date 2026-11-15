@@ -14,7 +14,10 @@ class RabController extends Controller
     {
         $templatePath = public_path('assets/Surat_Perintah_Tugas_walikota.docx');
         if (!file_exists($templatePath)) {
-            abort(404, 'Template dokumen Surat_Perintah_Tugas_walikota.docx tidak ditemukan.');
+            $templatePath = public_path('assets/SPT_pak_deni_template.docx');
+        }
+        if (!file_exists($templatePath)) {
+            abort(404, 'Template dokumen SPT tidak ditemukan.');
         }
 
         // Siapkan direktori temporary
@@ -44,10 +47,6 @@ class RabController extends Controller
         $nomorSpt = $rab->nomor_spt ?: ($rab->id . '/KG.II.OO');
         $lokasi = htmlspecialchars($rab->lokasi, ENT_QUOTES, 'UTF-8');
 
-        // Nama Pembuat / Penerima Perintah & NIP
-        $penerimaName = '-';
-        $penerimaNip = '-';
-        
         // Cari user pembuat RAB atau user sesuai kecamatan (utamakan admin kecamatan jika relevan, role pemel, atau kasatpel kecamatan RAB)
         $targetUser = null;
         if (auth()->check() && (auth()->user()->kecamatan_id || auth()->user()->hasRole('kecamatan_admin') || auth()->user()->hasRole('pemel'))) {
@@ -62,123 +61,90 @@ class RabController extends Controller
             $targetUser = auth()->user();
         }
 
-        $penerimaName = $targetUser ? ($targetUser->name ?: 'Rezky A P') : '-';
+        $penerimaName = $targetUser ? ($targetUser->name ?: 'Rezky A P') : 'Rezky A P';
         $penerimaNip = ($targetUser && $targetUser->nip) ? $targetUser->nip : '-';
-        $jabatan = ($targetUser && !empty($targetUser->jabatan)) ? $targetUser->jabatan : '-';
+        $jabatan = ($targetUser && !empty($targetUser->jabatan)) ? $targetUser->jabatan : 'Ketua Satuan Pelaksana Kecamatan Penjaringan';
 
         $penerimaName = htmlspecialchars($penerimaName, ENT_QUOTES, 'UTF-8');
         $penerimaNip = htmlspecialchars($penerimaNip, ENT_QUOTES, 'UTF-8');
         $jabatan = htmlspecialchars($jabatan, ENT_QUOTES, 'UTF-8');
 
-        // Tanggal Mulai (Tanggal dibuat RAB)
+        // Tanggal Mulai & Selesai
         Carbon::setLocale('id');
-        $tglMulai = $rab->created_at 
-            ? Carbon::parse($rab->created_at)->locale('id')->isoFormat('D MMMM Y') 
-            : Carbon::now()->locale('id')->isoFormat('D MMMM Y');
+        $mulaiCarbon = $rab->created_at ? Carbon::parse($rab->created_at) : Carbon::now();
+        $tglMulai = $mulaiCarbon->locale('id')->isoFormat('D MMMM Y');
 
-        // Tanggal Selesai (Tanggal created_at terakhir dari material_rab)
         $latestMaterial = \Illuminate\Support\Facades\DB::table('material_rab')
             ->where('rab_id', $rab->id)
             ->orderBy('created_at', 'desc')
             ->first();
 
-        $tglSelesai = ($latestMaterial && $latestMaterial->created_at) 
-            ? Carbon::parse($latestMaterial->created_at)->locale('id')->isoFormat('D MMMM Y') 
-            : $tglMulai;
+        if ($latestMaterial && $latestMaterial->created_at && Carbon::parse($latestMaterial->created_at)->gt((clone $mulaiCarbon)->addDays(5))) {
+            $tglSelesai = Carbon::parse($latestMaterial->created_at)->locale('id')->isoFormat('D MMMM Y');
+        } else {
+            $tglSelesai = (clone $mulaiCarbon)->addMonth()->locale('id')->isoFormat('D MMMM Y');
+        }
+
+        if (request()->filled('tgl_mulai')) {
+            $tglMulai = Carbon::parse(request('tgl_mulai'))->locale('id')->isoFormat('D MMMM Y');
+        }
+        if (request()->filled('tgl_selesai')) {
+            $tglSelesai = Carbon::parse(request('tgl_selesai'))->locale('id')->isoFormat('D MMMM Y');
+        }
 
         $tahunAnggaran = $rab->created_at ? Carbon::parse($rab->created_at)->format('Y') : date('Y');
 
-        // Judul Swakelola dengan baris bertingkat (Nama pekerjaan di bawah Tipe I, dan Tahun Anggaran di bawah Nama Pekerjaan)
-        $titleBlock = "PELAKSANAAN SWAKELOLA TIPE I</w:t><w:br/><w:t>" . $lokasi . "</w:t><w:br/><w:t>TAHUN ANGGARAN " . $tahunAnggaran;
-        $xml = str_replace(
-            'PELAKSANAAN SWAKELOLA TIPE I [NAMA PEKERJAAN] TAHUN ANGGARAN 2026',
-            $titleBlock,
-            $xml
-        );
-
-        // Penggantian Placeholder Header dan DPA dalam Template XML
-        $xml = str_replace('[NOMOR SPT]', $nomorSpt, $xml);
-        $xml = str_replace('[NAMA PEKERJAAN]', $lokasi, $xml);
-        $xml = str_replace('[NAMA PEKERJAAN/KEGIATAN]', $lokasi, $xml);
-        $xml = str_replace('[NOMOR DPA]', '04/039/DPA/2026', $xml);
-        $xml = str_replace('[TANGGAL DPA]', '30 Desember 2026', $xml);
-        $xml = str_replace('[NOMOR SK SWAKELOLA]', '1445', $xml);
-        $xml = str_replace('[NOMOR SK SWAKELOLA] Tahun', '1445 Tahun', $xml);
-        if (!str_contains($xml, 'Nomor 1445 Tahun 2026 Tanggal 1 Desember 2025')) {
-            $xml = str_replace('Nomor 1445 Tahun 2026', 'Nomor 1445 Tahun 2026 Tanggal 1 Desember 2025', $xml);
+        // Kecamatan / Tim Pelaksana
+        $timPelaksana = 'Kecamatan Penjaringan';
+        if ($rab->kecamatan && !empty($rab->kecamatan->name)) {
+            $timPelaksana = 'Kecamatan ' . $rab->kecamatan->name;
+        } elseif ($targetUser && !empty($targetUser->jabatan) && preg_match('/Kecamatan\s+([A-Za-z\s]+)/i', $targetUser->jabatan, $m)) {
+            $timPelaksana = 'Kecamatan ' . trim($m[1]);
+        } elseif ($targetUser && !empty($targetUser->kecamatan?->name)) {
+            $timPelaksana = 'Kecamatan ' . $targetUser->kecamatan->name;
+        } elseif (preg_match('/\b(Penjaringan|Cilincing|Koja|Pademangan|Tanjung Priok|Kelapa Gading)\b/i', $rab->lokasi, $m)) {
+            $timPelaksana = 'Kecamatan ' . trim($m[1]);
+        } elseif ($targetUser && preg_match('/(Pemeliharaan|Pemel)/i', $targetUser->jabatan ?? '')) {
+            $timPelaksana = 'Seksi Pemeliharaan Drainase';
         }
-        $xml = str_replace('Tanggal 1 Desember 2025 Tanggal 1 Desember 2025', 'Tanggal 1 Desember 2025', $xml);
+        $timPelaksana = preg_replace('/^Kecamatan\s+Kecamatan\s+/i', 'Kecamatan ', $timPelaksana);
 
-        // Cari blok 5 paragraf (mulai dari 'Kepada' sampai 'Tahun Anggaran') untuk digantikan dengan tabel borderless yang sangat rapi
-        $posMemerintahkan = strpos($xml, 'MEMERINTAHKAN:</w:t></w:r></w:p>');
-        if ($posMemerintahkan !== false) {
-            $startP = strpos($xml, '<w:p ', $posMemerintahkan);
-            $posTahun = strpos($xml, 'Tahun', $posMemerintahkan);
-            $endP = false;
-            if ($posTahun !== false) {
-                $closeP = strpos($xml, '</w:p>', $posTahun);
-                if ($closeP !== false) {
-                    $endP = $closeP + strlen('</w:p>');
-                }
-            }
-
-            if ($startP !== false && $endP !== false && $endP > $startP) {
-                $rowsKepada = [
-                    ['Nama', $penerimaName],
-                    ['NIP/NRK', $penerimaNip],
-                    ['Jabatan', $jabatan],
-                    ['Kedudukan', 'Ketua/Koordinator Tim Pelaksana Swakelola Tipe I'],
-                ];
-
-                $namaProgram = '1.03.06 PROGRAM PENGELOLAAN DAN PENGEMBANGAN SISTEM DRAINASE';
-                $namaKegiatan = '1.03.06.1.01 Pengelolaan dan Pengembangan Sistem Drainase yang Terhubung Langsung dengan Sungai Lintas Daerah Kabupaten/Kota dan Kawasan Strategis Provinsi';
-                $namaSubkegiatan = '1.03.06.1.01.0010 Operasi dan Pemeliharaan Sistem Drainase Perkotaan';
-                $nomorKodeKegiatan = '1.03.06.1.01.0010.001 Operasi dan Pemeliharaan Sistem Drainase';
-                $kodeRekening = '5.1.02.03.004.00024 Belanja Pemeliharaan Bangunan Air-Bangunan Air Irigasi-Bangunan Waduk Irigasi';
-
-                $rowsData = [
-                    ['Nama Program', $namaProgram],
-                    ['Nama Kegiatan', $namaKegiatan],
-                    ['Nama Subkegiatan', $namaSubkegiatan],
-                    ['Nomor/Kode Kegiatan', $nomorKodeKegiatan],
-                    ['Kode Rekening', $kodeRekening],
-                    ['Jenis Pekerjaan', 'Perbaikan dan Pengurasan Saluran'],
-                    ['Lokasi', $lokasi],
-                    ['Tahun Anggaran', $tahunAnggaran],
-                ];
-
-                $kepadaHeading = '<w:p><w:pPr><w:spacing w:before="120" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Kepada :</w:t></w:r></w:p>';
-                $dataHeading = '<w:p><w:pPr><w:spacing w:before="140" w:after="40" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:t>Untuk melaksanakan pekerjaan Swakelola Tipe I dengan data sebagai berikut:</w:t></w:r></w:p>';
-
-                $cleanTableSection = $kepadaHeading . $this->renderBorderlessTable($rowsKepada) . $dataHeading . $this->renderBorderlessTable($rowsData);
-
-                $xml = substr_replace($xml, $cleanTableSection, $startP, $endP - $startP);
-            }
+        // Judul & Pengantar Pekerjaan
+        if (preg_match('/^(PERBAIKAN|PENGURASAN|PEMELIHARAAN|PEMBANGUNAN)/i', $lokasi)) {
+            $namaPekerjaanJudul = mb_strtoupper($lokasi);
+            $namaPekerjaanPengantar = $lokasi;
+        } else {
+            $namaPekerjaanJudul = 'PERBAIKAN SALURAN CROSSING ' . mb_strtoupper($lokasi);
+            $namaPekerjaanPengantar = 'perbaikan saluran crossing ' . $lokasi;
         }
 
-        // Tanggal Pelaksanaan
-        $xml = str_replace('[TANGGAL MULAI]', $tglMulai, $xml);
-        $xml = str_replace('[TANGGAL SELESAI]', $tglSelesai, $xml);
+        $jenisPekerjaan = preg_match('/pengurasan/i', $lokasi) ? 'Pengurasan Saluran' : 'Perbaikan Saluran Crossing';
 
-        // Tanda Tangan Penerima & Pemberi Perintah
-        $xml = str_replace('[NAMA]', $penerimaName, $xml);
+        // Replacements
+        $replacements = [
+            '[NOMOR SPT]' => $nomorSpt,
+            '[NAMA PEKERJAAN JUDUL]' => $namaPekerjaanJudul,
+            '[TAHUN ANGGARAN]' => $tahunAnggaran,
+            '[NAMA PENERIMA]' => $penerimaName,
+            '[NIP PENERIMA]' => $penerimaNip,
+            '[JABATAN PENERIMA]' => $jabatan,
+            '[NAMA PEKERJAAN PENGANTAR]' => $namaPekerjaanPengantar,
+            '[JENIS PEKERJAAN]' => $jenisPekerjaan,
+            '[LOKASI]' => $lokasi,
+            '[TIM PELAKSANA KECAMATAN]' => $timPelaksana,
+            '[TANGGAL MULAI]' => $tglMulai,
+            '[TANGGAL SELESAI]' => $tglSelesai,
+            // Fallback replacements
+            '[NAMA PEKERJAAN]' => $lokasi,
+            '[NAMA PEKERJAAN/KEGIATAN]' => $lokasi,
+            '[NAMA]' => $penerimaName,
+            '[NIP]' => $penerimaNip,
+            '[TANGGAL]' => $tglMulai,
+        ];
 
-        // Ganti NIP penerima perintah (pada blok tanda tangan pertama)
-        $posPenerimaNip = strpos($xml, 'NIP [NIP]');
-        if ($posPenerimaNip !== false) {
-            $xml = substr_replace($xml, 'NIP ' . $penerimaNip, $posPenerimaNip, strlen('NIP [NIP]'));
+        foreach ($replacements as $search => $replace) {
+            $xml = str_replace($search, $replace, $xml);
         }
-
-        // NIP Pemberi Perintah (Heria Suwandi)
-        $nipHeriaSuwandi = '197101272006041009';
-        $posHeriaNip = strpos($xml, 'NIP [NIP]');
-        if ($posHeriaNip !== false) {
-            $xml = substr_replace($xml, 'NIP ' . $nipHeriaSuwandi, $posHeriaNip, strlen('NIP [NIP]'));
-        }
-
-        // Ganti sisa placeholder jika ada
-        $xml = str_replace('[NIP]', $nipHeriaSuwandi, $xml);
-        $xml = str_replace('[TANGGAL]', $tglMulai, $xml);
 
         $zip->addFromString('word/document.xml', $xml);
         $zip->close();
