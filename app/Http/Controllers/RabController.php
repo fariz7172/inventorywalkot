@@ -223,99 +223,121 @@ class RabController extends Controller
         $hariIni = Carbon::now()->locale('id')->isoFormat('dddd');
         $tglIni = Carbon::now()->locale('id')->isoFormat('D');
         $blnIni = Carbon::now()->locale('id')->isoFormat('MMMM');
+        $thnIni = (int)Carbon::now()->format('Y');
+        $thnTerbilang = $this->bilangTahun($thnIni);
+
+        if ($jabatan === 'Ketua Tim Pelaksana Swakelola Tipe I' && !empty($rab->kecamatan?->name)) {
+            $jabatan = 'Ketua Satuan Pelaksana Kecamatan ' . $rab->kecamatan->name;
+        }
 
         $tglRab = $rab->created_at 
             ? Carbon::parse($rab->created_at)->locale('id')->isoFormat('D MMMM Y') 
             : Carbon::now()->locale('id')->isoFormat('D MMMM Y');
 
         if (!empty($customTglMulai)) {
-            $tglMulai = Carbon::parse($customTglMulai)->locale('id')->isoFormat('D MMMM Y');
+            $startCarbon = Carbon::parse($customTglMulai);
         } else {
-            $tglMulai = $tglRab;
+            $startCarbon = $rab->created_at ? Carbon::parse($rab->created_at) : Carbon::now();
         }
 
         if (!empty($customTglSelesai)) {
-            $tglSelesai = Carbon::parse($customTglSelesai)->locale('id')->isoFormat('D MMMM Y');
+            $endCarbon = Carbon::parse($customTglSelesai);
         } else {
             $latestMaterial = \Illuminate\Support\Facades\DB::table('material_rab')
                 ->where('rab_id', $rab->id)
                 ->orderBy('created_at', 'desc')
                 ->first();
 
-            $tglSelesai = ($latestMaterial && $latestMaterial->created_at) 
-                ? Carbon::parse($latestMaterial->created_at)->locale('id')->isoFormat('D MMMM Y') 
-                : $tglMulai;
+            $endCarbon = ($latestMaterial && $latestMaterial->created_at) 
+                ? Carbon::parse($latestMaterial->created_at) 
+                : $startCarbon->copy();
         }
 
-        // 2. Replacements
-        // Nomor BAST
-        $xml = preg_replace('/NOMOR:\s+\/PR\.01\.02/', 'NOMOR: ' . $nomorUrut . '/PR.01.02', $xml);
+        $tglMulai = $startCarbon->locale('id')->isoFormat('D MMMM Y');
+        $tglSelesai = $endCarbon->locale('id')->isoFormat('D MMMM Y');
 
-        // Hari, Tanggal, Bulan saat download
+        if ($startCarbon->year === $endCarbon->year) {
+            $jangkaWaktu = $startCarbon->locale('id')->isoFormat('D MMMM') . ' s.d ' . $endCarbon->locale('id')->isoFormat('D MMMM Y');
+        } else {
+            $jangkaWaktu = $tglMulai . ' s.d ' . $tglSelesai;
+        }
+
+        $nomorBast = $nomorUrut . '/PR.01.02';
+        $judulLokasi = mb_strtoupper($lokasi);
+
+        if (preg_match('/^(perbaikan|pengurasan|pemeliharaan|pembangunan|rehabilitasi)/i', trim($lokasi))) {
+            $namaPekerjaan = $lokasi;
+        } else {
+            $namaPekerjaan = 'Perbaikan ' . $lokasi;
+        }
+
+        // 2. Replacements (New Template and Backward Compatibility)
+        // Judul & Nomor BAST
+        $xml = str_replace('[JUDUL LOKASI]', $judulLokasi, $xml);
+        $xml = str_replace('[NOMOR BAST]', $nomorBast, $xml);
+        $xml = preg_replace('/NOMOR:\s+\/PR\.01\.02/', 'NOMOR: ' . $nomorBast, $xml);
+        $xml = str_replace('HASIL PEKERJAAN SWAKELOLA TIPE I', 'HASIL PEKERJAAN ' . $judulLokasi, $xml);
+
+        // Hari, Tanggal, Bulan, Tahun
         $xml = str_replace('[HARI]', $hariIni, $xml);
+        $xml = str_replace('[TANGGAL]', $tglIni, $xml);
+        $xml = str_replace('[BULAN]', $blnIni, $xml);
+        $xml = str_replace('[TAHUN TERBILANG]', $thnTerbilang, $xml);
         $xml = str_replace('tanggal [TANGGAL] bulan [BULAN]', "tanggal {$tglIni} bulan {$blnIni}", $xml);
 
-        // Nama Ketua Tim Pelaksana
+        // Pihak Kesatu
+        $xml = str_replace('[NAMA PIHAK KESATU]', $penerimaName, $xml);
+        $xml = str_replace('[NIP PIHAK KESATU]', $penerimaNip, $xml);
+        $xml = str_replace('[JABATAN PIHAK KESATU]', $jabatan, $xml);
         $xml = str_replace('[NAMA KETUA TIM PELAKSANA]', $penerimaName, $xml);
 
-        // Pihak 1 NIP/NRK di daftar nomor 1
-        $posPihak1Nip = strpos($xml, ': [NIP]');
-        if ($posPihak1Nip !== false) {
-            $xml = substr_replace($xml, ': ' . $penerimaNip, $posPihak1Nip, strlen(': [NIP]'));
-        }
-
-        // Pihak 1 Jabatan di daftar nomor 1
-        if (!empty($targetUser?->jabatan)) {
-            $xml = str_replace(
-                '<w:t>Ketua</w:t></w:r><w:proofErr w:type="spellEnd"/><w:r><w:t xml:space="preserve"> Tim Pelaksana Swakelola Tipe I</w:t>',
-                '<w:t>' . $jabatan . '</w:t>',
-                $xml
-            );
-            $xml = str_replace(
-                '<w:t>Ketua Tim Pelaksana Swakelola Tipe I</w:t>',
-                '<w:t>' . $jabatan . '</w:t>',
-                $xml
-            );
-        }
-
-        // Pihak 2 NIP (Heria Suwandi) di daftar nomor 2
+        // Pihak Kedua (Heria Suwandi)
         $nipHeriaSuwandi = '197101272006041009';
-        $posPihak2Nip = strpos($xml, ': [NIP]');
-        if ($posPihak2Nip !== false) {
-            $xml = substr_replace($xml, ': ' . $nipHeriaSuwandi, $posPihak2Nip, strlen(': [NIP]'));
-        }
+        $xml = str_replace('[NAMA PIHAK KEDUA]', 'Heria Suwandi', $xml);
+        $xml = str_replace('[NIP PIHAK KEDUA]', $nipHeriaSuwandi, $xml);
 
-        // Keputusan Nomor [NOMOR SK] & Surat Perintah Tugas Nomor [NOMOR SPT]
+        // Legal Basis (SK & SPT)
         $xml = str_replace('[NOMOR SK] Tahun 2026', '6 Tahun 2026 Tanggal 5 Januari 2026', $xml);
         $xml = str_replace('1445 Tahun 2026 ', '6 Tahun 2026 Tanggal 5 Januari 2026 ', $xml);
         $xml = str_replace('1445 Tahun 2026', '6 Tahun 2026 Tanggal 5 Januari 2026', $xml);
         $xml = str_replace('[NOMOR SK]', '6', $xml);
         $xml = str_replace('[NOMOR SPT]', $sptNo, $xml);
+        $xml = str_replace('[TANGGAL SPT]', $tglRab, $xml);
         $xml = str_replace('tanggal [TANGGAL];', "tanggal {$tglRab};", $xml);
 
-        // Lokasi & Jangka Waktu
+        // Pengantar Lokasi & Rincian Pekerjaan
+        $xml = str_replace('[PENGANTAR LOKASI]', $lokasi, $xml);
+        $xml = str_replace('[NAMA PEKERJAAN]', $namaPekerjaan, $xml);
         $xml = str_replace('[LOKASI]', $lokasi, $xml);
+        $xml = str_replace('[JANGKA WAKTU]', $jangkaWaktu, $xml);
+        $xml = str_replace('[TANGGAL MULAI] s.d. [TANGGAL SELESAI]', $jangkaWaktu, $xml);
         $xml = str_replace('[TANGGAL MULAI]', $tglMulai, $xml);
         $xml = str_replace('[TANGGAL SELESAI]', $tglSelesai, $xml);
 
-        // Signature Pihak Kesatu: [NAMA]
+        // Fallbacks for older template structures
         $xml = preg_replace('/\[<\/w:t>.*?NAMA\]/s', $penerimaName, $xml);
         $xml = str_replace('[NAMA]', $penerimaName, $xml);
 
-        // NIP Pihak Kesatu signature
         $posPenerimaNip = strpos($xml, 'NIP [NIP]');
         if ($posPenerimaNip !== false) {
             $xml = substr_replace($xml, 'NIP ' . $penerimaNip, $posPenerimaNip, strlen('NIP [NIP]'));
         }
 
-        // NIP Pihak Kedua (Heria Suwandi)
-        $nipHeriaSuwandi = '197101272006041009';
         $posHeriaNip = strpos($xml, 'NIP [NIP]');
         if ($posHeriaNip !== false) {
             $xml = substr_replace($xml, 'NIP ' . $nipHeriaSuwandi, $posHeriaNip, strlen('NIP [NIP]'));
         }
 
-        // Sisa NIP (Pihak Kedua Heria Suwandi di daftar identitas atas & lainnya)
+        $posPihak1Nip = strpos($xml, ': [NIP]');
+        if ($posPihak1Nip !== false) {
+            $xml = substr_replace($xml, ': ' . $penerimaNip, $posPihak1Nip, strlen(': [NIP]'));
+        }
+
+        $posPihak2Nip = strpos($xml, ': [NIP]');
+        if ($posPihak2Nip !== false) {
+            $xml = substr_replace($xml, ': ' . $nipHeriaSuwandi, $posPihak2Nip, strlen(': [NIP]'));
+        }
+
         $xml = str_replace('[NIP]', $nipHeriaSuwandi, $xml);
 
         $zip->addFromString('word/document.xml', $xml);
@@ -324,6 +346,42 @@ class RabController extends Controller
         $safeFilename = 'Berita_Acara_Serah_Terima_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $nomorUrut) . '.docx';
 
         return response()->download($tempFile, $safeFilename)->deleteFileAfterSend(true);
+    }
+
+    protected function bilangTahun(int $tahun): string
+    {
+        $satuan = [
+            0 => '', 1 => 'Satu', 2 => 'Dua', 3 => 'Tiga', 4 => 'Empat',
+            5 => 'Lima', 6 => 'Enam', 7 => 'Tujuh', 8 => 'Delapan', 9 => 'Sembilan',
+            10 => 'Sepuluh', 11 => 'Sebelas'
+        ];
+
+        if ($tahun < 12) {
+            return $satuan[$tahun];
+        }
+        if ($tahun < 20) {
+            return $this->bilangTahun($tahun - 10) . ' Belas';
+        }
+        if ($tahun < 100) {
+            $sisa = $tahun % 10;
+            return $satuan[(int)($tahun / 10)] . ' Puluh' . ($sisa ? ' ' . $this->bilangTahun($sisa) : '');
+        }
+        if ($tahun < 200) {
+            return 'Seratus' . ($tahun - 100 ? ' ' . $this->bilangTahun($tahun - 100) : '');
+        }
+        if ($tahun < 1000) {
+            $sisa = $tahun % 100;
+            return $satuan[(int)($tahun / 100)] . ' Ratus' . ($sisa ? ' ' . $this->bilangTahun($sisa) : '');
+        }
+        if ($tahun < 2000) {
+            return 'Seribu' . ($tahun - 1000 ? ' ' . $this->bilangTahun($tahun - 1000) : '');
+        }
+        if ($tahun < 10000) {
+            $sisa = $tahun % 1000;
+            return $satuan[(int)($tahun / 1000)] . ' Ribu' . ($sisa ? ' ' . $this->bilangTahun($sisa) : '');
+        }
+
+        return (string)$tahun;
     }
 
     protected function renderBorderlessTable(array $rows, int $w1 = 2500, int $w2 = 200, int $w3 = 5940): string
